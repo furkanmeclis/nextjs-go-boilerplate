@@ -113,7 +113,7 @@ func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
 		response.BadRequest(w, r, response.CodeValidationError, "file is required")
 		return
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 	obj, err := h.svc.Upload(r.Context(), actor(r), model.UploadMeta{
 		Prefix:      r.FormValue("prefix"),
 		Key:         r.FormValue("key"),
@@ -253,7 +253,7 @@ func (h *Handler) stream(w http.ResponseWriter, r *http.Request, download bool) 
 		writeErr(w, r, err)
 		return
 	}
-	defer opened.Body.Close()
+	defer func() { _ = opened.Body.Close() }()
 	writeFile(w, opened)
 }
 
@@ -390,7 +390,7 @@ func (h *Handler) PublicSlug(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, r, err)
 		return
 	}
-	defer opened.Body.Close()
+	defer func() { _ = opened.Body.Close() }()
 	writeFile(w, opened)
 }
 
@@ -401,7 +401,7 @@ func (h *Handler) PublicSigned(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, r, err)
 		return
 	}
-	defer opened.Body.Close()
+	defer func() { _ = opened.Body.Close() }()
 	writeFile(w, opened)
 }
 

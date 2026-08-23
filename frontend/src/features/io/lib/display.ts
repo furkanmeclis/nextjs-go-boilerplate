@@ -50,6 +50,13 @@ export function formatExportFormat(t: (key: string) => string, format: string): 
   return translated === key ? format.toUpperCase() : translated;
 }
 
+export function rollbackWindowOpen(
+  rollbackUntil: string | null | undefined,
+  nowMs: number,
+): boolean {
+  return Boolean(rollbackUntil && Date.parse(rollbackUntil) > nowMs);
+}
+
 /** Client-side fallback when Content-Disposition is missing. */
 export function exportDownloadFilename(resource: string, format: string, at?: Date): string {
   const slug = resource.includes(".") ? resource.split(".").pop()! : resource;

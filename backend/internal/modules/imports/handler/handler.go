@@ -71,7 +71,7 @@ func (h *Handler) upload(w http.ResponseWriter, r *http.Request, resource string
 		response.BadRequest(w, r, response.CodeValidationError, "file is required")
 		return
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 	format := ioengine.ImportFormat(strings.ToLower(strings.TrimSpace(r.FormValue("format"))))
 	if format == "" {
 		format = ioengine.ImportCSV

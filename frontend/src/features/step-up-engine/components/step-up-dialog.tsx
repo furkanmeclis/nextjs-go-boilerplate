@@ -2,7 +2,7 @@
 
 import { startAuthentication } from "@simplewebauthn/browser";
 import { Fingerprint, LockKeyhole, ShieldCheck } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { z } from "zod";
 
 import { AppForm, AppInput, AppPassword } from "@/components/forms";
@@ -63,14 +63,16 @@ export function StepUpDialog({
   const enabledCount =
     Number(passwordEnabled) + Number(passkeyEnabled) + Number(totpEnabled);
 
-  useEffect(() => {
+  const [wasOpen, setWasOpen] = useState(open);
+  if (open !== wasOpen) {
+    setWasOpen(open);
     if (!open) {
       setFormError(null);
       setPasswordPending(false);
       setPasskeyPending(false);
       setTotpPending(false);
     }
-  }, [open]);
+  }
 
   const onPasswordSubmit = async (values: z.infer<typeof passwordSchema>) => {
     setFormError(null);

@@ -5,13 +5,6 @@ import (
 	"net/http"
 )
 
-// serverErrorRecorder captures server-side failure details for logging.
-type serverErrorRecorder interface {
-	RecordServerError(err error, publicMessage string)
-	StatusCode() int
-	ErrorRecorded() (err error, publicMessage string, ok bool)
-}
-
 type statusWriter struct {
 	http.ResponseWriter
 	status        int
@@ -53,11 +46,11 @@ func (w *statusWriter) StatusCode() int {
 	return w.status
 }
 
-func (w *statusWriter) ErrorRecorded() (error, string, bool) {
+func (w *statusWriter) ErrorRecorded() (publicMessage string, ok bool, err error) {
 	if !w.recorded {
-		return nil, "", false
+		return "", false, nil
 	}
-	return w.err, w.publicMessage, true
+	return w.publicMessage, true, w.err
 }
 
 // ServerErrors logs 5xx responses with request metadata (and error when recorded).
@@ -78,7 +71,7 @@ func ServerErrors(log *slog.Logger) func(http.Handler) http.Handler {
 				"path", r.URL.Path,
 				"request_id", GetRequestID(r.Context()),
 			}
-			if err, msg, ok := rec.ErrorRecorded(); ok {
+			if msg, ok, err := rec.ErrorRecorded(); ok {
 				attrs = append(attrs, "error", err.Error(), "message", msg)
 				log.ErrorContext(r.Context(), "http_handler_failed", attrs...)
 				return

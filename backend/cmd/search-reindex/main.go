@@ -47,6 +47,9 @@ func main() {
 		searchadapters.NewRoles(queries),
 	)
 	indexer := searchengine.NewIndexer(client, reg, nil, log)
-	indexer.ProcessReindex(ctx, "")
+	if err := indexer.ProcessReindex(ctx, ""); err != nil {
+		log.Error("search_reindex_failed", "error", err)
+		os.Exit(1)
+	}
 	log.Info("search_reindex_completed")
 }

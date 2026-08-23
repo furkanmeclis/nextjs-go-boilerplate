@@ -12,7 +12,7 @@ import (
 // EncodeXLSX writes a dataset with optional letterhead band.
 func EncodeXLSX(ds Dataset, locale string, lh *Letterhead) ([]byte, error) {
 	f := excelize.NewFile()
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	sheet := f.GetSheetName(0)
 	loc := i18n.Normalize(locale)
 	rowStart := 1

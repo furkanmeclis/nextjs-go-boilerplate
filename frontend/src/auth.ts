@@ -14,7 +14,6 @@ import {
   adapterGetOAuthConfig,
   adapterGetOAuthAccountUser,
   adapterGetUserByEmail,
-  adapterGetUserByUUID,
   adapterIssueSession,
   loginWithPassword,
   type OAuthConfigPayload,
@@ -52,10 +51,8 @@ function isProtectedPath(pathname: string) {
 
 function isOAuthProvider(provider: string | undefined): provider is OAuthProviderId {
   return (
-    provider === "github" ||
-    provider === "google" ||
-    provider === "facebook" ||
-    provider === "apple"
+    provider !== undefined &&
+    (OAUTH_PROVIDERS as readonly string[]).includes(provider)
   );
 }
 

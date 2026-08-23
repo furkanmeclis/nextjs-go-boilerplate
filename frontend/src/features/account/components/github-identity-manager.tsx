@@ -1,8 +1,9 @@
 "use client";
 
 import { signIn } from "next-auth/react";
+import { useQuery } from "@tanstack/react-query";
 import { Loader2, Unlink } from "lucide-react";
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
 import { AppleIcon } from "@/components/icons/apple-icon";
@@ -16,10 +17,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { isApiError } from "@/lib/api";
 import { datetime } from "@/lib/utils/format";
 import { useLocale } from "@/providers/locale-provider";
-import {
-  authService,
-  type LinkedIdentitySummary,
-} from "@/services/auth.service";
+import { authService } from "@/services/auth.service";
 
 type ProviderId = "github" | "google" | "facebook" | "apple";
 
@@ -58,31 +56,28 @@ const providerMeta: Record<
 
 export function OAuthIdentityManager({ providers }: OAuthIdentityManagerProps) {
   const { t, locale } = useLocale();
-  const [items, setItems] = useState<LinkedIdentitySummary[]>([]);
-  const [loading, setLoading] = useState(true);
   const [pendingProvider, setPendingProvider] = useState<ProviderId | null>(
     null,
   );
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const result = await authService.listIdentities();
-      setItems(result.items ?? []);
-    } catch (error) {
-      if (isApiError(error)) {
-        toast.error(error.message || t("common.error_generic"));
-      } else {
-        toast.error(t("common.error_generic"));
+  const identitiesQuery = useQuery({
+    queryKey: ["account", "identities"],
+    queryFn: async () => {
+      try {
+        const result = await authService.listIdentities();
+        return result.items ?? [];
+      } catch (error) {
+        toast.error(
+          isApiError(error)
+            ? error.message || t("common.error_generic")
+            : t("common.error_generic"),
+        );
+        throw error;
       }
-    } finally {
-      setLoading(false);
-    }
-  }, [t]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
+    },
+  });
+  const items = identitiesQuery.data ?? [];
+  const loading = identitiesQuery.isPending;
 
   const connect = async (provider: ProviderId) => {
     setPendingProvider(provider);
@@ -102,7 +97,7 @@ export function OAuthIdentityManager({ providers }: OAuthIdentityManagerProps) {
     try {
       await authService.unlinkIdentity(provider);
       toast.success(t("auth.oauth.unlink_success"));
-      await load();
+      await identitiesQuery.refetch();
     } catch (error) {
       if (isApiError(error)) {
         toast.error(error.message || t("auth.oauth.unlink_error"));

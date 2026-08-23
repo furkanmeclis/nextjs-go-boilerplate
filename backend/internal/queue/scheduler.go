@@ -23,5 +23,6 @@ func StartLogPurgeScheduler(cfg config.Config, log *slog.Logger) (*asynq.Schedul
 	if _, err := scheduler.Register(logPurgeCron, task, asynq.Queue(QueueMaintenance)); err != nil {
 		return nil, fmt.Errorf("queue: register log purge schedule: %w", err)
 	}
+	log.Info("queue_log_purge_scheduler_registered", "cron", logPurgeCron)
 	return scheduler, nil
 }

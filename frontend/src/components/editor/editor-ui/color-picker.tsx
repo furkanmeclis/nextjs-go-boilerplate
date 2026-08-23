@@ -80,8 +80,9 @@ function composeRefs<T>(...refs: PossibleRef<T>[]): React.RefCallback<T> {
  * Accepts callback refs and RefObject(s)
  */
 function useComposedRefs<T>(...refs: PossibleRef<T>[]): React.RefCallback<T> {
-  // biome-ignore lint/correctness/useExhaustiveDependencies: we want to memoize by all values
-  return React.useCallback(composeRefs(...refs), refs);
+  // Rest-arg tuples are not array literals; the callback must still close over all refs.
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- compose all refs
+  return React.useCallback((node) => composeRefs(...refs)(node), refs);
 }
 
 type InputValue = string[] | string;
@@ -965,7 +966,7 @@ function ColorPickerRootImpl(props: ColorPickerRootImplProps) {
       store.setOpen(newOpen);
       onOpenChange?.(newOpen);
     },
-    [store.setOpen, onOpenChange],
+    [store, onOpenChange],
   );
 
   const RootPrimitive = asChild ? SlotPrimitive : "div";

@@ -365,7 +365,7 @@ func (s *Service) failBulk(ctx context.Context, jobID int64, msg string) error {
 			"action": job.Action, "error": msg,
 		}, nil)
 	}
-	return fmt.Errorf(msg)
+	return fmt.Errorf("%s", msg)
 }
 
 func (s *Service) getOwned(ctx context.Context, jobUUID uuid.UUID, actorID int64, admin bool) (db.BulkJob, error) {

@@ -2,7 +2,8 @@
 
 import QRCode from "qrcode";
 import { ShieldCheck } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { toast } from "sonner";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -30,8 +31,6 @@ type SetupState = {
 
 export function TotpManager() {
   const { t } = useLocale();
-  const [loading, setLoading] = useState(true);
-  const [enabled, setEnabled] = useState(false);
   const [setup, setSetup] = useState<SetupState | null>(null);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [confirmCode, setConfirmCode] = useState("");
@@ -40,45 +39,32 @@ export function TotpManager() {
   const [disableOpen, setDisableOpen] = useState(false);
   const [pending, setPending] = useState(false);
 
-  const loadStatus = useCallback(async () => {
-    setLoading(true);
-    try {
-      const status = await authService.getTOTPStatus();
-      setEnabled(status.enabled);
-    } catch (error) {
-      toast.error(
-        isApiError(error) ? error.message : t("auth.totp.error.load"),
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, [t]);
-
-  useEffect(() => {
-    void loadStatus();
-  }, [loadStatus]);
-
-  useEffect(() => {
-    if (!setup?.otpauthUrl) {
-      setQrDataUrl(null);
-      return;
-    }
-    let cancelled = false;
-    void QRCode.toDataURL(setup.otpauthUrl, { width: 200, margin: 1 }).then(
-      (url) => {
-        if (!cancelled) setQrDataUrl(url);
-      },
-    );
-    return () => {
-      cancelled = true;
-    };
-  }, [setup?.otpauthUrl]);
+  const statusQuery = useQuery({
+    queryKey: ["account", "totp"],
+    queryFn: async () => {
+      try {
+        return await authService.getTOTPStatus();
+      } catch (error) {
+        toast.error(
+          isApiError(error) ? error.message : t("auth.totp.error.load"),
+        );
+        throw error;
+      }
+    },
+  });
+  const enabled = statusQuery.data?.enabled ?? false;
+  const loading = statusQuery.isPending;
 
   const beginSetup = async () => {
     setPending(true);
     try {
       const result = await authService.setupTOTP();
+      const url = await QRCode.toDataURL(result.otpauth_url, {
+        width: 200,
+        margin: 1,
+      });
       setSetup({ secret: result.secret, otpauthUrl: result.otpauth_url });
+      setQrDataUrl(url);
       setConfirmCode("");
       setRecoveryCodes(null);
     } catch (error) {
@@ -94,9 +80,10 @@ export function TotpManager() {
     setPending(true);
     try {
       const result = await authService.confirmTOTP(confirmCode.trim());
-      setEnabled(result.enabled);
       setRecoveryCodes(result.recovery_codes);
       setSetup(null);
+      setQrDataUrl(null);
+      await statusQuery.refetch();
       toast.success(t("auth.totp.confirm_success"));
     } catch (error) {
       toast.error(
@@ -111,10 +98,11 @@ export function TotpManager() {
     setPending(true);
     try {
       await authService.disableTOTP(disableCode.trim());
-      setEnabled(false);
       setSetup(null);
+      setQrDataUrl(null);
       setDisableOpen(false);
       setDisableCode("");
+      await statusQuery.refetch();
       toast.success(t("auth.totp.disable_success"));
     } catch (error) {
       toast.error(

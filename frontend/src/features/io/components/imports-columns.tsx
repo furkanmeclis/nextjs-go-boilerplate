@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Eye } from "lucide-react";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
 
 import { createColumn } from "@/components/tables";
@@ -13,6 +13,7 @@ import {
   formatImportFormat,
   formatImportStatus,
   resourceLabelKey,
+  rollbackWindowOpen,
 } from "@/features/io/lib/display";
 import type { ImportJob } from "@/features/io/types";
 import { useLocale } from "@/providers/locale-provider";
@@ -34,6 +35,7 @@ export function useImportsColumns({
   rollbackPending,
 }: UseImportsColumnsOptions) {
   const { t } = useLocale();
+  const [nowMs] = useState(() => Date.now());
 
   return useMemo<ColumnDef<ImportJob>[]>(
     () => [
@@ -83,8 +85,7 @@ export function useImportsColumns({
           const job = row.original;
           const canRollback =
             job.status === "applied" &&
-            job.rollback_until &&
-            new Date(job.rollback_until).getTime() > Date.now();
+            rollbackWindowOpen(job.rollback_until, nowMs);
           return (
             <div className="flex flex-wrap gap-2">
               <Button size="sm" variant="outline" asChild>
@@ -108,6 +109,6 @@ export function useImportsColumns({
         },
       }),
     ],
-    [onRollback, rollbackPending, t],
+    [nowMs, onRollback, rollbackPending, t],
   );
 }

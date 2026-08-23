@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { createElement, useEffect, useMemo, useState } from "react";
+import { createElement, useMemo, useState } from "react";
 
 import type { AppLayoutVariant } from "@/components/layout/app-layout";
 import { buildNavPageItems } from "@/features/search-engine/lib/nav-pages";
@@ -25,8 +25,12 @@ export function useCommandPaletteData(variant: AppLayoutVariant) {
   const { can, canAny } = usePermission();
   const [query, setQuery] = useState("");
   const [activeSpec, setActiveSpec] = useState<string | undefined>();
-  const [recent, setRecent] = useState<PaletteItem[]>([]);
 
+  const recentQuery = useQuery({
+    queryKey: ["search", "recent-items"],
+    queryFn: () => Promise.resolve(readRecentItems()),
+    staleTime: Infinity,
+  });
   const access = useMemo(() => ({ can, canAny }), [can, canAny]);
 
   const specsQuery = useQuery({
@@ -130,21 +134,18 @@ export function useCommandPaletteData(variant: AppLayoutVariant) {
       }
     };
 
+    const recent = recentQuery.data ?? [];
     if (!searchText && !effectiveSpec && recent.length > 0) {
       push(recent.map((item) => ({ ...item, group: t("search.group_recent") })));
     }
     push(filteredPages);
     push(remoteItems);
     return groups;
-  }, [effectiveSpec, filteredPages, recent, remoteItems, searchText, t]);
+  }, [effectiveSpec, filteredPages, recentQuery.data, remoteItems, searchText, t]);
 
-  useEffect(() => {
-    if (!query) setActiveSpec(undefined);
-  }, [query]);
-
-  useEffect(() => {
-    setRecent(readRecentItems());
-  }, []);
+  if (!query && activeSpec !== undefined) {
+    setActiveSpec(undefined);
+  }
 
   return {
     query,
@@ -164,7 +165,9 @@ export function useCommandPaletteData(variant: AppLayoutVariant) {
       example: t("search.footer_example"),
     }),
     recentEnabled: !searchText && !effectiveSpec,
-    refreshRecent: () => setRecent(readRecentItems()),
+    refreshRecent: () => {
+      void recentQuery.refetch();
+    },
   };
 }
 

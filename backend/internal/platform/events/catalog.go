@@ -71,22 +71,22 @@ const (
 
 // AI domain events (AI_DOMAIN_ADR catalog). Names only in 022; publish/handlers in 023+.
 const (
-	AIProfilesCreated            = "ai.profiles.created"
-	AIProfilesUpdated            = "ai.profiles.updated"
-	AIProfilesDeleted            = "ai.profiles.deleted"
-	AIProfilesWorkspaceAdded     = "ai.profiles.workspace_added"
-	AIProfilesWorkspaceRemoved   = "ai.profiles.workspace_removed"
-	AIProfilesChannelAttached    = "ai.profiles.channel_attached"
-	AIProfilesChannelDetached    = "ai.profiles.channel_detached"
-	AICredentialsCreated         = "ai.credentials.created"
-	AICredentialsUpdated         = "ai.credentials.updated"
-	AICredentialsDeleted         = "ai.credentials.deleted"
-	AIPipelineCompleted          = "ai.pipeline.completed"
-	AIPipelineEscalated          = "ai.pipeline.escalated"
-	AIPipelineGuardFailed        = "ai.pipeline.guard_failed"
-	AIDraftCreated               = "ai.draft.created"
-	AIConversationTakeover       = "ai.conversation.takeover"
-	AIConversationReleased       = "ai.conversation.released"
+	AIProfilesCreated          = "ai.profiles.created"
+	AIProfilesUpdated          = "ai.profiles.updated"
+	AIProfilesDeleted          = "ai.profiles.deleted"
+	AIProfilesWorkspaceAdded   = "ai.profiles.workspace_added"
+	AIProfilesWorkspaceRemoved = "ai.profiles.workspace_removed"
+	AIProfilesChannelAttached  = "ai.profiles.channel_attached"
+	AIProfilesChannelDetached  = "ai.profiles.channel_detached"
+	AICredentialsCreated       = "ai.credentials.created"
+	AICredentialsUpdated       = "ai.credentials.updated"
+	AICredentialsDeleted       = "ai.credentials.deleted"
+	AIPipelineCompleted        = "ai.pipeline.completed"
+	AIPipelineEscalated        = "ai.pipeline.escalated"
+	AIPipelineGuardFailed      = "ai.pipeline.guard_failed"
+	AIDraftCreated             = "ai.draft.created"
+	AIConversationTakeover     = "ai.conversation.takeover"
+	AIConversationReleased     = "ai.conversation.released"
 )
 
 // Reports domain events (REPORTS_DOMAIN_ADR).
@@ -98,38 +98,38 @@ const (
 
 // Tickets domain events (TICKETS_DOMAIN_ADR catalog).
 const (
-	TicketsCreated                   = "tickets.created"
-	TicketsUpdated                   = "tickets.updated"
-	TicketsStatusChanged             = "tickets.status_changed"
-	TicketsDepartmentsCreated        = "tickets.departments.created"
-	TicketsDepartmentsUpdated        = "tickets.departments.updated"
-	TicketsDepartmentsDeleted        = "tickets.departments.deleted"
-	TicketsDepartmentsMemberAdded    = "tickets.departments.member_added"
-	TicketsDepartmentsMemberRemoved  = "tickets.departments.member_removed"
-	TicketsCategoriesCreated         = "tickets.categories.created"
-	TicketsCategoriesUpdated         = "tickets.categories.updated"
-	TicketsCategoriesDeleted         = "tickets.categories.deleted"
-	TicketsRulesTriggered            = "tickets.rules.triggered"
-	TicketsRulesActionApplied = "tickets.rules.action_applied"
-	TicketsRemindersCreated   = "tickets.reminders.created"
-	TicketsRemindersSent      = "tickets.reminders.sent"
-	TicketsRemindersEscalated = "tickets.reminders.escalated"
-	TicketsSLAWarning         = "tickets.sla.warning"
-	TicketsSLABreached        = "tickets.sla.breached"
-	TicketsAssignmentsAssigned   = "tickets.assignments.assigned"
-	TicketsAssignmentsReassigned = "tickets.assignments.reassigned"
-	TicketsAssignmentsUnassigned = "tickets.assignments.unassigned"
-	TicketsMessagesCreated       = "tickets.messages.created"
-	TicketsConversationsTouched  = "tickets.conversations.touched"
-	TicketsAttachmentsCreated    = "tickets.attachments.created"
-	TicketsAttachmentsRead       = "tickets.attachments.read"
-	TicketsAttachmentsAIDenied   = "tickets.attachments.ai_read_denied"
-	TicketsEvaluationsLinkGenerated   = "tickets.evaluations.link_generated"
+	TicketsCreated                      = "tickets.created"
+	TicketsUpdated                      = "tickets.updated"
+	TicketsStatusChanged                = "tickets.status_changed"
+	TicketsDepartmentsCreated           = "tickets.departments.created"
+	TicketsDepartmentsUpdated           = "tickets.departments.updated"
+	TicketsDepartmentsDeleted           = "tickets.departments.deleted"
+	TicketsDepartmentsMemberAdded       = "tickets.departments.member_added"
+	TicketsDepartmentsMemberRemoved     = "tickets.departments.member_removed"
+	TicketsCategoriesCreated            = "tickets.categories.created"
+	TicketsCategoriesUpdated            = "tickets.categories.updated"
+	TicketsCategoriesDeleted            = "tickets.categories.deleted"
+	TicketsRulesTriggered               = "tickets.rules.triggered"
+	TicketsRulesActionApplied           = "tickets.rules.action_applied"
+	TicketsRemindersCreated             = "tickets.reminders.created"
+	TicketsRemindersSent                = "tickets.reminders.sent"
+	TicketsRemindersEscalated           = "tickets.reminders.escalated"
+	TicketsSLAWarning                   = "tickets.sla.warning"
+	TicketsSLABreached                  = "tickets.sla.breached"
+	TicketsAssignmentsAssigned          = "tickets.assignments.assigned"
+	TicketsAssignmentsReassigned        = "tickets.assignments.reassigned"
+	TicketsAssignmentsUnassigned        = "tickets.assignments.unassigned"
+	TicketsMessagesCreated              = "tickets.messages.created"
+	TicketsConversationsTouched         = "tickets.conversations.touched"
+	TicketsAttachmentsCreated           = "tickets.attachments.created"
+	TicketsAttachmentsRead              = "tickets.attachments.read"
+	TicketsAttachmentsAIDenied          = "tickets.attachments.ai_read_denied"
+	TicketsEvaluationsLinkGenerated     = "tickets.evaluations.link_generated"
 	TicketsEvaluationsFeedbackSubmitted = "tickets.evaluations.feedback_submitted"
-	TicketsEvaluationsFinalized       = "tickets.evaluations.finalized"
-	TicketsAISuggestionCreated        = "tickets.ai.suggestion_created"
-	TicketsAIAssistEscalated          = "tickets.ai.assist_escalated"
-	TicketsAIAssistGuardFailed        = "tickets.ai.assist_guard_failed"
+	TicketsEvaluationsFinalized         = "tickets.evaluations.finalized"
+	TicketsAISuggestionCreated          = "tickets.ai.suggestion_created"
+	TicketsAIAssistEscalated            = "tickets.ai.assist_escalated"
+	TicketsAIAssistGuardFailed          = "tickets.ai.assist_guard_failed"
 )
 
 // Auth / tenant notification source events (existing Notification Center templates).
@@ -168,7 +168,7 @@ func ValidateEventName(name string) error {
 			if unicode.IsUpper(r) {
 				return fmt.Errorf("events: name %q must be lowercase", name)
 			}
-			if !(unicode.IsLower(r) || unicode.IsDigit(r) || r == '_') {
+			if !unicode.IsLower(r) && !unicode.IsDigit(r) && r != '_' {
 				return fmt.Errorf("events: name %q has invalid character in segment %q", name, p)
 			}
 		}

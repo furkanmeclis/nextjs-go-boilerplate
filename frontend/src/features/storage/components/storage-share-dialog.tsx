@@ -311,7 +311,7 @@ function ExistingLinksPanel({
                   ? "default"
                   : link.status === "expired"
                     ? "secondary"
-                    : "destructive"
+                    : "danger"
               }
             >
               {t(`storage.link_status_${link.status}` as "storage.link_status_active")}

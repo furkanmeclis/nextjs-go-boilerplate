@@ -68,7 +68,7 @@ func (h *Handler) Download(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, r, err)
 		return
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 	w.Header().Set("Content-Type", ct)
 	w.Header().Set("Content-Disposition", contentDispositionAttachment(filename))
 	_, _ = io.Copy(w, file)

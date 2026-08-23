@@ -14,7 +14,8 @@ import {
   Smartphone,
   Trash2,
 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { toast } from "sonner";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -37,15 +38,21 @@ import { cn } from "@/lib/utils";
 import { useLocale } from "@/providers/locale-provider";
 import { authService, type PasskeySummary } from "@/services/auth.service";
 
-function passkeyDeviceIcon(deviceType: string) {
+function PasskeyDeviceGlyph({
+  deviceType,
+  className,
+}: {
+  deviceType: string;
+  className?: string;
+}) {
   const normalized = deviceType.toLowerCase();
   if (normalized.includes("multi")) {
-    return Monitor;
+    return <Monitor className={className} aria-hidden />;
   }
   if (normalized.includes("single")) {
-    return Smartphone;
+    return <Smartphone className={className} aria-hidden />;
   }
-  return KeyRound;
+  return <KeyRound className={className} aria-hidden />;
 }
 
 function passkeyDisplayName(item: PasskeySummary, fallback: string) {
@@ -65,12 +72,7 @@ function PasskeyRow({ item, deleting, onRename, onDelete }: PasskeyRowProps) {
   const [name, setName] = useState(item.name ?? "");
   const [saving, setSaving] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const DeviceIcon = passkeyDeviceIcon(item.device_type);
   const fallbackName = t("auth.passkey.unnamed");
-
-  useEffect(() => {
-    setName(item.name ?? "");
-  }, [item.uuid, item.name]);
 
   const saveName = async () => {
     const next = name.trim();
@@ -101,7 +103,10 @@ function PasskeyRow({ item, deleting, onRename, onDelete }: PasskeyRowProps) {
               : "bg-primary/10 text-primary",
           )}
         >
-          <DeviceIcon className="size-5" aria-hidden />
+          <PasskeyDeviceGlyph
+            deviceType={item.device_type}
+            className="size-5"
+          />
         </div>
 
         <div className="min-w-0 flex-1 space-y-3">
@@ -254,30 +259,27 @@ function PasskeySkeleton() {
 
 export function PasskeyManager() {
   const { t } = useLocale();
-  const [items, setItems] = useState<PasskeySummary[]>([]);
-  const [loading, setLoading] = useState(true);
   const [registerPending, setRegisterPending] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const list = await authService.listPasskeys();
-      setItems(list.items ?? []);
-    } catch (error) {
-      if (isApiError(error)) {
-        toast.error(error.message || t("common.error_generic"));
-      } else {
-        toast.error(t("common.error_generic"));
+  const passkeysQuery = useQuery({
+    queryKey: ["account", "passkeys"],
+    queryFn: async () => {
+      try {
+        const list = await authService.listPasskeys();
+        return list.items ?? [];
+      } catch (error) {
+        toast.error(
+          isApiError(error)
+            ? error.message || t("common.error_generic")
+            : t("common.error_generic"),
+        );
+        throw error;
       }
-    } finally {
-      setLoading(false);
-    }
-  }, [t]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
+    },
+  });
+  const items = passkeysQuery.data ?? [];
+  const loading = passkeysQuery.isPending;
 
   const registerPasskey = async () => {
     setRegisterPending(true);
@@ -291,7 +293,7 @@ export function PasskeyManager() {
         return;
       }
       toast.success(t("auth.passkey.register_success"));
-      await load();
+      await passkeysQuery.refetch();
     } catch {
       toast.error(t("auth.passkey.register_error"));
     } finally {
@@ -303,7 +305,7 @@ export function PasskeyManager() {
     try {
       await authService.renamePasskey(uuid, name.trim() || null);
       toast.success(t("auth.passkey.rename_success"));
-      await load();
+      await passkeysQuery.refetch();
     } catch (error) {
       if (isApiError(error)) {
         toast.error(error.message || t("common.error_generic"));
@@ -318,7 +320,7 @@ export function PasskeyManager() {
     try {
       await authService.deletePasskey(uuid);
       toast.success(t("auth.passkey.delete_success"));
-      await load();
+      await passkeysQuery.refetch();
     } catch (error) {
       if (isApiError(error)) {
         toast.error(error.message || t("common.error_generic"));

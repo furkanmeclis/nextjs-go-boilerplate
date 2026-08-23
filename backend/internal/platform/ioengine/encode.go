@@ -33,7 +33,7 @@ func LoadLetterheadLogo(ctx context.Context, driver storage.Driver, s db.AppSett
 	if err != nil {
 		return lh, fmt.Errorf("letterhead logo: %w", err)
 	}
-	defer rc.Close()
+	defer func() { _ = rc.Close() }()
 	buf := make([]byte, 0, 64*1024)
 	tmp := make([]byte, 32*1024)
 	for {

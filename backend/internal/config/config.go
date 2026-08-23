@@ -145,8 +145,8 @@ type QueueConfig struct {
 
 // BulkConfig controls bulk action engine thresholds.
 type BulkConfig struct {
-	SyncMax        int
-	RollbackHours  int
+	SyncMax       int
+	RollbackHours int
 }
 
 // CentrifugoConfig controls realtime pub/sub via Centrifugo.
@@ -330,11 +330,9 @@ func loadStorageConfig() StorageConfig {
 	minioAccess := firstNonEmpty(getEnv("MINIO_ACCESS_KEY", ""), s3Access)
 	minioSecret := firstNonEmpty(getEnv("MINIO_SECRET_KEY", ""), s3Secret)
 	minioRegion := firstNonEmpty(getEnv("MINIO_REGION", ""), s3Region)
-	minioPathStyle := true
-	if v := os.Getenv("MINIO_USE_PATH_STYLE"); v != "" {
+	minioPathStyle := s3PathStyle
+	if os.Getenv("MINIO_USE_PATH_STYLE") != "" {
 		minioPathStyle = getBool("MINIO_USE_PATH_STYLE", true)
-	} else {
-		minioPathStyle = s3PathStyle
 	}
 	minioPublic := firstNonEmpty(getEnv("MINIO_PUBLIC_BASE_URL", ""), s3Public)
 	if minioPublic == "" {

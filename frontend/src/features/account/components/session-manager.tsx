@@ -1,7 +1,8 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
 import { Calendar, Clock, Loader2, Monitor, Shield, Trash2 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -28,32 +29,29 @@ function sessionLabel(item: DeviceSession, fallback: string) {
 
 export function SessionManager() {
   const { t, locale } = useLocale();
-  const [items, setItems] = useState<DeviceSession[]>([]);
-  const [loading, setLoading] = useState(true);
   const [revokingId, setRevokingId] = useState<string | null>(null);
   const [revokingOthers, setRevokingOthers] = useState(false);
   const [pending, setPending] = useState<DeviceSession | null>(null);
   const [revokeOthersOpen, setRevokeOthersOpen] = useState(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const list = await authService.listSessions();
-      setItems(list.items ?? []);
-    } catch (error) {
-      if (isApiError(error)) {
-        toast.error(error.message || t("common.error_generic"));
-      } else {
-        toast.error(t("common.error_generic"));
+  const sessionsQuery = useQuery({
+    queryKey: ["account", "sessions"],
+    queryFn: async () => {
+      try {
+        const list = await authService.listSessions();
+        return list.items ?? [];
+      } catch (error) {
+        toast.error(
+          isApiError(error)
+            ? error.message || t("common.error_generic")
+            : t("common.error_generic"),
+        );
+        throw error;
       }
-    } finally {
-      setLoading(false);
-    }
-  }, [t]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
+    },
+  });
+  const items = sessionsQuery.data ?? [];
+  const loading = sessionsQuery.isPending;
 
   const revoke = async (uuid: string) => {
     setRevokingId(uuid);
@@ -61,7 +59,7 @@ export function SessionManager() {
       await authService.revokeSession(uuid);
       toast.success(t("auth.sessions.revoke_success"));
       setPending(null);
-      await load();
+      await sessionsQuery.refetch();
     } catch (error) {
       if (isApiError(error)) {
         toast.error(error.message || t("common.error_generic"));
@@ -79,7 +77,7 @@ export function SessionManager() {
       await authService.revokeOtherSessions();
       toast.success(t("auth.sessions.revoke_others_success"));
       setRevokeOthersOpen(false);
-      await load();
+      await sessionsQuery.refetch();
     } catch (error) {
       if (isApiError(error)) {
         toast.error(error.message || t("common.error_generic"));

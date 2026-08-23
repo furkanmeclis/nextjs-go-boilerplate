@@ -1,6 +1,7 @@
 "use client";
 
 import { Undo2 } from "lucide-react";
+import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { ErrorState } from "@/components/common/error-state";
@@ -21,6 +22,7 @@ import {
   formatImportFormat,
   formatImportStatus,
   resourceLabelKey,
+  rollbackWindowOpen,
 } from "@/features/io/lib/display";
 import { apiMappingToUi } from "@/features/io/lib/suggest-mapping";
 import { IMPORT_SCHEMA } from "@/features/io/types";
@@ -43,6 +45,7 @@ function statusVariant(status: string) {
 export function ImportDetailPage({ uuid }: ImportDetailPageProps) {
   const { t } = useLocale();
   const queryClient = useQueryClient();
+  const [nowMs] = useState(() => Date.now());
   const jobQuery = useImportJob(uuid);
   const job = jobQuery.data;
 
@@ -71,8 +74,7 @@ export function ImportDetailPage({ uuid }: ImportDetailPageProps) {
 
   const canRollback =
     job?.status === "applied" &&
-    job.rollback_until &&
-    new Date(job.rollback_until).getTime() > Date.now();
+    rollbackWindowOpen(job.rollback_until, nowMs);
 
   const uiMapping = apiMappingToUi(job?.mapping);
   const schema =

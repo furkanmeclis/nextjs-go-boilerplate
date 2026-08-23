@@ -209,6 +209,8 @@ export function useDataTable<TData>(options: UseDataTableOptions<TData>) {
     viewMode,
   ]);
 
+  // TanStack Table returns functions that React Compiler cannot memoize safely.
+  // eslint-disable-next-line react-hooks/incompatible-library -- library API
   const table = useReactTable({
     data,
     columns,

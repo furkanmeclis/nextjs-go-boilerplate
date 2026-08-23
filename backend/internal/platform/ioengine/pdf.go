@@ -117,7 +117,7 @@ func pdfMultiCellHeight(pdf *gofpdf.Fpdf, w, lineH float64, txt string) float64 
 }
 
 func drawPDFLetterhead(pdf *gofpdf.Fpdf, lh *Letterhead, y float64) float64 {
-	if lh.LogoBytes != nil && len(lh.LogoBytes) > 0 {
+	if len(lh.LogoBytes) > 0 {
 		opt := gofpdf.ImageOptions{ImageType: logoImageType(lh.LogoMIME), ReadDpi: true}
 		pdf.RegisterImageOptionsReader("logo", opt, bytes.NewReader(lh.LogoBytes))
 		pdf.ImageOptions("logo", 10, y, 18, 0, false, opt, 0, "")

@@ -53,7 +53,7 @@ func (h *Handler) UploadLogo(w http.ResponseWriter, r *http.Request) {
 		response.BadRequest(w, r, response.CodeValidationError, "logo is required")
 		return
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 	head := make([]byte, 512)
 	n, _ := io.ReadFull(file, head)
 	mime, err := storage.DetectLogoMIME(header.Header.Get("Content-Type"), head[:n])
@@ -101,7 +101,7 @@ func (h *Handler) StreamLogo(w http.ResponseWriter, r *http.Request) {
 		response.NotFound(w, r, "logo not found")
 		return
 	}
-	defer rc.Close()
+	defer func() { _ = rc.Close() }()
 	w.Header().Set("Content-Type", storage.MIMEFromLogoKey(key))
 	_, _ = io.Copy(w, rc)
 }

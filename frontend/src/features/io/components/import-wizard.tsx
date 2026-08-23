@@ -118,7 +118,10 @@ export function ImportWizard({
 }: ImportWizardProps) {
   const { t, locale } = useLocale();
   const paths = IMPORT_PATHS[resource];
-  const schema = IMPORT_SCHEMA[resource] ?? [];
+  const schema = useMemo(
+    () => IMPORT_SCHEMA[resource] ?? [],
+    [resource],
+  );
 
   const [step, setStep] = useState<Step>("upload");
   const [format, setFormat] = useState<ImportFormat>("xlsx");

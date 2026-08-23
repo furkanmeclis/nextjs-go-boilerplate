@@ -68,17 +68,17 @@ func New(
 }
 
 type ImportJobView struct {
-	UUID           uuid.UUID              `json:"uuid"`
-	Resource       string                 `json:"resource"`
-	Format         string                 `json:"format"`
-	Status         string                 `json:"status"`
-	Mapping        map[string]string      `json:"mapping,omitempty"`
-	Defaults       map[string]string      `json:"defaults,omitempty"`
+	UUID           uuid.UUID               `json:"uuid"`
+	Resource       string                  `json:"resource"`
+	Format         string                  `json:"format"`
+	Status         string                  `json:"status"`
+	Mapping        map[string]string       `json:"mapping,omitempty"`
+	Defaults       map[string]string       `json:"defaults,omitempty"`
 	PreviewSummary ioengine.PreviewSummary `json:"preview_summary,omitempty"`
-	Error          *string                `json:"error,omitempty"`
-	RollbackUntil  *time.Time             `json:"rollback_until,omitempty"`
-	AppliedAt      *time.Time             `json:"applied_at,omitempty"`
-	CreatedAt      time.Time              `json:"created_at"`
+	Error          *string                 `json:"error,omitempty"`
+	RollbackUntil  *time.Time              `json:"rollback_until,omitempty"`
+	AppliedAt      *time.Time              `json:"applied_at,omitempty"`
+	CreatedAt      time.Time               `json:"created_at"`
 }
 
 // Upload creates a job from file bytes.
@@ -388,7 +388,7 @@ func (s *Service) loadMappedRows(ctx context.Context, job db.ImportJob) ([]map[s
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	defer rc.Close()
+	defer func() { _ = rc.Close() }()
 	data, err := io.ReadAll(rc)
 	if err != nil {
 		return nil, nil, nil, err

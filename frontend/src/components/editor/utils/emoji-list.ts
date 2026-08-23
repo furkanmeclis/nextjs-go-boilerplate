@@ -1,4 +1,4 @@
-export default [
+const emojiList = [
   {
     description: "grinning face",
     emoji: "😀",
@@ -16600,3 +16600,5 @@ export default [
     ios_version: "12.1",
   },
 ];
+
+export default emojiList;

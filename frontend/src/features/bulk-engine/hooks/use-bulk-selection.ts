@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import type { RowSelectionState, Updater } from "@tanstack/react-table";
 
 import type { SelectionScope } from "@/features/bulk-engine/types";
@@ -14,35 +14,45 @@ export function useBulkSelection({
   bulkQuery,
   total,
 }: UseBulkSelectionOptions) {
+  const bulkQueryKey = JSON.stringify(bulkQuery);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
-  const [scope, setScope] = useState<SelectionScope>({ mode: "none" });
+  const [allMatching, setAllMatching] = useState<{
+    query: Record<string, string>;
+    total: number;
+  } | null>(null);
+  const [prevListQueryKey, setPrevListQueryKey] = useState(listQueryKey);
+  const [prevBulkQueryKey, setPrevBulkQueryKey] = useState(bulkQueryKey);
 
-  const onRowSelectionChange = useCallback((updater: Updater<RowSelectionState>) => {
-    setRowSelection((prev) => (typeof updater === "function" ? updater(prev) : updater));
-    setScope((current) => (current.mode === "all" ? { mode: "none" } : current));
-  }, []);
+  if (listQueryKey !== prevListQueryKey || bulkQueryKey !== prevBulkQueryKey) {
+    setPrevListQueryKey(listQueryKey);
+    setPrevBulkQueryKey(bulkQueryKey);
+    setRowSelection({});
+    setAllMatching(null);
+  }
+
+  const onRowSelectionChange = useCallback(
+    (updater: Updater<RowSelectionState>) => {
+      setRowSelection((prev) =>
+        typeof updater === "function" ? updater(prev) : updater,
+      );
+      setAllMatching(null);
+    },
+    [],
+  );
 
   const pageIds = useMemo(
     () => Object.keys(rowSelection).filter((id) => rowSelection[id]),
     [rowSelection],
   );
 
-  useEffect(() => {
-    if (scope.mode === "all") return;
-    if (pageIds.length === 0) {
-      setScope({ mode: "none" });
-      return;
-    }
-    setScope({ mode: "page", ids: pageIds });
-  }, [pageIds, scope.mode]);
-
-  useEffect(() => {
-    setScope({ mode: "none" });
-    setRowSelection({});
-  }, [listQueryKey, bulkQuery]);
+  const scope: SelectionScope = allMatching
+    ? { mode: "all", query: allMatching.query, total: allMatching.total }
+    : pageIds.length > 0
+      ? { mode: "page", ids: pageIds }
+      : { mode: "none" };
 
   const clearSelection = useCallback(() => {
-    setScope({ mode: "none" });
+    setAllMatching(null);
     setRowSelection({});
   }, []);
 
@@ -51,12 +61,16 @@ export function useBulkSelection({
     for (const [key, value] of Object.entries(bulkQuery)) {
       if (value) query[key] = value;
     }
-    setScope({ mode: "all", query, total });
+    setAllMatching({ query, total });
     setRowSelection({});
   }, [bulkQuery, total]);
 
   const selectedCount =
-    scope.mode === "all" ? scope.total : scope.mode === "page" ? scope.ids.length : 0;
+    scope.mode === "all"
+      ? scope.total
+      : scope.mode === "page"
+        ? scope.ids.length
+        : 0;
 
   const showSelectAllBanner =
     scope.mode === "page" && pageIds.length > 0 && total > pageIds.length;

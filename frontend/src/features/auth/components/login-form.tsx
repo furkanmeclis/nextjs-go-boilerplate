@@ -6,7 +6,7 @@ import { signIn, signOut, useSession } from "next-auth/react";
 import { signIn as signInPasskey } from "next-auth/webauthn";
 import { useQuery } from "@tanstack/react-query";
 import { Fingerprint, ShieldCheck } from "lucide-react";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 
 import { AppleIcon } from "@/components/icons/apple-icon";
 import { FacebookIcon } from "@/components/icons/facebook-icon";
@@ -82,27 +82,20 @@ export function LoginForm() {
       methods?.facebook.register ||
       methods?.apple.register);
 
-  useEffect(() => {
-    const error = searchParams.get("error");
-    if (!error) return;
-    if (
-      error === "GitHubNotLinked" ||
-      error === "OAuthNotLinked" ||
-      error === "OAuthAccountNotLinked" ||
-      error === "AccountNotLinked"
-    ) {
-      setFormError(t("auth.oauth.not_linked"));
-      return;
-    }
-    if (
-      error === "Configuration" ||
-      error === "AccessDenied" ||
-      error === "AdapterError" ||
-      error === "CallbackRouteError"
-    ) {
-      setFormError(t("auth.oauth.sign_in_error"));
-    }
-  }, [searchParams, t]);
+  const oauthError = searchParams.get("error");
+  const oauthFormError =
+    oauthError === "GitHubNotLinked" ||
+    oauthError === "OAuthNotLinked" ||
+    oauthError === "OAuthAccountNotLinked" ||
+    oauthError === "AccountNotLinked"
+      ? t("auth.oauth.not_linked")
+      : oauthError === "Configuration" ||
+          oauthError === "AccessDenied" ||
+          oauthError === "AdapterError" ||
+          oauthError === "CallbackRouteError"
+        ? t("auth.oauth.sign_in_error")
+        : null;
+  const displayError = formError ?? oauthFormError;
 
   const finishLogin = async () => {
     markAuthenticated();
@@ -302,9 +295,9 @@ export function LoginForm() {
           onSubmit={onMfaSubmit}
         >
           <FieldGroup>
-            {formError ? (
+            {displayError ? (
               <Field data-invalid={true}>
-                <FieldError>{formError}</FieldError>
+                <FieldError>{displayError}</FieldError>
               </Field>
             ) : null}
 
@@ -392,9 +385,9 @@ export function LoginForm() {
               onSubmit={onSubmit}
             >
               <FieldGroup>
-                {formError ? (
+                {displayError ? (
                   <Field data-invalid={true}>
-                    <FieldError>{formError}</FieldError>
+                    <FieldError>{displayError}</FieldError>
                   </Field>
                 ) : null}
 
@@ -430,9 +423,9 @@ export function LoginForm() {
               </FieldGroup>
             </AppForm>
           </>
-        ) : formError ? (
+        ) : displayError ? (
           <Field data-invalid={true}>
-            <FieldError>{formError}</FieldError>
+            <FieldError>{displayError}</FieldError>
           </Field>
         ) : null}
 

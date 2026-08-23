@@ -59,7 +59,7 @@ function wantsBinaryStream(path: string) {
   );
 }
 
-function wantsEventStream(request: Request, _path: string) {
+function wantsEventStream(request: Request) {
   const accept = request.headers.get("accept") ?? "";
   return accept.includes("text/event-stream");
 }
@@ -126,7 +126,7 @@ async function persistTokensFromEnvelope(envelope: Envelope | null) {
 }
 
 async function refreshViaUpstream(): Promise<boolean> {
-  const { refreshToken, userId, email } = await getApiTokens();
+  const { refreshToken, userId } = await getApiTokens();
   if (!refreshToken || !userId) return false;
 
   const result = await fetchUpstream("auth/refresh", {
@@ -369,7 +369,7 @@ export async function proxyToUpstream(
     refreshToken,
   );
 
-  if (wantsEventStream(request, path) || wantsBinaryStream(path)) {
+  if (wantsEventStream(request) || wantsBinaryStream(path)) {
     return proxyStream(
       path,
       pathWithQuery,
