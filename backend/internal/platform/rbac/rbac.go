@@ -1,0 +1,55 @@
+package rbac
+
+// Role slugs (seeded).
+const (
+	RoleSuperAdmin = "super_admin"
+	RoleCMSUser    = "cms_user"
+)
+
+// Permission slugs (seeded).
+const (
+	PermPlatformUsersRead         = "platform.users.read"
+	PermPlatformUsersWrite        = "platform.users.write"
+	PermPlatformUsersExport       = "platform.users.export"
+	PermPlatformUsersImport       = "platform.users.import"
+	PermPlatformUsersBulkDisable   = "platform.users.bulk.disable"
+	PermPlatformUsersBulkEnable    = "platform.users.bulk.enable"
+	PermPlatformUsersImpersonate   = "platform.users.impersonate"
+	PermPlatformRolesRead         = "platform.roles.read"
+	PermPlatformRolesWrite        = "platform.roles.write"
+	PermPlatformRolesExport       = "platform.roles.export"
+	PermPlatformRolesImport       = "platform.roles.import"
+	PermPlatformRolesBulkDelete   = "platform.roles.bulk.delete"
+	PermPlatformBulkRead          = "platform.bulk.read"
+	PermPlatformNotificationsRead = "platform.notifications.read"
+	PermPlatformNotificationsExport = "platform.notifications.export"
+	PermPlatformSettingsRead      = "platform.settings.read"
+	PermPlatformSettingsWrite     = "platform.settings.write"
+	PermPlatformActivityRead      = "platform.activity.read"
+	PermPlatformImportsRead         = "platform.imports.read"
+	PermPlatformExportsRead         = "platform.exports.read"
+	PermPlatformStorageRead         = "platform.storage.read"
+	PermPlatformStorageWrite        = "platform.storage.write"
+	PermPlatformLogsRead            = "platform.logs.read"
+	PermPlatformLogsWrite           = "platform.logs.write"
+	PermPlatformAccessRead          = "platform.access.read"
+	PermPlatformAccessWrite         = "platform.access.write"
+	PermPlatformIntegrationsGitHubRead  = "platform.integrations.github.read"
+	PermPlatformIntegrationsGitHubWrite = "platform.integrations.github.write"
+	PermPlatformIntegrationsGoogleRead  = "platform.integrations.google.read"
+	PermPlatformIntegrationsGoogleWrite = "platform.integrations.google.write"
+	PermPlatformIntegrationsFacebookRead  = "platform.integrations.facebook.read"
+	PermPlatformIntegrationsFacebookWrite = "platform.integrations.facebook.write"
+	PermPlatformIntegrationsAppleRead  = "platform.integrations.apple.read"
+	PermPlatformIntegrationsAppleWrite = "platform.integrations.apple.write"
+	PermPlatformAuthSettingsRead  = "platform.auth.settings.read"
+	PermPlatformAuthSettingsWrite = "platform.auth.settings.write"
+	PermAuthSession               = "auth.session"
+	PermNotificationsRead         = "notifications.read"
+	PermNotificationsManage       = "notifications.manage"
+)
+
+// IsSystemRole reports whether slug is a protected system role.
+func IsSystemRole(slug string) bool {
+	return slug == RoleSuperAdmin
+}

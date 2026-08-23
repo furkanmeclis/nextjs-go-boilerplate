@@ -1,0 +1,7 @@
+{
+  "forbidden_title": "Yetkisiz",
+  "forbidden_body": "Bu panele erişim için uygun rolünüz yok.",
+  "unauthorized_title": "Oturum gerekli",
+  "unauthorized_body": "Devam etmek için giriş yapın.",
+  "role_mismatch": "Hesabınız bu panel için uygun değil."
+}
