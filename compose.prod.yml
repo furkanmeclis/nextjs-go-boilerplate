@@ -255,18 +255,29 @@ services:
     container_name: ${NAME_PREFIX:-app}-frontend
     environment:
       API_URL: http://backend:8080/v1
+      AUTH_SECRET: ${AUTH_SECRET:?AUTH_SECRET is required}
+      AUTH_URL: ${AUTH_URL:?AUTH_URL is required}
+      AUTH_TRUST_HOST: ${AUTH_TRUST_HOST:-true}
+      AUTH_ADAPTER_SECRET: ${AUTH_ADAPTER_SECRET:-}
+      NEXT_PUBLIC_BFF_BASE_URL: ${NEXT_PUBLIC_BFF_BASE_URL:-/api}
+      NEXT_PUBLIC_REALTIME_ENABLED: ${NEXT_PUBLIC_REALTIME_ENABLED:-true}
+      NEXT_PUBLIC_CENTRIFUGO_URL: ${NEXT_PUBLIC_CENTRIFUGO_URL:-}
+      NEXT_PUBLIC_DEFAULT_LOCALE: ${NEXT_PUBLIC_DEFAULT_LOCALE:-tr}
+      NEXT_PUBLIC_FALLBACK_LOCALE: ${NEXT_PUBLIC_FALLBACK_LOCALE:-en}
     depends_on:
       backend:
         condition: service_healthy
     expose:
       - "3000"
     healthcheck:
+      # Real route is /health (not /api/v1/health). Unhealthy containers are
+      # dropped by Traefik → domain returns "404 page not found".
       test:
         [
           "CMD",
           "node",
           "-e",
-          "fetch('http://127.0.0.1:3000/api/v1/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+          "fetch('http://127.0.0.1:3000/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
         ]
       interval: 10s
       timeout: 5s
