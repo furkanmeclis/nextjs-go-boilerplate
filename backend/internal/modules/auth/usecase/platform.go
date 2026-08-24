@@ -439,10 +439,7 @@ func (u *AuthUseCase) CanSubscribeChannel(
 		return isSuperAdmin, nil
 	}
 	if uid, ok := realtime.ParseUserChannel(channel); ok {
-		if isSuperAdmin || uid == userUUID {
-			return true, nil
-		}
-		return false, nil
+		return uid == userUUID, nil
 	}
 	if _, ok := realtime.ParseConversationChannel(channel); ok {
 		return true, nil

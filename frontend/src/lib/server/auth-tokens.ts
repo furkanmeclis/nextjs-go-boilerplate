@@ -1,17 +1,59 @@
 import { decode, encode } from "next-auth/jwt";
 import { cookies } from "next/headers";
 
+const SESSION_COOKIE_BASES = [
+  "authjs.session-token",
+  "__Secure-authjs.session-token",
+] as const;
+
+const SESSION_COOKIE_CHUNKS = 12;
+
 export function sessionCookieName() {
   return process.env.NODE_ENV === "production"
     ? "__Secure-authjs.session-token"
     : "authjs.session-token";
 }
 
+function sessionCookieOptions() {
+  return {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax" as const,
+    path: "/",
+  };
+}
+
+/** Expire the Auth.js session cookie and any chunked variants Auth.js may create. */
+async function expireSessionCookies() {
+  const jar = await cookies();
+  const opts = { ...sessionCookieOptions(), maxAge: 0 };
+  for (const base of SESSION_COOKIE_BASES) {
+    jar.set(base, "", opts);
+    for (let i = 0; i < SESSION_COOKIE_CHUNKS; i += 1) {
+      jar.set(`${base}.${i}`, "", opts);
+    }
+  }
+}
+
 async function readSessionToken() {
   const jar = await cookies();
   const name = sessionCookieName();
   const raw = jar.get(name)?.value;
-  if (!raw || !process.env.AUTH_SECRET) return null;
+  if (!raw || !process.env.AUTH_SECRET) {
+    // Auth.js may have split a large JWT across numbered chunk cookies.
+    const chunks: string[] = [];
+    for (let i = 0; i < SESSION_COOKIE_CHUNKS; i += 1) {
+      const part = jar.get(`${name}.${i}`)?.value;
+      if (!part) break;
+      chunks.push(part);
+    }
+    if (chunks.length === 0) return null;
+    return decode({
+      token: chunks.join(""),
+      secret: process.env.AUTH_SECRET!,
+      salt: name,
+    });
+  }
   return decode({
     token: raw,
     secret: process.env.AUTH_SECRET,
@@ -68,17 +110,16 @@ export async function persistApiTokens(input: {
     maxAge,
   });
 
+  // Drop any leftover Auth.js chunks before writing a single cookie.
+  await expireSessionCookies();
+
   const jar = await cookies();
   jar.set(name, payload, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    path: "/",
+    ...sessionCookieOptions(),
     maxAge,
   });
 }
 
 export async function clearAuthSessionCookie() {
-  const jar = await cookies();
-  jar.delete(sessionCookieName());
+  await expireSessionCookies();
 }

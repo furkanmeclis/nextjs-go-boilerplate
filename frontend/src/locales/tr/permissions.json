@@ -21,6 +21,7 @@
   "labels.platform.roles.read": "Platform rollerini görüntüle",
   "labels.platform.roles.write": "Platform rollerini yönet",
   "labels.platform.notifications.read": "Platform bildirimlerini görüntüle",
+  "labels.platform.notifications.read_all": "Tüm kullanıcıların platform bildirimlerini görüntüle",
   "labels.platform.notifications.export": "Platform bildirimlerini dışa aktar",
   "labels.platform.users.export": "Platform kullanıcılarını dışa aktar",
   "labels.platform.users.import": "Platform kullanıcılarını içe aktar",

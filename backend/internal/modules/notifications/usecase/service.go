@@ -14,6 +14,7 @@ import (
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/modules/notifications/model"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/modules/notifications/providers"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/modules/notifications/templates"
+	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/authctx"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/queue"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/pkg/apiquery"
 	"github.com/google/uuid"
@@ -448,28 +449,54 @@ func (s *Service) UpsertPreferences(ctx context.Context, userID int64, p model.P
 	}, nil
 }
 
-// ListPlatform returns all notifications (platform scope).
-func (s *Service) ListPlatform(ctx context.Context, q apiquery.Query, status, channel string) (apiquery.Page[model.Notification], error) {
+// ListPlatform returns notifications for platform operators.
+// Without platform.notifications.read_all the page is always the caller's own rows.
+func (s *Service) ListPlatform(
+	ctx context.Context,
+	actor authctx.Principal,
+	q apiquery.Query,
+	status, channel, scope, userUUID string,
+) (apiquery.Page[model.Notification], error) {
 	if err := apiquery.ValidateSort(q.Sort, apiquery.NotificationsSort); err != nil {
+		return apiquery.Page[model.Notification]{}, err
+	}
+	audience, err := resolvePlatformAudience(actor, scope, userUUID, func(id uuid.UUID) (int64, error) {
+		return s.ResolveUserID(ctx, id)
+	})
+	if err != nil {
 		return apiquery.Page[model.Notification]{}, err
 	}
 	params := db.ListPlatformNotificationsParams{
 		Status: optionalText(status), Channel: optionalText(channel), Q: optionalText(q.Q),
-		LimitCount: q.Limit, OffsetCount: q.Offset,
+		UserID: audience.UserID, LimitCount: q.Limit, OffsetCount: q.Offset,
 	}
 	rows, err := s.q.ListPlatformNotifications(ctx, params)
 	if err != nil {
 		return apiquery.Page[model.Notification]{}, err
 	}
 	total, err := s.q.CountPlatformNotifications(ctx, db.CountPlatformNotificationsParams{
-		Status: params.Status, Channel: params.Channel, Q: params.Q,
+		Status: params.Status, Channel: params.Channel, Q: params.Q, UserID: params.UserID,
 	})
 	if err != nil {
 		return apiquery.Page[model.Notification]{}, err
 	}
 	items := make([]model.Notification, 0, len(rows))
+	users := map[int64]model.NotificationUser{}
 	for _, r := range rows {
-		items = append(items, s.project(r))
+		n := s.project(r)
+		if audience.IncludeUser && r.UserID.Valid {
+			if u, ok := users[r.UserID.Int64]; ok {
+				copied := u
+				n.User = &copied
+			} else if row, err := s.q.GetUserByID(ctx, r.UserID.Int64); err == nil {
+				u := model.NotificationUser{
+					UUID: row.Uuid, Name: row.Name, Surname: row.Surname, Email: row.Email,
+				}
+				users[r.UserID.Int64] = u
+				n.User = &u
+			}
+		}
+		items = append(items, n)
 	}
 	return apiquery.NewPage(items, total, q.Limit, q.Offset), nil
 }

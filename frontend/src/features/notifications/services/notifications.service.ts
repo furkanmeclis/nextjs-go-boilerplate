@@ -12,6 +12,8 @@ export type NotificationListResult = NotificationPage;
 export type ListPlatformNotificationsParams = ServerListParams & {
   status?: string;
   channel?: string;
+  scope?: "me" | "all";
+  user_uuid?: string;
 };
 
 export type ListInboxNotificationsParams = ServerListParams & {
@@ -33,6 +35,8 @@ export const notificationsService = {
             q: params.q,
             ...(params.status ? { status: params.status } : {}),
             ...(params.channel ? { channel: params.channel } : {}),
+            ...(params.scope ? { scope: params.scope } : {}),
+            ...(params.user_uuid ? { user_uuid: params.user_uuid } : {}),
           } as {
             limit?: number;
             offset?: number;
@@ -40,6 +44,8 @@ export const notificationsService = {
             q?: string;
             status?: string;
             channel?: string;
+            scope?: "me" | "all";
+            user_uuid?: string;
           },
         },
       }),

@@ -29,22 +29,31 @@ const (
 
 // Notification is the API projection.
 type Notification struct {
-	UUID            uuid.UUID      `json:"uuid"`
-	Channel         string         `json:"channel"`
-	Status          string         `json:"status"`
-	Priority        string         `json:"priority"`
-	Title           string         `json:"title"`
-	Body            string         `json:"body"`
-	Payload         map[string]any `json:"payload"`
-	ActionURL       *string        `json:"action_url,omitempty"`
-	SignedActionURL *string        `json:"signed_action_url,omitempty"`
-	Recipient       *string        `json:"recipient,omitempty"`
-	TemplateCode    *string        `json:"template_code,omitempty"`
-	SourceEvent     *string        `json:"source_event,omitempty"`
-	SentAt          *time.Time     `json:"sent_at,omitempty"`
-	ReadAt          *time.Time     `json:"read_at,omitempty"`
-	CreatedAt       time.Time      `json:"created_at"`
-	UpdatedAt       time.Time      `json:"updated_at"`
+	UUID            uuid.UUID         `json:"uuid"`
+	Channel         string            `json:"channel"`
+	Status          string            `json:"status"`
+	Priority        string            `json:"priority"`
+	Title           string            `json:"title"`
+	Body            string            `json:"body"`
+	Payload         map[string]any    `json:"payload"`
+	ActionURL       *string           `json:"action_url,omitempty"`
+	SignedActionURL *string           `json:"signed_action_url,omitempty"`
+	Recipient       *string           `json:"recipient,omitempty"`
+	TemplateCode    *string           `json:"template_code,omitempty"`
+	SourceEvent     *string           `json:"source_event,omitempty"`
+	SentAt          *time.Time        `json:"sent_at,omitempty"`
+	ReadAt          *time.Time        `json:"read_at,omitempty"`
+	CreatedAt       time.Time         `json:"created_at"`
+	UpdatedAt       time.Time         `json:"updated_at"`
+	User            *NotificationUser `json:"user,omitempty"`
+}
+
+// NotificationUser is the target user on a platform notification row.
+type NotificationUser struct {
+	UUID    uuid.UUID `json:"uuid"`
+	Name    string    `json:"name"`
+	Surname string    `json:"surname"`
+	Email   string    `json:"email"`
 }
 
 // Preferences is the user notification preference set.

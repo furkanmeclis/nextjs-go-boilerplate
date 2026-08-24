@@ -13,6 +13,10 @@ import { permissions } from "@/config/permissions";
 import { routes } from "@/config/routes";
 import { ResourceIOToolbar } from "@/features/io";
 import type { ResourceMeta } from "@/features/io/types";
+import {
+  NotificationAudienceFilter,
+  type NotificationAudience,
+} from "@/features/notifications/components/notification-audience-filter";
 import { NotificationDetailDrawer } from "@/features/notifications/components/notification-detail-drawer";
 import { useNotificationsColumns } from "@/features/notifications/components/notifications-columns";
 import type { NotificationRowActionHandlers } from "@/features/notifications/components/notification-row-actions";
@@ -44,12 +48,17 @@ export function NotificationsPage() {
   });
 
   const [selected, setSelected] = useState<Notification | null>(null);
+  const [audience, setAudience] = useState<NotificationAudience>({
+    scope: "me",
+  });
 
   const listParams = useMemo<ListPlatformNotificationsParams>(() => {
     const columnValue = (id: string) =>
       firstString(
         listState.columnFilters.find((filter) => filter.id === id)?.value as
-          string | string[] | undefined,
+          | string
+          | string[]
+          | undefined,
       );
 
     const q = listState.params.q || columnValue("title")?.trim() || undefined;
@@ -59,10 +68,16 @@ export function NotificationsPage() {
       q,
       status: columnValue("status"),
       channel: NOTIFICATION_INBOX_CHANNEL,
+      scope: audience.scope === "all" ? "all" : "me",
+      user_uuid:
+        audience.scope === "user" ? audience.userUuid : undefined,
     };
-  }, [listState.columnFilters, listState.params]);
+  }, [audience, listState.columnFilters, listState.params]);
 
-  const listQuery = usePlatformNotificationsList(listParams);
+  const listEnabled =
+    audience.scope !== "user" || Boolean(audience.userUuid);
+
+  const listQuery = usePlatformNotificationsList(listParams, listEnabled);
   const metaQuery = usePlatformNotificationsMeta(true);
 
   const openDetail = useCallback((notification: Notification) => {
@@ -76,7 +91,9 @@ export function NotificationsPage() {
     [openDetail],
   );
 
-  const columns = useNotificationsColumns(rowHandlers);
+  const columns = useNotificationsColumns(rowHandlers, {
+    showUserColumn: audience.scope === "all",
+  });
 
   const pageCount = useMemo(() => {
     const total = listQuery.data?.total ?? 0;
@@ -105,7 +122,7 @@ export function NotificationsPage() {
         data={listQuery.data?.items ?? []}
         getRowId={(row) => row.uuid}
         onRowClick={openDetail}
-        isLoading={listQuery.isLoading}
+        isLoading={listEnabled && listQuery.isLoading}
         isError={listQuery.isError}
         onRetry={() => void listQuery.refetch()}
         emptyTitle={t("notifications.empty_title")}
@@ -113,11 +130,15 @@ export function NotificationsPage() {
         pageCount={pageCount}
         state={listState.tableState}
         features={{
-          persistKey: "platform-notifications-v2",
+          persistKey: "platform-notifications-v3",
           rowSelection: false,
         }}
         toolbarExtra={
           <>
+            <NotificationAudienceFilter
+              value={audience}
+              onChange={setAudience}
+            />
             <ResourceIOToolbar
               resource="platform.notifications"
               query={{
@@ -125,6 +146,8 @@ export function NotificationsPage() {
                 status: listParams.status,
                 channel: listParams.channel,
                 sort: listParams.sort,
+                scope: listParams.scope,
+                user_uuid: listParams.user_uuid,
               }}
               capabilities={
                 (metaQuery.data as ResourceMeta | undefined)?.capabilities
@@ -132,7 +155,7 @@ export function NotificationsPage() {
             />
             <EntityToolbar
               onRefresh={() => void listQuery.refetch()}
-              refreshDisabled={listQuery.isFetching}
+              refreshDisabled={!listEnabled || listQuery.isFetching}
             />
           </>
         }

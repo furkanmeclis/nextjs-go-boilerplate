@@ -65,6 +65,7 @@ WHERE user_id = $1
 SELECT * FROM notifications
 WHERE (sqlc.narg(status)::text IS NULL OR status = sqlc.narg(status))
   AND (sqlc.narg(channel)::text IS NULL OR channel = sqlc.narg(channel))
+  AND (sqlc.narg(user_id)::bigint IS NULL OR user_id = sqlc.narg(user_id))
   AND (
     sqlc.narg(q)::text IS NULL
     OR title ILIKE '%' || sqlc.narg(q) || '%'
@@ -77,6 +78,7 @@ LIMIT sqlc.arg(limit_count) OFFSET sqlc.arg(offset_count);
 SELECT COUNT(*)::bigint FROM notifications
 WHERE (sqlc.narg(status)::text IS NULL OR status = sqlc.narg(status))
   AND (sqlc.narg(channel)::text IS NULL OR channel = sqlc.narg(channel))
+  AND (sqlc.narg(user_id)::bigint IS NULL OR user_id = sqlc.narg(user_id))
   AND (
     sqlc.narg(q)::text IS NULL
     OR title ILIKE '%' || sqlc.narg(q) || '%'
@@ -87,6 +89,7 @@ WHERE (sqlc.narg(status)::text IS NULL OR status = sqlc.narg(status))
 SELECT * FROM notifications
 WHERE (sqlc.narg(status)::text IS NULL OR status = sqlc.narg(status))
   AND (sqlc.narg(channel)::text IS NULL OR channel = sqlc.narg(channel))
+  AND (sqlc.narg(user_id)::bigint IS NULL OR user_id = sqlc.narg(user_id))
   AND (
     sqlc.narg(q)::text IS NULL
     OR title ILIKE '%' || sqlc.narg(q) || '%'

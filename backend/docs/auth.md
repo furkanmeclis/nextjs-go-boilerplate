@@ -22,7 +22,7 @@ Single-scope role model for this boilerplate: users are global; permissions come
 | `platform.roles.read` / `.write` / `.export` / `.import` | Role CRUD + I/O |
 | `platform.roles.bulk.delete` | Role bulk delete |
 | `platform.bulk.read` | Bulk job list / rollback |
-| `platform.notifications.read` / `.export` | Platform notification log |
+| `platform.notifications.read` / `.read_all` / `.export` | Platform notification log (`.read_all` unlocks other users' rows) |
 | `platform.settings.read` / `.write` | Letterhead / export branding |
 | `platform.activity.read` | Audit log |
 | `platform.imports.read` / `platform.exports.read` | I/O job lists |

@@ -11,6 +11,7 @@ export const Permission = {
   PlatformRolesExport: "platform.roles.export",
   PlatformRolesImport: "platform.roles.import",
   PlatformNotificationsRead: "platform.notifications.read",
+  PlatformNotificationsReadAll: "platform.notifications.read_all",
   PlatformNotificationsExport: "platform.notifications.export",
   PlatformSettingsRead: "platform.settings.read",
   PlatformSettingsWrite: "platform.settings.write",
@@ -78,6 +79,7 @@ export const permissions = {
     read: Permission.NotificationsRead,
     manage: Permission.NotificationsManage,
     platformRead: Permission.PlatformNotificationsRead,
+    platformReadAll: Permission.PlatformNotificationsReadAll,
     export: Permission.PlatformNotificationsExport,
   },
   settings: {

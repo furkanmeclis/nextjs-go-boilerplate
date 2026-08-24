@@ -20,12 +20,39 @@ import { useLocale } from "@/providers/locale-provider";
 
 export function useNotificationsColumns(
   handlers: NotificationRowActionHandlers,
+  options?: { showUserColumn?: boolean },
 ) {
   const { t, locale } = useLocale();
+  const showUserColumn = options?.showUserColumn ?? false;
 
   return useMemo(
     () =>
       [
+        ...(showUserColumn
+          ? [
+              createColumn<Notification>({
+                id: "user",
+                labelKey: "notifications.columns.user",
+                enableSorting: false,
+                enableColumnFilter: false,
+                cell: ({ row }) => {
+                  const user = row.original.user;
+                  if (!user) {
+                    return <span className="text-muted-foreground">—</span>;
+                  }
+                  const name = `${user.name} ${user.surname}`.trim();
+                  return (
+                    <div className="flex min-w-0 flex-col">
+                      <span className="truncate font-medium">{name || "—"}</span>
+                      <span className="text-muted-foreground truncate text-xs">
+                        {user.email}
+                      </span>
+                    </div>
+                  );
+                },
+              }),
+            ]
+          : []),
         createColumn<Notification>({
           accessorKey: "title",
           labelKey: "notifications.columns.title",
@@ -121,6 +148,6 @@ export function useNotificationsColumns(
           ),
         }),
       ] as ColumnDef<Notification, unknown>[],
-    [handlers, locale, t],
+    [handlers, locale, showUserColumn, t],
   );
 }

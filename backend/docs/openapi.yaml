@@ -1774,7 +1774,10 @@ paths:
     get:
       tags: [Platform]
       operationId: getPlatformNotifications
-      summary: List all notifications (platform)
+      summary: List platform notifications
+      description: |
+        Defaults to the caller's own notifications (`scope=me`).
+        `platform.notifications.read_all` is required for `scope=all` or `user_uuid`.
       security:
         - bearerAuth: []
       parameters:
@@ -1782,6 +1785,22 @@ paths:
         - $ref: "#/components/parameters/Offset"
         - $ref: "#/components/parameters/Q"
         - $ref: "#/components/parameters/Sort"
+        - name: status
+          in: query
+          schema: { type: string }
+        - name: channel
+          in: query
+          schema: { type: string }
+        - name: scope
+          in: query
+          description: "me (default) or all (requires read_all)"
+          schema:
+            type: string
+            enum: [me, all]
+        - name: user_uuid
+          in: query
+          description: "Filter to one user (requires read_all)"
+          schema: { type: string, format: uuid }
       responses:
         "200":
           description: Page
@@ -2444,6 +2463,17 @@ components:
         read_at: { type: string, format: date-time }
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
+        user:
+          $ref: "#/components/schemas/NotificationUser"
+
+    NotificationUser:
+      type: object
+      required: [uuid, name, surname, email]
+      properties:
+        uuid: { type: string, format: uuid }
+        name: { type: string }
+        surname: { type: string }
+        email: { type: string, format: email }
 
     NotificationPage:
       type: object

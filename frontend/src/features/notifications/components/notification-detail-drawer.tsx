@@ -125,6 +125,15 @@ export function NotificationDetailDrawer({
               }
             />
             <DetailField
+              label={t("notifications.fields.user")}
+              value={
+                notification.user
+                  ? `${notification.user.name} ${notification.user.surname}`.trim() +
+                    ` · ${notification.user.email}`
+                  : "—"
+              }
+            />
+            <DetailField
               label={t("notifications.fields.recipient")}
               value={notification.recipient ?? "—"}
             />

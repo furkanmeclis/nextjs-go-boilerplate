@@ -1076,7 +1076,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List all notifications (platform) */
+        /**
+         * List platform notifications
+         * @description Defaults to the caller's own notifications (`scope=me`).
+         *     `platform.notifications.read_all` is required for `scope=all` or `user_uuid`.
+         */
         get: operations["getPlatformNotifications"];
         put?: never;
         post?: never;
@@ -1491,6 +1495,15 @@ export interface components {
             created_at: string;
             /** Format: date-time */
             updated_at: string;
+            user?: components["schemas"]["NotificationUser"];
+        };
+        NotificationUser: {
+            /** Format: uuid */
+            uuid: string;
+            name: string;
+            surname: string;
+            /** Format: email */
+            email: string;
         };
         NotificationPage: {
             items: components["schemas"]["Notification"][];
@@ -3819,6 +3832,12 @@ export interface operations {
                 q?: components["parameters"]["Q"];
                 /** @description Comma-separated fields; prefix `-` for descending */
                 sort?: components["parameters"]["Sort"];
+                status?: string;
+                channel?: string;
+                /** @description me (default) or all (requires read_all) */
+                scope?: "me" | "all";
+                /** @description Filter to one user (requires read_all) */
+                user_uuid?: string;
             };
             header?: never;
             path?: never;

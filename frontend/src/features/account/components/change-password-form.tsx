@@ -37,7 +37,7 @@ export function ChangePasswordForm() {
       } catch {
         // Cookies already cleared by BFF on password change
       }
-      window.location.assign(routes.guest.login);
+      window.location.replace(routes.guest.login);
     } catch (error) {
       if (isApiError(error)) {
         setFormError(error.message || t("auth.password.error"));

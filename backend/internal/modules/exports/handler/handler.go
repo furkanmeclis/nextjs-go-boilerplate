@@ -123,11 +123,14 @@ func (h *Handler) requestExport(w http.ResponseWriter, r *http.Request, resource
 		query = ioengine.ExportQuery{}
 	}
 	for k, vals := range r.URL.Query() {
-		if k == "q" || k == "status" || k == "role" || k == "channel" {
+		if k == "q" || k == "status" || k == "role" || k == "channel" || k == "scope" || k == "user_uuid" {
 			if len(vals) > 0 {
 				query[k] = vals[0]
 			}
 		}
+	}
+	if resource == "platform.notifications" {
+		constrainNotificationExportQuery(p, query)
 	}
 	job, err := h.svc.RequestExport(r.Context(), p.UserInternal, resource, format, query, in.Locale)
 	if err != nil {
@@ -157,4 +160,22 @@ func decodeJSON(w http.ResponseWriter, r *http.Request, dst any) error {
 		return err
 	}
 	return nil
+}
+
+func constrainNotificationExportQuery(p authctx.Principal, query ioengine.ExportQuery) {
+	if !p.HasPermission(rbac.PermPlatformNotificationsReadAll) {
+		query["user_uuid"] = p.UserID.String()
+		delete(query, "scope")
+		return
+	}
+	if strings.TrimSpace(query["user_uuid"]) != "" {
+		delete(query, "scope")
+		return
+	}
+	if strings.EqualFold(strings.TrimSpace(query["scope"]), "all") {
+		delete(query, "user_uuid")
+		return
+	}
+	query["user_uuid"] = p.UserID.String()
+	delete(query, "scope")
 }

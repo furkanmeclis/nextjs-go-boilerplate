@@ -41,7 +41,7 @@ export function UserMenu() {
       await logout();
     } finally {
       toast.success(t("auth.logout"));
-      window.location.assign(routes.guest.login);
+      window.location.replace(routes.guest.login);
     }
   };
 

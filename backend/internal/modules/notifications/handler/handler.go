@@ -232,8 +232,17 @@ func (h *Handler) Send(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) ListPlatform(w http.ResponseWriter, r *http.Request) {
+	p := authctx.MustPrincipal(r.Context())
 	q := apiquery.Parse(r.URL.Query())
-	page, err := h.svc.ListPlatform(r.Context(), q, r.URL.Query().Get("status"), r.URL.Query().Get("channel"))
+	page, err := h.svc.ListPlatform(
+		r.Context(),
+		p,
+		q,
+		r.URL.Query().Get("status"),
+		r.URL.Query().Get("channel"),
+		r.URL.Query().Get("scope"),
+		r.URL.Query().Get("user_uuid"),
+	)
 	if err != nil {
 		writeErr(w, r, err)
 		return

@@ -291,9 +291,21 @@ func (a *NotificationsAdapter) ExportColumns() []ioengine.Column {
 }
 
 func (a *NotificationsAdapter) Export(ctx context.Context, query ioengine.ExportQuery, _ i18n.Locale) (ioengine.Dataset, error) {
-	rows, err := a.q.ListPlatformNotificationsForExport(ctx, db.ListPlatformNotificationsForExportParams{
+	params := db.ListPlatformNotificationsForExportParams{
 		Status: textArg(query["status"]), Channel: textArg(query["channel"]), Q: textArg(query["q"]),
-	})
+	}
+	if raw := strings.TrimSpace(query["user_uuid"]); raw != "" {
+		id, err := uuid.Parse(raw)
+		if err != nil {
+			return ioengine.Dataset{}, fmt.Errorf("user_uuid: %w", err)
+		}
+		u, err := a.q.GetUserByUUID(ctx, id)
+		if err != nil {
+			return ioengine.Dataset{}, err
+		}
+		params.UserID = pgtype.Int8{Int64: u.ID, Valid: true}
+	}
+	rows, err := a.q.ListPlatformNotificationsForExport(ctx, params)
 	if err != nil {
 		return ioengine.Dataset{}, err
 	}

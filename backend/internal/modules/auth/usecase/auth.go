@@ -372,10 +372,11 @@ func (u *AuthUseCase) Refresh(ctx context.Context, rawToken string, meta model.S
 	return u.issueTokensForUser(ctx, user, meta)
 }
 
-// Logout revokes a refresh token.
+// Logout revokes a refresh token. An empty token is a no-op so the BFF can
+// still clear the browser session when the refresh cookie is already gone.
 func (u *AuthUseCase) Logout(ctx context.Context, rawToken string) error {
 	if strings.TrimSpace(rawToken) == "" {
-		return fmt.Errorf("%w: refresh_token is required", ErrInvalidRequest)
+		return nil
 	}
 	return u.repo.RevokeRefresh(ctx, tokenHash(rawToken))
 }
