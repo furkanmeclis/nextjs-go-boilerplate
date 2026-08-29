@@ -21,6 +21,11 @@ import {
   createLoginSchema,
   type LoginFormValues,
 } from "@/features/auth/schemas";
+import {
+  CREDENTIAL_ERROR_CODES,
+  resolveCredentialErrorCode,
+  type CredentialSignInResult,
+} from "@/lib/auth/credentials-errors";
 import { defaultHomeForUser } from "@/lib/auth/types";
 import { useAuth } from "@/providers/auth-provider";
 import { useLocale } from "@/providers/locale-provider";
@@ -54,7 +59,7 @@ export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { markAuthenticated, hydrateProfile } = useAuth();
-  const { status: sessionStatus } = useSession();
+  const { status: sessionStatus, update: updateSession } = useSession();
   const [formError, setFormError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [passkeyPending, setPasskeyPending] = useState(false);
@@ -98,6 +103,7 @@ export function LoginForm() {
   const displayError = formError ?? oauthFormError;
 
   const finishLogin = async () => {
+    await updateSession();
     markAuthenticated();
     const user = await hydrateProfile();
     if (!user) {
@@ -114,21 +120,21 @@ export function LoginForm() {
     return true;
   };
 
-  const resolveCredentialsError = (error: string | undefined) => {
-    if (!error) return t("auth.login.error");
-    if (error.includes("RATE_LIMITED")) {
+  const resolveCredentialsError = (code: string | null) => {
+    if (!code) return t("auth.login.error");
+    if (code.includes("RATE_LIMITED")) {
       return t("auth.login.rate_limited");
     }
-    if (error.includes("NO_TENANT_MEMBERSHIP")) {
+    if (code.includes("NO_TENANT_MEMBERSHIP")) {
       return t("auth.login.no_tenant_membership");
     }
-    if (error.includes("MFA_REQUIRED")) {
+    if (code === CREDENTIAL_ERROR_CODES.MFA_REQUIRED) {
       return t("auth.totp.login_required");
     }
-    if (error.includes("INVALID_MFA_CODE")) {
+    if (code === CREDENTIAL_ERROR_CODES.INVALID_MFA_CODE) {
       return t("auth.totp.login_invalid");
     }
-    if (error.includes("MFA_NOT_ENROLLED")) {
+    if (code === CREDENTIAL_ERROR_CODES.MFA_NOT_ENROLLED) {
       return t("auth.totp.login_not_enrolled");
     }
     return t("auth.login.error");
@@ -139,20 +145,25 @@ export function LoginForm() {
     password: string,
     totpCode?: string,
   ) => {
-    const result = await signIn("credentials", {
+    const result = (await signIn("credentials", {
       email,
       password,
       totp_code: totpCode ?? "",
       redirect: false,
-    });
-    if (result?.error) {
-      if (result.error.includes("MFA_REQUIRED")) {
+    })) as CredentialSignInResult | undefined;
+    const errorCode = result ? resolveCredentialErrorCode(result) : null;
+    if (errorCode) {
+      if (errorCode === CREDENTIAL_ERROR_CODES.MFA_REQUIRED) {
         setSavedCredentials({ email, password });
         setMfaStep(true);
         setFormError(null);
         return "mfa";
       }
-      setFormError(resolveCredentialsError(result.error));
+      setFormError(resolveCredentialsError(errorCode));
+      return false;
+    }
+    if (!result?.ok) {
+      setFormError(t("auth.login.error"));
       return false;
     }
     const ok = await finishLogin();

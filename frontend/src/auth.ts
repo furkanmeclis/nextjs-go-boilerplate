@@ -9,6 +9,11 @@ import Passkey from "next-auth/providers/passkey";
 import { NextResponse } from "next/server";
 
 import { routes } from "@/config/routes";
+import {
+  InvalidMFACodeError,
+  MFANotEnrolledError,
+  MFARequiredError,
+} from "@/lib/auth/credentials-errors";
 import { goAdapter } from "@/lib/auth/go-adapter";
 import {
   adapterGetOAuthConfig,
@@ -113,13 +118,13 @@ async function buildProviders(): Promise<Provider[]> {
           } catch (error) {
             const code = (error as Error & { code?: string }).code;
             if (code === "MFA_REQUIRED") {
-              throw new Error("MFA_REQUIRED");
+              throw new MFARequiredError();
             }
             if (code === "INVALID_MFA_CODE") {
-              throw new Error("INVALID_MFA_CODE");
+              throw new InvalidMFACodeError();
             }
             if (code === "MFA_NOT_ENROLLED") {
-              throw new Error("MFA_NOT_ENROLLED");
+              throw new MFANotEnrolledError();
             }
             return null;
           }
