@@ -37,7 +37,11 @@ function AuthContextBridge({ children }: { children: ReactNode }) {
   const setUser = useAuthStore((s) => s.setUser);
   const clear = useAuthStore((s) => s.clear);
   const setBootstrapped = useAuthStore((s) => s.setBootstrapped);
-  const [sessionAuthenticated, setSessionAuthenticated] = useState(false);
+  // Optimistic: if a cached user exists in sessionStorage, start as authenticated
+  // so guarded layouts render without a loading screen while session verifies.
+  const [sessionAuthenticated, setSessionAuthenticated] = useState(() =>
+    Boolean(useAuthStore.getState().user),
+  );
 
   const hydrateProfile = useCallback(async () => {
     try {

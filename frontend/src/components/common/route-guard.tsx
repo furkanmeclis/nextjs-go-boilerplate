@@ -18,6 +18,7 @@ import {
   isCmsUser,
   isPlatformUser,
 } from "@/lib/auth/types";
+import { useAuthStore } from "@/lib/auth/session-store";
 import { useAuth } from "@/providers/auth-provider";
 import { useLocale } from "@/providers/locale-provider";
 
@@ -60,6 +61,7 @@ export function RouteGuard({ children, mode }: RouteGuardProps) {
   const router = useRouter();
   const { bootstrapped, isAuthenticated, user } = useAuth();
   const { t } = useLocale();
+  const cachedUser = useAuthStore((s) => s.user);
 
   useEffect(() => {
     if (!bootstrapped) return;
@@ -74,7 +76,10 @@ export function RouteGuard({ children, mode }: RouteGuardProps) {
     }
   }, [bootstrapped, mode, isAuthenticated, user, router]);
 
-  if (!bootstrapped) {
+  // Show the loader only when there is no cached user to render optimistically.
+  // With a cached user, render immediately and let session verification update
+  // state in the background.
+  if (!bootstrapped && !cachedUser) {
     return <PageLoader label={t("common.loading")} />;
   }
 
