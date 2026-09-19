@@ -12,7 +12,15 @@ export const maxDuration = 120;
 
 async function handle(request: Request, context: RouteContext) {
   const { path } = await context.params;
-  return proxyToUpstream(path ?? [], request);
+  try {
+    return await proxyToUpstream(path ?? [], request);
+  } catch (err) {
+    console.error("[api/v1]", (path ?? []).join("/"), err);
+    return new Response(JSON.stringify({ success: false, error: "internal_error" }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
 }
 
 export const GET = handle;
