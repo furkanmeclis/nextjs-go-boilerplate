@@ -39,7 +39,7 @@ export async function fetchAppPublicConfig(
       Accept: "application/json",
       "Accept-Language": locale,
     },
-    cache: "no-store",
+    next: { revalidate: 300 }, // cache for 5 min; auth providers don't change often
   });
 
   if (!response.ok) {
