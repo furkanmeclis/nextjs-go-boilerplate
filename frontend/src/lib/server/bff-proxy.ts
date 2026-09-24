@@ -178,7 +178,18 @@ function buildUpstreamBody(
   return incoming.byteLength > 0 ? incoming : null;
 }
 
-function passthroughHeaders(upstream: Headers): Headers {
+/**
+ * Response headers forwarded to the browser. Content-Length is only kept for
+ * untouched binary passthrough bodies: buffered bodies may be rewritten (auth
+ * token paths strip tokens, so the JSON gets shorter) and fetch() transparently
+ * decompresses encoded bodies, so forwarding the upstream length there makes
+ * browsers fail with ERR_CONTENT_LENGTH_MISMATCH. Without it the runtime sets
+ * the correct length (or chunked encoding) itself.
+ */
+function passthroughHeaders(
+  upstream: Headers,
+  { keepLength = false }: { keepLength?: boolean } = {},
+): Headers {
   const out = new Headers();
   const allow = [
 	"content-type",
@@ -186,11 +197,14 @@ function passthroughHeaders(upstream: Headers): Headers {
     "cache-control",
     "location",
     "x-request-id",
-    "content-length",
   ] as const;
   for (const key of allow) {
     const value = upstream.get(key);
     if (value) out.set(key, value);
+  }
+  const length = upstream.get("content-length");
+  if (keepLength && length && !upstream.get("content-encoding")) {
+    out.set("content-length", length);
   }
   return out;
 }
@@ -305,7 +319,7 @@ async function proxyStream(
     if (binary) {
       return new Response(result.body, {
         status: result.status,
-        headers: passthroughHeaders(result.headers),
+        headers: passthroughHeaders(result.headers, { keepLength: true }),
       });
     }
     const chunks: Uint8Array[] = [];
