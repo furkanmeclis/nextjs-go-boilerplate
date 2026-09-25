@@ -82,6 +82,11 @@ Redis INCR, 15-minute window, fail-open if Redis is down. `429 RATE_LIMITED` + `
 | Register | IP | 5 |
 | Forgot password | IP + email | 5 |
 | Reset password | IP | 10 |
+| Verify email (`/auth/email/verify`) | IP | 10 |
+| Verification email request | user | 5 |
+| Business register (`/public/organizations/register`) | IP | 5 |
+
+The BFF forwards the browser IP as `X-Forwarded-For`; the Go API must not be reachable directly from clients or the header could be spoofed.
 
 ## `/v1/auth/me`
 
