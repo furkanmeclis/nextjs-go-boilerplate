@@ -178,7 +178,7 @@ func Load() (Config, error) {
 			Env:  getEnv("APP_ENV", "development"),
 		},
 		Encryption: EncryptionConfig{
-			Key: getEnv("APP_ENCRYPTION_KEY", "app-dev-encryption-key-32bytes!!"),
+			Key: getEnv("APP_ENCRYPTION_KEY", defaultEncryptionKey),
 		},
 		HTTP: HTTPConfig{
 			Addr:         getEnv("APP_HTTP_ADDR", ":8080"),
@@ -225,13 +225,13 @@ func Load() (Config, error) {
 		Centrifugo: CentrifugoConfig{
 			Enabled:   getBool("CENTRIFUGO_ENABLED", true),
 			APIURL:    getEnv("CENTRIFUGO_API_URL", "http://127.0.0.1:8000"),
-			APIKey:    getEnv("CENTRIFUGO_API_KEY", "app-centrifugo-api-key-change-me"),
-			TokenHMAC: getEnv("CENTRIFUGO_TOKEN_HMAC_SECRET", "app-centrifugo-token-hmac-change-me"),
+			APIKey:    getEnv("CENTRIFUGO_API_KEY", defaultCentrifugoAPIKey),
+			TokenHMAC: getEnv("CENTRIFUGO_TOKEN_HMAC_SECRET", defaultCentrifugoTokenHMAC),
 			WSURL:     getEnv("CENTRIFUGO_WS_URL", "ws://127.0.0.1:8000/connection/websocket"),
 			TokenTTL:  getDuration("CENTRIFUGO_TOKEN_TTL", time.Hour),
 		},
 		Auth: AuthConfig{
-			AdapterSecret: getEnv("AUTH_ADAPTER_SECRET", "app-dev-auth-adapter-secret-change-me"),
+			AdapterSecret: getEnv("AUTH_ADAPTER_SECRET", defaultAdapterSecret),
 			WebAuthnRPID:  getEnv("AUTH_WEBAUTHN_RP_ID", "localhost"),
 			FrontendURL:   firstNonEmpty(getEnv("PUBLIC_FRONTEND_URL", ""), "http://localhost:3000"),
 		},
@@ -265,6 +265,14 @@ func Load() (Config, error) {
 	return cfg, nil
 }
 
+// Development-only fallbacks. validate() rejects them outside development.
+const (
+	defaultEncryptionKey       = "app-dev-encryption-key-32bytes!!"
+	defaultAdapterSecret       = "app-dev-auth-adapter-secret-change-me"
+	defaultCentrifugoAPIKey    = "app-centrifugo-api-key-change-me"
+	defaultCentrifugoTokenHMAC = "app-centrifugo-token-hmac-change-me"
+)
+
 func (c Config) validate() error {
 	if c.App.Name == "" {
 		return fmt.Errorf("config: APP_NAME is required")
@@ -291,6 +299,21 @@ func (c Config) validate() error {
 		if c.JWT.AccessSecret == "app-dev-access-secret-change-me-32b" ||
 			c.JWT.RefreshSecret == "app-dev-refresh-secret-change-me-32b" {
 			return fmt.Errorf("config: replace default JWT secrets outside development")
+		}
+		if len(c.JWT.AccessSecret) < 32 {
+			return fmt.Errorf("config: JWT_ACCESS_SECRET must be at least 32 characters outside development")
+		}
+		// Fallbacks below are public (.env.example / source); refuse them so
+		// production never encrypts secrets or signs tokens with known keys.
+		if c.Encryption.Key == "" || c.Encryption.Key == defaultEncryptionKey {
+			return fmt.Errorf("config: set a unique APP_ENCRYPTION_KEY outside development")
+		}
+		if c.Auth.AdapterSecret == defaultAdapterSecret {
+			return fmt.Errorf("config: replace default AUTH_ADAPTER_SECRET outside development")
+		}
+		if c.Centrifugo.Enabled && (c.Centrifugo.TokenHMAC == defaultCentrifugoTokenHMAC ||
+			c.Centrifugo.APIKey == defaultCentrifugoAPIKey) {
+			return fmt.Errorf("config: replace default CENTRIFUGO_TOKEN_HMAC_SECRET / CENTRIFUGO_API_KEY outside development")
 		}
 	}
 	if c.JWT.AccessSecret == "" {

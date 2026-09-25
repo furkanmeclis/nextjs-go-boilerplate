@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"crypto/subtle"
 	"net/http"
 	"strings"
 
@@ -15,7 +16,7 @@ func (h *Handler) requireAdapterKey(w http.ResponseWriter, r *http.Request) bool
 		return false
 	}
 	got := strings.TrimSpace(r.Header.Get("X-Auth-Adapter-Key"))
-	if got == "" || got != h.adapterSecret {
+	if got == "" || subtle.ConstantTimeCompare([]byte(got), []byte(h.adapterSecret)) != 1 {
 		response.Unauthorized(w, r, "Invalid adapter credentials")
 		return false
 	}
