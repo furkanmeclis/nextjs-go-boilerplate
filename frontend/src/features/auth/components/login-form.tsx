@@ -35,7 +35,14 @@ import { z } from "zod";
 import { AuthCard } from "./auth-card";
 
 function resolveNext(raw: string | null, fallback: string) {
-  if (!raw || !raw.startsWith("/") || raw.startsWith("//")) {
+  // Only same-origin paths. Browsers treat a backslash like "/", so a value
+  // starting "/<backslash>evil.com" would become a protocol-relative redirect.
+  if (
+    !raw ||
+    !raw.startsWith("/") ||
+    raw.startsWith("//") ||
+    /[\\\u0000-\u001f]/.test(raw)
+  ) {
     return fallback;
   }
   return raw;
