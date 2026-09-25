@@ -3,7 +3,11 @@ import {
   getApiTokens,
   persistApiTokens,
 } from "@/lib/server/auth-tokens";
-import { fetchUpstream, fetchUpstreamStream } from "@/lib/server/upstream";
+import {
+  clientIpFromHeaders,
+  fetchUpstream,
+  fetchUpstreamStream,
+} from "@/lib/server/upstream";
 
 type TokensData = {
   access_token?: string;
@@ -197,6 +201,8 @@ function passthroughHeaders(
     "cache-control",
     "location",
     "x-request-id",
+    "x-content-type-options",
+    "content-security-policy",
   ] as const;
   for (const key of allow) {
     const value = upstream.get(key);
@@ -350,10 +356,58 @@ async function proxyStream(
   });
 }
 
+function jsonError(status: number, error: string): Response {
+  return new Response(JSON.stringify({ success: false, error }), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+/**
+ * Reject path segments that could escape `/v1/*` once the upstream URL is
+ * normalised (`..`, encoded slashes) and server-to-server adapter routes that
+ * must never be reachable from the browser.
+ */
+export function isForbiddenProxyPath(segments: string[]): boolean {
+  for (const seg of segments) {
+    if (seg === "" || seg === "." || seg === "..") return true;
+    if (/[/\\%?#]/.test(seg)) return true;
+  }
+  return segments[0] === "internal";
+}
+
+const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
+
+/**
+ * CSRF defence for cookie-authenticated BFF mutations: browsers send
+ * Sec-Fetch-Site / Origin on cross-site requests; only same-origin callers
+ * may mutate. Requests without either header (non-browser clients) pass.
+ */
+export function isCrossSiteMutation(request: Request): boolean {
+  if (SAFE_METHODS.has(request.method.toUpperCase())) return false;
+  const site = request.headers.get("sec-fetch-site");
+  if (site) return site !== "same-origin" && site !== "none";
+  const origin = request.headers.get("origin");
+  if (!origin || origin === "null") return origin === "null";
+  const host =
+    request.headers.get("x-forwarded-host") ?? request.headers.get("host");
+  try {
+    return !host || new URL(origin).host !== host.split(",")[0]!.trim();
+  } catch {
+    return true;
+  }
+}
+
 export async function proxyToUpstream(
   pathSegments: string[],
   request: Request,
 ): Promise<Response> {
+  if (isForbiddenProxyPath(pathSegments)) {
+    return jsonError(404, "not_found");
+  }
+  if (isCrossSiteMutation(request)) {
+    return jsonError(403, "cross_site_request_blocked");
+  }
   const path = pathSegments.join("/");
   const url = new URL(request.url);
   const pathWithQuery = `${path}${url.search}`;
@@ -371,6 +425,10 @@ export async function proxyToUpstream(
   if (accept) headers.set("Accept", accept);
   else headers.set("Accept", "application/json");
   if (contentType) headers.set("Content-Type", contentType);
+  // Go rate limits and audit rows key on the client IP; without this every
+  // request would share the BFF's address (one global bucket).
+  const clientIp = clientIpFromHeaders(request.headers);
+  if (clientIp) headers.set("X-Forwarded-For", clientIp);
 
   if (accessToken && !isAuthPublicTokenPath(path)) {
     headers.set("Authorization", `Bearer ${accessToken}`);

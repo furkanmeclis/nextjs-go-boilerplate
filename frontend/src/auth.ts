@@ -23,6 +23,7 @@ import {
   loginWithPassword,
   type OAuthConfigPayload,
 } from "@/lib/auth/go-adapter-client";
+import { clientIpFromHeaders } from "@/lib/server/upstream";
 import { fetchAppPublicConfig } from "@/services/app-config.service";
 
 const pendingGitHubLogins = new Map<string, string>();
@@ -111,7 +112,7 @@ async function _doBuildProviders(): Promise<Provider[]> {
           password: { label: "Password", type: "password" },
           totp_code: { label: "Authenticator code", type: "text" },
         },
-        async authorize(credentials) {
+        async authorize(credentials, request) {
           const email = String(credentials?.email ?? "").trim();
           const password = String(credentials?.password ?? "");
           const totpCode = String(credentials?.totp_code ?? "").trim();
@@ -128,6 +129,9 @@ async function _doBuildProviders(): Promise<Provider[]> {
               email,
               password,
               totpCode || undefined,
+              request instanceof Request
+                ? clientIpFromHeaders(request.headers)
+                : null,
             );
             const user = await adapterGetUserByEmail(email);
             return {
@@ -212,14 +216,16 @@ async function buildProviders(): Promise<Provider[]> {
   }
   // Deduplicate concurrent calls while the first build is in flight.
   if (!_providersBuildPromise) {
-    _providersBuildPromise = _doBuildProviders().then((providers) => {
-      _providersCache = { providers, builtAt: Date.now() };
-      _providersBuildPromise = null;
-      return providers;
-    }).catch((err) => {
-      _providersBuildPromise = null;
-      throw err;
-    });
+    _providersBuildPromise = _doBuildProviders()
+      .then((providers) => {
+        _providersCache = { providers, builtAt: Date.now() };
+        _providersBuildPromise = null;
+        return providers;
+      })
+      .catch((err) => {
+        _providersBuildPromise = null;
+        throw err;
+      });
   }
   return _providersBuildPromise;
 }

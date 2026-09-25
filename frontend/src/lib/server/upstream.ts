@@ -16,6 +16,24 @@ function buildUpstreamUrl(pathWithQuery: string): string {
   return `${upstreamConfig.baseUrl.replace(/\/$/, "")}/${pathWithQuery.replace(/^\//, "")}`;
 }
 
+/**
+ * Best-effort client IP for the Go API's per-IP rate limits and audit trail.
+ * Prefer the edge proxy's X-Real-IP, else the right-most X-Forwarded-For hop
+ * (appended by our own proxy; left-most entries are client-controlled).
+ * Returns null when the request carries neither.
+ */
+export function clientIpFromHeaders(headers: Headers): string | null {
+  const real = headers.get("x-real-ip")?.trim();
+  if (real) return real;
+  const xff = headers.get("x-forwarded-for");
+  if (!xff) return null;
+  const hops = xff
+    .split(",")
+    .map((hop) => hop.trim())
+    .filter(Boolean);
+  return hops.length > 0 ? hops[hops.length - 1]! : null;
+}
+
 function scrubUpstreamHeaders(init?: HeadersInit): Headers {
   const headers = new Headers(init);
   headers.delete("host");
