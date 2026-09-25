@@ -477,3 +477,37 @@ func TestLastSuperAdminProtection(t *testing.T) {
 		t.Fatalf("expected last super admin error, got %v", err)
 	}
 }
+
+// revokedRepo simulates a refresh token already rotated by a concurrent call.
+type revokedRepo struct{ *memRepo }
+
+func (r revokedRepo) GetRefreshSession(context.Context, string) (model.RefreshSession, error) {
+	return model.RefreshSession{UserID: 1}, nil
+}
+
+func (r revokedRepo) RevokeRefresh(context.Context, string) error { return repository.ErrNotFound }
+
+func TestRefreshIsSingleUse(t *testing.T) {
+	tokens, _ := jwt.NewManager("test-secret-key-32-bytes-minimum!", time.Minute, time.Hour)
+	uc := New(revokedRepo{newMemRepo()}, tokens)
+	if _, err := uc.Refresh(context.Background(), "raw", model.SessionMeta{}); !errors.Is(err, ErrInvalidCredentials) {
+		t.Fatalf("expected ErrInvalidCredentials for already-rotated token, got %v", err)
+	}
+	if err := uc.Logout(context.Background(), "raw"); err != nil {
+		t.Fatalf("logout of already-revoked token must be a no-op, got %v", err)
+	}
+}
+
+func TestLoginDisabledUserRequiresPassword(t *testing.T) {
+	repo := newMemRepo()
+	hash, _ := password.Hash("Secret123")
+	_, _ = repo.CreateUser(context.Background(), model.User{Email: "d@x.io", PasswordHash: hash, Status: "disabled"}, true)
+	tokens, _ := jwt.NewManager("test-secret-key-32-bytes-minimum!", time.Minute, time.Hour)
+	uc := New(repo, tokens)
+	if _, err := uc.Login(context.Background(), "d@x.io", "wrong", "", model.SessionMeta{}); !errors.Is(err, ErrInvalidCredentials) {
+		t.Fatalf("wrong password on disabled account must not reveal status, got %v", err)
+	}
+	if _, err := uc.Login(context.Background(), "d@x.io", "Secret123", "", model.SessionMeta{}); !errors.Is(err, ErrUserDisabled) {
+		t.Fatalf("expected ErrUserDisabled, got %v", err)
+	}
+}

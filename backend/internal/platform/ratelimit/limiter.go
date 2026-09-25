@@ -52,7 +52,21 @@ func (l *Limiter) AllowResetPassword(ctx context.Context, ip string) (bool, time
 	return l.allow(ctx, "reset", ip, resetLimit)
 }
 
+// Allow is a generic fixed-window limit: at most limit hits per window for
+// (action, subject). Callers pick a stable action name and a subject such as
+// a user id. Like the auth limits it fails open when Redis is unavailable.
+func (l *Limiter) Allow(ctx context.Context, action, subject string, limit int, window time.Duration) (bool, time.Duration) {
+	if limit <= 0 || window <= 0 {
+		return true, 0
+	}
+	return l.allowWindow(ctx, action, subject, limit, window)
+}
+
 func (l *Limiter) allow(ctx context.Context, action, subject string, limit int) (bool, time.Duration) {
+	return l.allowWindow(ctx, action, subject, limit, defaultWindow)
+}
+
+func (l *Limiter) allowWindow(ctx context.Context, action, subject string, limit int, window time.Duration) (bool, time.Duration) {
 	if l == nil || l.rdb == nil || strings.TrimSpace(subject) == "" || strings.TrimSpace(subject) == "|" {
 		return true, 0
 	}
@@ -62,12 +76,12 @@ func (l *Limiter) allow(ctx context.Context, action, subject string, limit int) 
 		return true, 0
 	}
 	if n == 1 {
-		_ = l.rdb.Expire(ctx, key, defaultWindow).Err()
+		_ = l.rdb.Expire(ctx, key, window).Err()
 	}
 	if n > int64(limit) {
 		ttl, ttlErr := l.rdb.TTL(ctx, key).Result()
 		if ttlErr != nil || ttl < 0 {
-			ttl = defaultWindow
+			ttl = window
 		}
 		return false, ttl
 	}

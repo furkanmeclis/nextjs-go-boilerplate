@@ -248,6 +248,12 @@ func (h *Handler) VerifyEmailRequest(w http.ResponseWriter, r *http.Request) {
 		Email string `json:"email"`
 	}
 	_ = json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<20)).Decode(&in)
+	if h.limiter != nil {
+		ok, retry := h.limiter.Allow(r.Context(), "verify_request", p.UserID.String(), 5, 15*time.Minute)
+		if h.writeRateLimited(w, r, ok, retry) {
+			return
+		}
+	}
 	if err := h.uc.RequestEmailVerification(r.Context(), p.UserID, in.Email); err != nil {
 		writeUsecaseError(w, r, err)
 		return
@@ -262,6 +268,12 @@ func (h *Handler) VerifyEmail(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := decodeJSON(w, r, &in); err != nil {
 		return
+	}
+	if h.limiter != nil {
+		ok, retry := h.limiter.AllowResetPassword(r.Context(), sessionMeta(r).IP)
+		if h.writeRateLimited(w, r, ok, retry) {
+			return
+		}
 	}
 	if err := h.uc.VerifyEmail(r.Context(), in.Email, in.Code); err != nil {
 		writeUsecaseError(w, r, err)

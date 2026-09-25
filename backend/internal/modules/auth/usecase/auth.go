@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/modules/auth/model"
@@ -302,19 +303,21 @@ func (u *AuthUseCase) Login(ctx context.Context, email, rawPassword, totpCode st
 	user, err := u.repo.FindUserByEmail(ctx, email)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
+			// Spend the same Argon2 work as a real check so response timing
+			// does not reveal which emails are registered.
+			burnPasswordVerify(rawPassword)
 			return model.Tokens{}, ErrInvalidCredentials
 		}
 		return model.Tokens{}, err
 	}
-	if user.Status == "disabled" {
-		return model.Tokens{}, ErrUserDisabled
-	}
-	if user.Status != "active" {
-		return model.Tokens{}, ErrUserDisabled
-	}
+	// Verify the password before revealing account status (disabled vs.
+	// unknown) so status cannot be probed without the credential.
 	ok, err := password.Verify(user.PasswordHash, rawPassword)
 	if err != nil || !ok {
 		return model.Tokens{}, ErrInvalidCredentials
+	}
+	if user.Status != "active" {
+		return model.Tokens{}, ErrUserDisabled
 	}
 
 	hasTOTP, err := u.UserHasEnabledTOTP(ctx, user.ID)
@@ -358,7 +361,12 @@ func (u *AuthUseCase) Refresh(ctx context.Context, rawToken string, meta model.S
 	if err != nil {
 		return model.Tokens{}, ErrInvalidCredentials
 	}
+	// Revoke must win the race: a concurrent refresh with the same token
+	// finds no active row and is rejected, so a refresh token is single-use.
 	if err := u.repo.RevokeRefresh(ctx, hash); err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return model.Tokens{}, ErrInvalidCredentials
+		}
 		return model.Tokens{}, err
 	}
 	user, err := u.repo.FindUserByID(ctx, session.UserID)
@@ -378,7 +386,10 @@ func (u *AuthUseCase) Logout(ctx context.Context, rawToken string) error {
 	if strings.TrimSpace(rawToken) == "" {
 		return nil
 	}
-	return u.repo.RevokeRefresh(ctx, tokenHash(rawToken))
+	if err := u.repo.RevokeRefresh(ctx, tokenHash(rawToken)); err != nil && !errors.Is(err, repository.ErrNotFound) {
+		return err
+	}
+	return nil
 }
 
 // Me returns session hydration.
@@ -514,6 +525,21 @@ func (u *AuthUseCase) issueTokensForUser(ctx context.Context, user model.User, m
 		TokenType: "Bearer", ExpiresIn: int64(accessExp.Sub(u.now().UTC()).Seconds()),
 		RefreshExpiresAt: refreshExp,
 	}, nil
+}
+
+var (
+	dummyHashOnce sync.Once
+	dummyHash     string
+)
+
+// burnPasswordVerify runs an Argon2 verification against a throwaway hash.
+func burnPasswordVerify(raw string) {
+	dummyHashOnce.Do(func() {
+		dummyHash, _ = password.Hash("Timing-Equalizer-0")
+	})
+	if dummyHash != "" {
+		_, _ = password.Verify(dummyHash, raw)
+	}
 }
 
 func newOpaqueToken() (string, error) {
