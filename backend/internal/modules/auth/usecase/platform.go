@@ -9,6 +9,7 @@ import (
 
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/modules/auth/model"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/modules/auth/repository"
+	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/authctx"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/password"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/rbac"
 	searchadapters "github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/searchengine/adapters"
@@ -84,6 +85,11 @@ func (u *AuthUseCase) CreatePlatformUser(ctx context.Context, in model.CreatePla
 	}
 	if in.Status != "active" && in.Status != "disabled" && in.Status != "pending" {
 		return model.PublicUser{}, fmt.Errorf("%w: status must be active, disabled, or pending", ErrInvalidRequest)
+	}
+	if len(in.RoleUUIDs) > 0 {
+		if err := u.guardSuperAdminRoleGrant(ctx, in.RoleUUIDs); err != nil {
+			return model.PublicUser{}, err
+		}
 	}
 	if _, err := u.repo.FindUserByEmail(ctx, in.Email); err == nil {
 		return model.PublicUser{}, fmt.Errorf("%w: email already registered", ErrConflict)
@@ -229,7 +235,13 @@ func (u *AuthUseCase) PatchPlatformUser(
 	if err != nil {
 		return model.PublicUser{}, err
 	}
+	if hasSuperAdmin && !actorIsSuperAdmin(ctx) {
+		return model.PublicUser{}, fmt.Errorf("%w: only a super admin can modify a super admin", ErrForbidden)
+	}
 	if in.RoleUUIDs != nil {
+		if err := u.guardSuperAdminRoleGrant(ctx, *in.RoleUUIDs); err != nil {
+			return model.PublicUser{}, err
+		}
 		roleIDs, err := u.repo.ResolveRoleIDsByUUIDs(ctx, *in.RoleUUIDs)
 		if err != nil {
 			return model.PublicUser{}, err
@@ -294,6 +306,15 @@ func (u *AuthUseCase) SetPlatformUserPassword(ctx context.Context, userUUID uuid
 			return ErrNotFound
 		}
 		return err
+	}
+	if !actorIsSuperAdmin(ctx) {
+		isSA, err := u.repo.UserHasRoleSlug(ctx, user.ID, rbac.RoleSuperAdmin)
+		if err != nil {
+			return err
+		}
+		if isSA {
+			return fmt.Errorf("%w: only a super admin can set a super admin's password", ErrForbidden)
+		}
 	}
 	hash, err := passwordHash(newPassword)
 	if err != nil {
@@ -470,4 +491,36 @@ func (u *AuthUseCase) deleteRoleSearch(ctx context.Context, id string) {
 		return
 	}
 	u.searchIndexer.EnqueueDelete(ctx, searchadapters.SpecRoles, id)
+}
+
+// actorIsSuperAdmin reports whether the request principal is a super admin.
+// Calls without a principal (CLI / internal) are treated as trusted.
+func actorIsSuperAdmin(ctx context.Context) bool {
+	p, ok := authctx.PrincipalFrom(ctx)
+	if !ok {
+		return true
+	}
+	return p.IsSuperAdmin
+}
+
+// guardSuperAdminRoleGrant stops holders of platform.users.write from
+// granting the super_admin role (to themselves or others) unless they are
+// super admins already.
+func (u *AuthUseCase) guardSuperAdminRoleGrant(ctx context.Context, roleUUIDs []uuid.UUID) error {
+	if actorIsSuperAdmin(ctx) {
+		return nil
+	}
+	for _, roleUUID := range roleUUIDs {
+		role, err := u.repo.GetRoleByUUID(ctx, roleUUID)
+		if err != nil {
+			if errors.Is(err, repository.ErrNotFound) {
+				continue
+			}
+			return err
+		}
+		if role.Slug == rbac.RoleSuperAdmin {
+			return fmt.Errorf("%w: only a super admin can grant the super_admin role", ErrForbidden)
+		}
+	}
+	return nil
 }

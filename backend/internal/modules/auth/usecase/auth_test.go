@@ -8,6 +8,7 @@ import (
 
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/modules/auth/model"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/modules/auth/repository"
+	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/authctx"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/jwt"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/password"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/rbac"
@@ -509,5 +510,23 @@ func TestLoginDisabledUserRequiresPassword(t *testing.T) {
 	}
 	if _, err := uc.Login(context.Background(), "d@x.io", "Secret123", "", model.SessionMeta{}); !errors.Is(err, ErrUserDisabled) {
 		t.Fatalf("expected ErrUserDisabled, got %v", err)
+	}
+}
+
+func TestNonSuperAdminCannotEscalateToSuperAdmin(t *testing.T) {
+	repo := newMemRepo()
+	tokens, _ := jwt.NewManager("test-secret-key-32-bytes-minimum!", time.Minute, time.Hour)
+	uc := New(repo, tokens)
+	hash, _ := password.Hash("Secret123")
+	sa, _ := repo.CreateUser(context.Background(), model.User{Email: "sa@x.io", PasswordHash: hash, Status: "active"}, true)
+	repo.userRoles[sa.ID] = []string{rbac.RoleSuperAdmin}
+
+	ctx := authctx.WithPrincipal(context.Background(), authctx.Principal{IsSuperAdmin: false})
+	if err := uc.SetPlatformUserPassword(ctx, sa.UUID, "Another123"); !errors.Is(err, ErrForbidden) {
+		t.Fatalf("non-super-admin reset of super admin password: got %v", err)
+	}
+	name := "X"
+	if _, err := uc.PatchPlatformUser(ctx, sa.UUID, model.PatchPlatformUserInput{Name: &name}); !errors.Is(err, ErrForbidden) {
+		t.Fatalf("non-super-admin patch of super admin: got %v", err)
 	}
 }

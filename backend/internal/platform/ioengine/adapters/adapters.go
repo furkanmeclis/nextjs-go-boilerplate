@@ -125,6 +125,11 @@ func (a *UsersAdapter) ApplyRow(ctx context.Context, row map[string]any, default
 		roleSlugs = parseSlugs(strVal(defaults, "role_slugs"))
 	}
 	for _, rs := range roleSlugs {
+		// Imports run as platform.users.import holders who need not be super
+		// admins; never let a spreadsheet grant super_admin.
+		if rs == rbac.RoleSuperAdmin {
+			continue
+		}
 		_ = a.q.AssignUserRoleBySlug(ctx, db.AssignUserRoleBySlugParams{UserID: created.ID, Slug: rs})
 	}
 	return ioengine.RowResult{
