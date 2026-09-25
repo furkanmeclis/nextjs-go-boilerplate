@@ -405,16 +405,36 @@ func (h *Handler) PublicSigned(w http.ResponseWriter, r *http.Request) {
 	writeFile(w, opened)
 }
 
+// inlineSafeMIME reports whether a stored MIME type may render inline on the
+// app origin. Files are served same-origin through the BFF, so HTML, SVG,
+// XML and other active types would execute script as the viewer
+// (stored XSS via public links / preview); those are forced to download.
+func inlineSafeMIME(mime string) bool {
+	mime = strings.ToLower(strings.TrimSpace(strings.SplitN(mime, ";", 2)[0]))
+	switch mime {
+	case "image/png", "image/jpeg", "image/gif", "image/webp", "image/avif", "image/bmp",
+		"application/pdf", "text/plain", "text/csv":
+		return true
+	}
+	return strings.HasPrefix(mime, "video/") || strings.HasPrefix(mime, "audio/")
+}
+
 func writeFile(w http.ResponseWriter, opened model.OpenObject) {
 	w.Header().Set("Content-Type", opened.Object.MimeType)
+	w.Header().Set("X-Content-Type-Options", "nosniff")
 	if opened.Size > 0 {
 		w.Header().Set("Content-Length", strconv.FormatInt(opened.Size, 10))
 	}
 	disp := "inline"
-	if opened.Download {
+	if opened.Download || !inlineSafeMIME(opened.Object.MimeType) {
 		disp = "attachment"
 	}
-	name := strings.ReplaceAll(opened.Object.Name, `"`, "")
+	name := strings.Map(func(r rune) rune {
+		if r == '"' || r == '\\' || r < 0x20 || r == 0x7f {
+			return -1
+		}
+		return r
+	}, opened.Object.Name)
 	w.Header().Set("Content-Disposition", disp+`; filename="`+name+`"`)
 	_, _ = io.Copy(w, opened.Body)
 }
