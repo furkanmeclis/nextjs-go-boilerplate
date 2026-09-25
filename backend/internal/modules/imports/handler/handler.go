@@ -62,6 +62,9 @@ func (h *Handler) UploadRoles(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) upload(w http.ResponseWriter, r *http.Request, resource string) {
 	p := authctx.MustPrincipal(r.Context())
+	// Cap the whole body: ParseMultipartForm only bounds memory and spills
+	// the rest to temp files.
+	r.Body = http.MaxBytesReader(w, r.Body, (10<<20)+(1<<20))
 	if err := r.ParseMultipartForm(10 << 20); err != nil {
 		response.BadRequest(w, r, response.CodeValidationError, "invalid multipart form")
 		return

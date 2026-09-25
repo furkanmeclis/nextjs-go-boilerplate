@@ -35,3 +35,12 @@ func TestLogoMIMEAndKeys(t *testing.T) {
 		t.Fatal("mime from key")
 	}
 }
+
+func TestDetectLogoMIMEIgnoresDeclaredTypeForNonImages(t *testing.T) {
+	if _, err := storage.DetectLogoMIME("image/png", []byte("<svg xmlns='http://www.w3.org/2000/svg'><script>alert(1)</script></svg>")); err == nil {
+		t.Fatal("SVG declared as PNG must be rejected")
+	}
+	if mime, err := storage.DetectLogoMIME("text/plain", []byte("\x89PNG\r\n\x1a\n0000")); err != nil || mime != "image/png" {
+		t.Fatalf("real PNG: got %q %v", mime, err)
+	}
+}

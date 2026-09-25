@@ -44,6 +44,9 @@ func (h *Handler) Patch(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) UploadLogo(w http.ResponseWriter, r *http.Request) {
+	// Cap the whole body: ParseMultipartForm only bounds memory and spills
+	// the rest to temp files.
+	r.Body = http.MaxBytesReader(w, r.Body, (3<<20)+(1<<20))
 	if err := r.ParseMultipartForm(3 << 20); err != nil {
 		response.BadRequest(w, r, response.CodeValidationError, "invalid multipart form")
 		return

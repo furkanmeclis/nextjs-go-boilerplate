@@ -55,16 +55,17 @@ func MIMEFromLogoKey(objectKey string) string {
 	return "application/octet-stream"
 }
 
-// DetectLogoMIME prefers the declared Content-Type, then sniffs the body prefix.
+// DetectLogoMIME sniffs the body prefix and accepts only raster logo types.
+// The declared Content-Type is used only when no bytes are available: a
+// client-declared image/png must not smuggle HTML/SVG into public storage.
 func DetectLogoMIME(declared string, head []byte) (string, error) {
-	if mime := NormalizeLogoMIME(declared); mime != "" {
-		return mime, nil
-	}
 	if len(head) == 0 {
+		if mime := NormalizeLogoMIME(declared); mime != "" {
+			return mime, nil
+		}
 		return "", fmt.Errorf("logo content type must be image/jpeg, image/png, or image/webp")
 	}
-	detected := http.DetectContentType(head)
-	if mime := NormalizeLogoMIME(detected); mime != "" {
+	if mime := NormalizeLogoMIME(http.DetectContentType(head)); mime != "" {
 		return mime, nil
 	}
 	return "", fmt.Errorf("logo content type must be image/jpeg, image/png, or image/webp")
