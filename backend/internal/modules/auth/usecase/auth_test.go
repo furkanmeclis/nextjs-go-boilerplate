@@ -530,3 +530,26 @@ func TestNonSuperAdminCannotEscalateToSuperAdmin(t *testing.T) {
 		t.Fatalf("non-super-admin patch of super admin: got %v", err)
 	}
 }
+
+func TestCanSubscribeChannelScopes(t *testing.T) {
+	uc := New(newMemRepo(), nil)
+	me, other := uuid.New(), uuid.New()
+	ctx := context.Background()
+	cases := []struct {
+		ch   string
+		sa   bool
+		want bool
+	}{
+		{"user:" + me.String(), false, true},
+		{"user:" + other.String(), false, false},
+		{"conversation:" + other.String(), false, false},
+		{"system.notifications", false, false},
+		{"system.notifications", true, true},
+	}
+	for _, c := range cases {
+		got, err := uc.CanSubscribeChannel(ctx, me, c.sa, c.ch)
+		if err != nil || got != c.want {
+			t.Fatalf("%s (sa=%v): got %v,%v want %v", c.ch, c.sa, got, err, c.want)
+		}
+	}
+}

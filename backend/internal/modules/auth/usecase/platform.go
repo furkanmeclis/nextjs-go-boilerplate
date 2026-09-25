@@ -462,9 +462,10 @@ func (u *AuthUseCase) CanSubscribeChannel(
 	if uid, ok := realtime.ParseUserChannel(channel); ok {
 		return uid == userUUID, nil
 	}
-	if _, ok := realtime.ParseConversationChannel(channel); ok {
-		return true, nil
-	}
+	// conversation:{uuid} used to be granted to any signed-in user without an
+	// ownership check (cross-tenant eavesdropping once anything publishes
+	// there). Nothing publishes to it today, so fail closed; a future
+	// publisher must add an ownership check here.
 	return false, nil
 }
 
