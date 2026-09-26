@@ -42,6 +42,11 @@ x-backend-environment: &backend-environment
   AUTH_ADAPTER_SECRET: ${AUTH_ADAPTER_SECRET:?AUTH_ADAPTER_SECRET is required}
   APP_ENCRYPTION_KEY: ${APP_ENCRYPTION_KEY:?APP_ENCRYPTION_KEY is required}
   CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?CORS_ALLOWED_ORIGINS is required}
+  # Public origin for links the API generates (e-mail links, step-up
+  # origin). Defaults to AUTH_URL.
+  PUBLIC_FRONTEND_URL: ${PUBLIC_FRONTEND_URL:-${AUTH_URL:?AUTH_URL is required}}
+  # Passkey relying-party ID; empty → hostname of PUBLIC_FRONTEND_URL.
+  AUTH_WEBAUTHN_RP_ID: ${AUTH_WEBAUTHN_RP_ID:-}
   MAIL_FROM: ${MAIL_FROM:-noreply@localhost}
   MAIL_FROM_NAME: ${MAIL_FROM_NAME:-App}
   SMTP_HOST: ${SMTP_HOST:-}

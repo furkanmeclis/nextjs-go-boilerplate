@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -172,6 +173,8 @@ type SearchConfig struct {
 func Load() (Config, error) {
 	_ = godotenv.Load("../.env", ".env")
 
+	frontendURL := getEnv("PUBLIC_FRONTEND_URL", "http://localhost:3000")
+
 	cfg := Config{
 		App: AppConfig{
 			Name: getEnv("APP_NAME", "api"),
@@ -232,8 +235,8 @@ func Load() (Config, error) {
 		},
 		Auth: AuthConfig{
 			AdapterSecret: getEnv("AUTH_ADAPTER_SECRET", defaultAdapterSecret),
-			WebAuthnRPID:  getEnv("AUTH_WEBAUTHN_RP_ID", "localhost"),
-			FrontendURL:   firstNonEmpty(getEnv("PUBLIC_FRONTEND_URL", ""), "http://localhost:3000"),
+			WebAuthnRPID:  getEnv("AUTH_WEBAUTHN_RP_ID", hostOf(frontendURL, "localhost")),
+			FrontendURL:   frontendURL,
 		},
 		JWT: JWTConfig{
 			AccessSecret:  getEnv("JWT_ACCESS_SECRET", "app-dev-access-secret-change-me-32b"),
@@ -388,6 +391,14 @@ func loadStorageConfig() StorageConfig {
 			PublicBaseURL: s3Public,
 		},
 	}
+}
+
+// hostOf returns the hostname of rawURL (no port), or fallback when it has none.
+func hostOf(rawURL, fallback string) string {
+	if u, err := url.Parse(strings.TrimSpace(rawURL)); err == nil && u.Hostname() != "" {
+		return u.Hostname()
+	}
+	return fallback
 }
 
 func firstNonEmpty(values ...string) string {
