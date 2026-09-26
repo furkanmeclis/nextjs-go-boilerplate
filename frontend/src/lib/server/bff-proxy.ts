@@ -4,6 +4,10 @@ import {
   persistApiTokens,
 } from "@/lib/server/auth-tokens";
 import {
+  sharedRefresh,
+  type RefreshResult,
+} from "@/lib/server/refresh-single-flight";
+import {
   clientIpFromHeaders,
   fetchUpstream,
   fetchUpstreamStream,
@@ -129,28 +133,39 @@ async function persistTokensFromEnvelope(envelope: Envelope | null) {
   return true;
 }
 
-async function refreshViaUpstream(): Promise<boolean> {
+/** One upstream rotation per refresh token, shared by concurrent requests. */
+function rotateRefreshToken(
+  refreshToken: string,
+  forwardedFor: string | null,
+): Promise<RefreshResult> {
+  return sharedRefresh(refreshToken, async (token) => {
+    const headers = new Headers({
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    });
+    // Rate limits and session rows key on the client IP (first caller's).
+    if (forwardedFor) headers.set("X-Forwarded-For", forwardedFor);
+    const result = await fetchUpstream("auth/refresh", {
+      method: "POST",
+      headers,
+      body: encodeJson({ refresh_token: token }),
+    });
+    return { status: result.status, body: result.body };
+  });
+}
+
+async function refreshViaUpstream(
+  forwardedFor: string | null,
+): Promise<boolean> {
   const { refreshToken, userId } = await getApiTokens();
   if (!refreshToken || !userId) return false;
 
-  const result = await fetchUpstream("auth/refresh", {
-    method: "POST",
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "application/json",
-    },
-    body: encodeJson({ refresh_token: refreshToken }),
-  });
-
-  if (result.status >= 400) {
-    await clearAuthSessionCookie();
-    return false;
-  }
-
-  const envelope = parseJson(result.body);
-  const ok = await persistTokensFromEnvelope(envelope);
-  if (!ok) await clearAuthSessionCookie();
-  return ok;
+  // Do not clear the session cookie on failure: a concurrent response may
+  // already have written a valid rotated pair, and the browser's own refresh
+  // flow signs out when the session is really gone.
+  const result = await rotateRefreshToken(refreshToken, forwardedFor);
+  if (result.status >= 400) return false;
+  return persistTokensFromEnvelope(parseJson(result.body));
 }
 
 function buildUpstreamBody(
@@ -234,11 +249,20 @@ async function proxyBuffered(
   body: BodyInit | null,
   refreshToken: string | null,
 ): Promise<Response> {
-  let result = await fetchUpstream(pathWithQuery, {
-    method: request.method,
-    headers,
-    body,
-  });
+  let result =
+    isRefreshPath(path) && refreshToken
+      ? {
+          ...(await rotateRefreshToken(
+            refreshToken,
+            headers.get("X-Forwarded-For"),
+          )),
+          headers: new Headers({ "Content-Type": "application/json" }),
+        }
+      : await fetchUpstream(pathWithQuery, {
+          method: request.method,
+          headers,
+          body,
+        });
 
   if (
     result.status === 401 &&
@@ -246,7 +270,7 @@ async function proxyBuffered(
     !isAuthPublicTokenPath(path) &&
     !isLogoutPath(path)
   ) {
-    const refreshed = await refreshViaUpstream();
+    const refreshed = await refreshViaUpstream(headers.get("X-Forwarded-For"));
     if (refreshed) {
       const { accessToken: nextAccess } = await getApiTokens();
       if (nextAccess) headers.set("Authorization", `Bearer ${nextAccess}`);
@@ -307,7 +331,7 @@ async function proxyStream(
     !isAuthPublicTokenPath(path)
   ) {
     await result.body?.cancel().catch(() => undefined);
-    const refreshed = await refreshViaUpstream();
+    const refreshed = await refreshViaUpstream(headers.get("X-Forwarded-For"));
     if (refreshed) {
       const { accessToken: nextAccess } = await getApiTokens();
       if (nextAccess) headers.set("Authorization", `Bearer ${nextAccess}`);
