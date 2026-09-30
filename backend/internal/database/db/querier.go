@@ -16,7 +16,7 @@ type Querier interface {
 	ClaimOutboxEvents(ctx context.Context, arg ClaimOutboxEventsParams) ([]OutboxEvent, error)
 	ClearAppSettingsLogo(ctx context.Context) (AppSetting, error)
 	ConfirmUserTOTP(ctx context.Context, arg ConfirmUserTOTPParams) (UserTotp, error)
-	ConsumeOTP(ctx context.Context, id int64) error
+	ConsumeOTP(ctx context.Context, id int64) (int64, error)
 	CountActivityEvents(ctx context.Context, arg CountActivityEventsParams) (int64, error)
 	CountAllBulkJobs(ctx context.Context) (int64, error)
 	CountAllExportJobs(ctx context.Context) (int64, error)
@@ -47,6 +47,8 @@ type Querier interface {
 	CreateRole(ctx context.Context, arg CreateRoleParams) (Role, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	CreateWebAuthnCredential(ctx context.Context, arg CreateWebAuthnCredentialParams) (WebauthnCredential, error)
+	// Self-service account deletion: keep every row, mark the user disabled.
+	DeactivateUser(ctx context.Context, id int64) (User, error)
 	DeleteAppLogByUUID(ctx context.Context, argUuid uuid.UUID) (int64, error)
 	DeleteAppLogsByUUIDs(ctx context.Context, uuids []uuid.UUID) (int64, error)
 	DeleteAppLogsMatching(ctx context.Context, arg DeleteAppLogsMatchingParams) (int64, error)
@@ -204,12 +206,14 @@ type Querier interface {
 	UpdateImportJobMapping(ctx context.Context, arg UpdateImportJobMappingParams) (ImportJob, error)
 	UpdateImportJobPreview(ctx context.Context, arg UpdateImportJobPreviewParams) (ImportJob, error)
 	UpdateLogPurgeRule(ctx context.Context, arg UpdateLogPurgeRuleParams) (LogPurgeRule, error)
+	UpdateOAuthAccountRefreshToken(ctx context.Context, arg UpdateOAuthAccountRefreshTokenParams) error
 	UpdateOAuthProviderSettings(ctx context.Context, arg UpdateOAuthProviderSettingsParams) (OauthProviderSetting, error)
 	UpdateRole(ctx context.Context, arg UpdateRoleParams) (Role, error)
 	UpdateStepupSettings(ctx context.Context, arg UpdateStepupSettingsParams) (StepupSetting, error)
 	UpdateUserLastLogin(ctx context.Context, id int64) error
 	UpdateUserLocale(ctx context.Context, arg UpdateUserLocaleParams) error
 	UpdateUserPasswordByID(ctx context.Context, arg UpdateUserPasswordByIDParams) error
+	// Re-activating a user (status -> active) clears a self-service deactivation.
 	UpdateUserPlatform(ctx context.Context, arg UpdateUserPlatformParams) (User, error)
 	UpdateUserProfile(ctx context.Context, arg UpdateUserProfileParams) (User, error)
 	UpdateUserProfileBasics(ctx context.Context, arg UpdateUserProfileBasicsParams) error

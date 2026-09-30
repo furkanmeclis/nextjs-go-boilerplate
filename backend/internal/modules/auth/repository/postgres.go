@@ -439,8 +439,17 @@ func (r *Postgres) IncrementOTPAttempts(ctx context.Context, id int64) (attempts
 	return row.AttemptCount, row.MaxAttempts, nil
 }
 
+// ConsumeOTP marks the code used; ErrNotFound when it was already consumed
+// (a concurrent verify won), which keeps codes strictly single-use.
 func (r *Postgres) ConsumeOTP(ctx context.Context, id int64) error {
-	return r.q.ConsumeOTP(ctx, id)
+	n, err := r.q.ConsumeOTP(ctx, id)
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return ErrNotFound
+	}
+	return nil
 }
 
 func (r *Postgres) ListUsersFiltered(ctx context.Context, limit, offset int32, q, status, roleSlug string) ([]model.User, int64, error) {
@@ -628,7 +637,50 @@ func mapUser(row db.User) model.User {
 		ID: row.ID, UUID: row.Uuid, Email: row.Email, PasswordHash: row.PasswordHash,
 		Name: row.Name, Surname: row.Surname, Status: row.Status, Locale: locale,
 		EmailVerified: row.EmailVerifiedAt.Valid, CreatedAt: row.CreatedAt.Time,
+		DeactivatedAt: timePtr(row.DeactivatedAt),
 	}
+}
+
+func timePtr(v pgtype.Timestamptz) *time.Time {
+	if !v.Valid {
+		return nil
+	}
+	t := v.Time.UTC()
+	return &t
+}
+
+func textPtr(v pgtype.Text) *string {
+	if !v.Valid {
+		return nil
+	}
+	s := v.String
+	return &s
+}
+
+func pgText(v *string) pgtype.Text {
+	if v == nil {
+		return pgtype.Text{}
+	}
+	return pgtype.Text{String: *v, Valid: true}
+}
+
+// DeactivateUser marks the user disabled with deactivated_at (rows are kept).
+func (r *Postgres) DeactivateUser(ctx context.Context, userID int64) (model.User, error) {
+	row, err := r.q.DeactivateUser(ctx, userID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return model.User{}, ErrNotFound
+		}
+		return model.User{}, err
+	}
+	return mapUser(row), nil
+}
+
+// UpdateOAuthAccountRefreshToken replaces the stored (encrypted) refresh token.
+func (r *Postgres) UpdateOAuthAccountRefreshToken(ctx context.Context, accountID int64, refreshTokenEnc, clientID *string) error {
+	return r.q.UpdateOAuthAccountRefreshToken(ctx, db.UpdateOAuthAccountRefreshTokenParams{
+		ID: accountID, RefreshTokenEnc: pgText(refreshTokenEnc), ClientID: pgText(clientID),
+	})
 }
 
 func mapRole(row db.Role) model.RoleSummary {
@@ -744,28 +796,28 @@ func (r *Postgres) DeletePasskeyByUUID(ctx context.Context, userUUID, passkeyUUI
 func mapOAuthAccount(row db.GetOAuthAccountByProviderAccountRow) model.OAuthAccountRecord {
 	return mapOAuthAccountRow(
 		row.ID, row.Uuid, row.UserID, row.UserUuid, row.Provider, row.ProviderAccountID,
-		row.Type, row.GithubLogin, row.CreatedAt, row.UpdatedAt,
+		row.Type, row.GithubLogin, row.RefreshTokenEnc, row.ClientID, row.CreatedAt, row.UpdatedAt,
 	)
 }
 
 func mapOAuthAccountFromUserProvider(row db.GetOAuthAccountByUserProviderRow) model.OAuthAccountRecord {
 	return mapOAuthAccountRow(
 		row.ID, row.Uuid, row.UserID, row.UserUuid, row.Provider, row.ProviderAccountID,
-		row.Type, row.GithubLogin, row.CreatedAt, row.UpdatedAt,
+		row.Type, row.GithubLogin, row.RefreshTokenEnc, row.ClientID, row.CreatedAt, row.UpdatedAt,
 	)
 }
 
 func mapOAuthAccountFromList(row db.ListOAuthAccountsByUserIDRow) model.OAuthAccountRecord {
 	return mapOAuthAccountRow(
 		row.ID, row.Uuid, row.UserID, row.UserUuid, row.Provider, row.ProviderAccountID,
-		row.Type, row.GithubLogin, row.CreatedAt, row.UpdatedAt,
+		row.Type, row.GithubLogin, row.RefreshTokenEnc, row.ClientID, row.CreatedAt, row.UpdatedAt,
 	)
 }
 
 func mapOAuthAccountFromUserIDs(row db.ListOAuthAccountsForUserIDsRow) model.OAuthAccountRecord {
 	return mapOAuthAccountRow(
 		row.ID, row.Uuid, row.UserID, row.UserUuid, row.Provider, row.ProviderAccountID,
-		row.Type, row.GithubLogin, row.CreatedAt, row.UpdatedAt,
+		row.Type, row.GithubLogin, row.RefreshTokenEnc, row.ClientID, row.CreatedAt, row.UpdatedAt,
 	)
 }
 
@@ -778,7 +830,8 @@ func mapOAuthAccountFromCreate(row db.OauthAccount, userUUID uuid.UUID) model.OA
 	return model.OAuthAccountRecord{
 		ID: row.ID, UUID: row.Uuid, UserID: row.UserID, UserUUID: userUUID,
 		Provider: row.Provider, ProviderAccountID: row.ProviderAccountID, Type: row.Type,
-		GitHubLogin: login, CreatedAt: row.CreatedAt.Time, UpdatedAt: row.UpdatedAt.Time,
+		GitHubLogin: login, RefreshTokenEnc: textPtr(row.RefreshTokenEnc), ClientID: textPtr(row.ClientID),
+		CreatedAt: row.CreatedAt.Time, UpdatedAt: row.UpdatedAt.Time,
 	}
 }
 
@@ -791,6 +844,8 @@ func mapOAuthAccountRow(
 	providerAccountID string,
 	accountType string,
 	githubLogin pgtype.Text,
+	refreshTokenEnc pgtype.Text,
+	clientID pgtype.Text,
 	createdAt pgtype.Timestamptz,
 	updatedAt pgtype.Timestamptz,
 ) model.OAuthAccountRecord {
@@ -802,7 +857,8 @@ func mapOAuthAccountRow(
 	return model.OAuthAccountRecord{
 		ID: id, UUID: accountUUID, UserID: userID, UserUUID: userUUID,
 		Provider: provider, ProviderAccountID: providerAccountID, Type: accountType,
-		GitHubLogin: login, CreatedAt: createdAt.Time, UpdatedAt: updatedAt.Time,
+		GitHubLogin: login, RefreshTokenEnc: textPtr(refreshTokenEnc), ClientID: textPtr(clientID),
+		CreatedAt: createdAt.Time, UpdatedAt: updatedAt.Time,
 	}
 }
 
@@ -866,6 +922,7 @@ func (r *Postgres) CreateOAuthAccount(ctx context.Context, in model.CreateOAuthA
 	if in.GitHubLogin != nil {
 		params.GithubLogin = pgtype.Text{String: *in.GitHubLogin, Valid: true}
 	}
+	params.ClientID = pgText(in.ClientID)
 	row, err := r.q.CreateOAuthAccount(ctx, params)
 	if err != nil {
 		return model.OAuthAccountRecord{}, err

@@ -33,8 +33,12 @@ type OAuthAccountRecord struct {
 	ProviderAccountID string
 	Type              string
 	GitHubLogin       *string
-	CreatedAt         time.Time
-	UpdatedAt         time.Time
+	// RefreshTokenEnc is the encrypted provider refresh token, when stored.
+	RefreshTokenEnc *string
+	// ClientID is the OAuth client that issued the stored tokens (nil = web client).
+	ClientID  *string
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 // LinkedIdentity is a user-facing linked provider summary.
@@ -76,4 +80,5 @@ type CreateOAuthAccountInput struct {
 	TokenType         *string
 	Scope             *string
 	GitHubLogin       *string
+	ClientID          *string
 }

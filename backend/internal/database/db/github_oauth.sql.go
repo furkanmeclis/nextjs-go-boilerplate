@@ -23,7 +23,8 @@ INSERT INTO oauth_accounts (
     expires_at,
     token_type,
     scope,
-    github_login
+    github_login,
+    client_id
 ) VALUES (
     $1,
     $2,
@@ -34,9 +35,10 @@ INSERT INTO oauth_accounts (
     $7,
     $8,
     $9,
-    $10
+    $10,
+    $11
 )
-RETURNING id, uuid, user_id, provider, provider_account_id, type, access_token_enc, refresh_token_enc, expires_at, token_type, scope, github_login, created_at, updated_at
+RETURNING id, uuid, user_id, provider, provider_account_id, type, access_token_enc, refresh_token_enc, expires_at, token_type, scope, github_login, created_at, updated_at, client_id
 `
 
 type CreateOAuthAccountParams struct {
@@ -50,6 +52,7 @@ type CreateOAuthAccountParams struct {
 	TokenType         pgtype.Text        `json:"token_type"`
 	Scope             pgtype.Text        `json:"scope"`
 	GithubLogin       pgtype.Text        `json:"github_login"`
+	ClientID          pgtype.Text        `json:"client_id"`
 }
 
 func (q *Queries) CreateOAuthAccount(ctx context.Context, arg CreateOAuthAccountParams) (OauthAccount, error) {
@@ -64,6 +67,7 @@ func (q *Queries) CreateOAuthAccount(ctx context.Context, arg CreateOAuthAccount
 		arg.TokenType,
 		arg.Scope,
 		arg.GithubLogin,
+		arg.ClientID,
 	)
 	var i OauthAccount
 	err := row.Scan(
@@ -81,6 +85,7 @@ func (q *Queries) CreateOAuthAccount(ctx context.Context, arg CreateOAuthAccount
 		&i.GithubLogin,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ClientID,
 	)
 	return i, err
 }
@@ -139,7 +144,7 @@ func (q *Queries) GetGitHubAppSettings(ctx context.Context) (GithubAppSetting, e
 }
 
 const getOAuthAccountByProviderAccount = `-- name: GetOAuthAccountByProviderAccount :one
-SELECT oa.id, oa.uuid, oa.user_id, oa.provider, oa.provider_account_id, oa.type, oa.access_token_enc, oa.refresh_token_enc, oa.expires_at, oa.token_type, oa.scope, oa.github_login, oa.created_at, oa.updated_at, u.uuid AS user_uuid
+SELECT oa.id, oa.uuid, oa.user_id, oa.provider, oa.provider_account_id, oa.type, oa.access_token_enc, oa.refresh_token_enc, oa.expires_at, oa.token_type, oa.scope, oa.github_login, oa.created_at, oa.updated_at, oa.client_id, u.uuid AS user_uuid
 FROM oauth_accounts oa
 JOIN users u ON u.id = oa.user_id
 WHERE oa.provider = $1
@@ -167,6 +172,7 @@ type GetOAuthAccountByProviderAccountRow struct {
 	GithubLogin       pgtype.Text        `json:"github_login"`
 	CreatedAt         pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt         pgtype.Timestamptz `json:"updated_at"`
+	ClientID          pgtype.Text        `json:"client_id"`
 	UserUuid          uuid.UUID          `json:"user_uuid"`
 }
 
@@ -188,13 +194,14 @@ func (q *Queries) GetOAuthAccountByProviderAccount(ctx context.Context, arg GetO
 		&i.GithubLogin,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ClientID,
 		&i.UserUuid,
 	)
 	return i, err
 }
 
 const getOAuthAccountByUserProvider = `-- name: GetOAuthAccountByUserProvider :one
-SELECT oa.id, oa.uuid, oa.user_id, oa.provider, oa.provider_account_id, oa.type, oa.access_token_enc, oa.refresh_token_enc, oa.expires_at, oa.token_type, oa.scope, oa.github_login, oa.created_at, oa.updated_at, u.uuid AS user_uuid
+SELECT oa.id, oa.uuid, oa.user_id, oa.provider, oa.provider_account_id, oa.type, oa.access_token_enc, oa.refresh_token_enc, oa.expires_at, oa.token_type, oa.scope, oa.github_login, oa.created_at, oa.updated_at, oa.client_id, u.uuid AS user_uuid
 FROM oauth_accounts oa
 JOIN users u ON u.id = oa.user_id
 WHERE oa.user_id = $1
@@ -222,6 +229,7 @@ type GetOAuthAccountByUserProviderRow struct {
 	GithubLogin       pgtype.Text        `json:"github_login"`
 	CreatedAt         pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt         pgtype.Timestamptz `json:"updated_at"`
+	ClientID          pgtype.Text        `json:"client_id"`
 	UserUuid          uuid.UUID          `json:"user_uuid"`
 }
 
@@ -243,13 +251,14 @@ func (q *Queries) GetOAuthAccountByUserProvider(ctx context.Context, arg GetOAut
 		&i.GithubLogin,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ClientID,
 		&i.UserUuid,
 	)
 	return i, err
 }
 
 const listOAuthAccountsByUserID = `-- name: ListOAuthAccountsByUserID :many
-SELECT oa.id, oa.uuid, oa.user_id, oa.provider, oa.provider_account_id, oa.type, oa.access_token_enc, oa.refresh_token_enc, oa.expires_at, oa.token_type, oa.scope, oa.github_login, oa.created_at, oa.updated_at, u.uuid AS user_uuid
+SELECT oa.id, oa.uuid, oa.user_id, oa.provider, oa.provider_account_id, oa.type, oa.access_token_enc, oa.refresh_token_enc, oa.expires_at, oa.token_type, oa.scope, oa.github_login, oa.created_at, oa.updated_at, oa.client_id, u.uuid AS user_uuid
 FROM oauth_accounts oa
 JOIN users u ON u.id = oa.user_id
 WHERE oa.user_id = $1
@@ -272,6 +281,7 @@ type ListOAuthAccountsByUserIDRow struct {
 	GithubLogin       pgtype.Text        `json:"github_login"`
 	CreatedAt         pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt         pgtype.Timestamptz `json:"updated_at"`
+	ClientID          pgtype.Text        `json:"client_id"`
 	UserUuid          uuid.UUID          `json:"user_uuid"`
 }
 
@@ -299,6 +309,7 @@ func (q *Queries) ListOAuthAccountsByUserID(ctx context.Context, userID int64) (
 			&i.GithubLogin,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.ClientID,
 			&i.UserUuid,
 		); err != nil {
 			return nil, err
@@ -312,7 +323,7 @@ func (q *Queries) ListOAuthAccountsByUserID(ctx context.Context, userID int64) (
 }
 
 const listOAuthAccountsForUserIDs = `-- name: ListOAuthAccountsForUserIDs :many
-SELECT oa.id, oa.uuid, oa.user_id, oa.provider, oa.provider_account_id, oa.type, oa.access_token_enc, oa.refresh_token_enc, oa.expires_at, oa.token_type, oa.scope, oa.github_login, oa.created_at, oa.updated_at, u.uuid AS user_uuid
+SELECT oa.id, oa.uuid, oa.user_id, oa.provider, oa.provider_account_id, oa.type, oa.access_token_enc, oa.refresh_token_enc, oa.expires_at, oa.token_type, oa.scope, oa.github_login, oa.created_at, oa.updated_at, oa.client_id, u.uuid AS user_uuid
 FROM oauth_accounts oa
 JOIN users u ON u.id = oa.user_id
 WHERE oa.user_id = ANY ($1::bigint[])
@@ -335,6 +346,7 @@ type ListOAuthAccountsForUserIDsRow struct {
 	GithubLogin       pgtype.Text        `json:"github_login"`
 	CreatedAt         pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt         pgtype.Timestamptz `json:"updated_at"`
+	ClientID          pgtype.Text        `json:"client_id"`
 	UserUuid          uuid.UUID          `json:"user_uuid"`
 }
 
@@ -362,6 +374,7 @@ func (q *Queries) ListOAuthAccountsForUserIDs(ctx context.Context, userIds []int
 			&i.GithubLogin,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.ClientID,
 			&i.UserUuid,
 		); err != nil {
 			return nil, err
@@ -417,4 +430,22 @@ func (q *Queries) UpdateGitHubAppSettings(ctx context.Context, arg UpdateGitHubA
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const updateOAuthAccountRefreshToken = `-- name: UpdateOAuthAccountRefreshToken :exec
+UPDATE oauth_accounts
+SET refresh_token_enc = $1,
+    client_id = $2
+WHERE id = $3
+`
+
+type UpdateOAuthAccountRefreshTokenParams struct {
+	RefreshTokenEnc pgtype.Text `json:"refresh_token_enc"`
+	ClientID        pgtype.Text `json:"client_id"`
+	ID              int64       `json:"id"`
+}
+
+func (q *Queries) UpdateOAuthAccountRefreshToken(ctx context.Context, arg UpdateOAuthAccountRefreshTokenParams) error {
+	_, err := q.db.Exec(ctx, updateOAuthAccountRefreshToken, arg.RefreshTokenEnc, arg.ClientID, arg.ID)
+	return err
 }

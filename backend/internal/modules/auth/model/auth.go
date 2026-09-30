@@ -18,6 +18,8 @@ type User struct {
 	Locale        string
 	EmailVerified bool
 	CreatedAt     time.Time
+	// DeactivatedAt is set when the user deleted (deactivated) their own account.
+	DeactivatedAt *time.Time
 }
 
 // UserAuthMethod is a login option linked to a platform user.

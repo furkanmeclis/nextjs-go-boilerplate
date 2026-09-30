@@ -11,16 +11,19 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const consumeOTP = `-- name: ConsumeOTP :exec
+const consumeOTP = `-- name: ConsumeOTP :execrows
 UPDATE otp_codes
 SET consumed_at = NOW()
 WHERE id = $1
   AND consumed_at IS NULL
 `
 
-func (q *Queries) ConsumeOTP(ctx context.Context, id int64) error {
-	_, err := q.db.Exec(ctx, consumeOTP, id)
-	return err
+func (q *Queries) ConsumeOTP(ctx context.Context, id int64) (int64, error) {
+	result, err := q.db.Exec(ctx, consumeOTP, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const createOTPCode = `-- name: CreateOTPCode :one

@@ -55,7 +55,8 @@ INSERT INTO oauth_accounts (
     expires_at,
     token_type,
     scope,
-    github_login
+    github_login,
+    client_id
 ) VALUES (
     sqlc.arg(user_id),
     sqlc.arg(provider),
@@ -66,7 +67,8 @@ INSERT INTO oauth_accounts (
     sqlc.narg(expires_at),
     sqlc.narg(token_type),
     sqlc.narg(scope),
-    sqlc.narg(github_login)
+    sqlc.narg(github_login),
+    sqlc.narg(client_id)
 )
 RETURNING *;
 
@@ -79,3 +81,9 @@ WHERE user_id = sqlc.arg(user_id)
 DELETE FROM oauth_accounts
 WHERE provider = sqlc.arg(provider)
   AND provider_account_id = sqlc.arg(provider_account_id);
+
+-- name: UpdateOAuthAccountRefreshToken :exec
+UPDATE oauth_accounts
+SET refresh_token_enc = sqlc.narg(refresh_token_enc),
+    client_id = sqlc.narg(client_id)
+WHERE id = sqlc.arg(id);

@@ -19,7 +19,7 @@ SET attempt_count = attempt_count + 1
 WHERE id = $1
 RETURNING *;
 
--- name: ConsumeOTP :exec
+-- name: ConsumeOTP :execrows
 UPDATE otp_codes
 SET consumed_at = NOW()
 WHERE id = $1
