@@ -333,3 +333,60 @@ func (h *Handler) DeletePushSubscription(w http.ResponseWriter, r *http.Request)
 	}
 	response.JSON(w, r, http.StatusOK, map[string]string{"status": "ok"})
 }
+
+// RegisterPushDevice upserts the caller's Expo push token (login / app start).
+func (h *Handler) RegisterPushDevice(w http.ResponseWriter, r *http.Request) {
+	p := authctx.MustPrincipal(r.Context())
+	var body struct {
+		Token      string `json:"token"`
+		Platform   string `json:"platform"`
+		Locale     string `json:"locale"`
+		AppVersion string `json:"app_version"`
+		DeviceName string `json:"device_name"`
+	}
+	if err := decodeJSON(w, r, &body); err != nil {
+		return
+	}
+	in := usecase.PushDeviceInput{
+		Token: body.Token, Platform: body.Platform, Locale: body.Locale,
+		AppVersion: body.AppVersion, DeviceName: body.DeviceName,
+	}
+	if errs := usecase.ValidatePushDevice(in); len(errs) > 0 {
+		details := make([]response.Detail, 0, len(errs))
+		for _, f := range []string{"token", "platform"} {
+			if code, ok := errs[f]; ok {
+				msg := "must be an Expo push token (ExponentPushToken[...])"
+				if f == "platform" {
+					msg = "must be ios or android"
+				}
+				details = append(details, response.Detail{Field: f, Message: msg, Code: code})
+			}
+		}
+		response.ValidationError(w, r, details)
+		return
+	}
+	dev, pushEnabled, err := h.svc.RegisterPushDevice(r.Context(), p.UserInternal, in)
+	if err != nil {
+		writeErr(w, r, err)
+		return
+	}
+	response.JSON(w, r, http.StatusOK, map[string]any{
+		"device":       dev,
+		"push_enabled": pushEnabled,
+	})
+}
+
+// DeletePushDevice removes the caller's token (logout). Idempotent.
+func (h *Handler) DeletePushDevice(w http.ResponseWriter, r *http.Request) {
+	p := authctx.MustPrincipal(r.Context())
+	token := strings.TrimSpace(r.PathValue("token"))
+	if token == "" {
+		response.ValidationError(w, r, []response.Detail{{Field: "token", Message: "required", Code: "required"}})
+		return
+	}
+	if err := h.svc.UnregisterPushDevice(r.Context(), p.UserInternal, token); err != nil {
+		writeErr(w, r, err)
+		return
+	}
+	response.JSON(w, r, http.StatusOK, map[string]string{"status": "ok"})
+}

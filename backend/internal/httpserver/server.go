@@ -162,6 +162,7 @@ func New(cfg config.Config, log *slog.Logger, deps Deps) (*Server, error) {
 		PrivateKey: cfg.VAPID.PrivateKey,
 		Subject:    cfg.VAPID.Subject,
 	})
+	notifSvc.WithExpo(notifusecase.ExpoConfig{AccessToken: cfg.Expo.AccessToken})
 
 	repo := authrepo.NewPostgres(deps.DB, deps.Queries)
 	uc := authusecase.New(repo, tokens)
@@ -278,7 +279,8 @@ func New(cfg config.Config, log *slog.Logger, deps Deps) (*Server, error) {
 		s.worker.WithExport(exportSvc.ProcessExport).
 			WithImport(importSvc.ProcessImport).
 			WithBulk(bulkSvc.ProcessBulk).
-			WithLogPurge(logsSvc.ApplyDueRules)
+			WithLogPurge(logsSvc.ApplyDueRules).
+			WithMobilePush(notifSvc.SendMobilePush, notifSvc.ProcessPushReceipts)
 		if searchIndexer != nil {
 			s.worker.WithSearch(
 				searchIndexer.ProcessUpsert,

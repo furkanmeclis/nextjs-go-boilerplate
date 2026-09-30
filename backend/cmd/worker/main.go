@@ -97,6 +97,7 @@ func main() {
 		PrivateKey: cfg.VAPID.PrivateKey,
 		Subject:    cfg.VAPID.Subject,
 	})
+	notifSvc.WithExpo(notifusecase.ExpoConfig{AccessToken: cfg.Expo.AccessToken})
 
 	eventBus := events.NewBus(log)
 	notifmodule.RegisterEventHandlers(eventBus, notifSvc, log)
@@ -135,6 +136,7 @@ func main() {
 		WithImport(importSvc.ProcessImport).
 		WithBulk(bulkSvc.ProcessBulk).
 		WithLogPurge(logsSvc.ApplyDueRules).
+		WithMobilePush(notifSvc.SendMobilePush, notifSvc.ProcessPushReceipts).
 		WithSearch(
 			searchIndexer.ProcessUpsert,
 			searchIndexer.ProcessDelete,
@@ -148,6 +150,10 @@ func main() {
 	scheduler, err := queue.StartLogPurgeScheduler(cfg, log)
 	if err != nil {
 		log.Error("log_purge_scheduler_failed", "error", err)
+		exit(1)
+	}
+	if err := queue.RegisterPushReceiptsSchedule(scheduler); err != nil {
+		log.Error("push_receipts_scheduler_failed", "error", err)
 		exit(1)
 	}
 	go func() {

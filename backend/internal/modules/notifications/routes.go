@@ -30,6 +30,13 @@ func RegisterRoutes(
 	mux.Handle("DELETE /v1/notifications/push-subscriptions", middleware.Chain(
 		http.HandlerFunc(h.DeletePushSubscription), authn,
 	))
+	// Mobile (Expo) push devices: registered at login, removed at logout.
+	mux.Handle("POST /v1/push-devices", middleware.Chain(
+		http.HandlerFunc(h.RegisterPushDevice), authn,
+	))
+	mux.Handle("DELETE /v1/push-devices/{token}", middleware.Chain(
+		http.HandlerFunc(h.DeletePushDevice), authn,
+	))
 
 	mux.Handle("GET /v1/notifications/meta", middleware.Chain(
 		http.HandlerFunc(h.Meta), authn, requirePerm(rbac.PermNotificationsRead),
