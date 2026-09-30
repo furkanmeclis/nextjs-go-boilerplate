@@ -55,7 +55,9 @@ type Querier interface {
 	DeleteLogPurgeRule(ctx context.Context, argUuid uuid.UUID) (int64, error)
 	DeleteOAuthAccountByProviderAccount(ctx context.Context, arg DeleteOAuthAccountByProviderAccountParams) error
 	DeleteOAuthAccountByUserProvider(ctx context.Context, arg DeleteOAuthAccountByUserProviderParams) error
+	DeletePushDeviceForUser(ctx context.Context, arg DeletePushDeviceForUserParams) (int64, error)
 	DeletePushSubscription(ctx context.Context, arg DeletePushSubscriptionParams) error
+	DeletePushTickets(ctx context.Context, ids []int64) error
 	DeleteRole(ctx context.Context, argUuid uuid.UUID) error
 	DeleteStorageShare(ctx context.Context, argUuid uuid.UUID) error
 	DeleteStorageStar(ctx context.Context, arg DeleteStorageStarParams) error
@@ -63,6 +65,10 @@ type Querier interface {
 	DeleteUserTOTP(ctx context.Context, userID int64) error
 	DeleteWebAuthnCredentialByCredentialID(ctx context.Context, credentialID string) error
 	DeleteWebAuthnCredentialByUUID(ctx context.Context, arg DeleteWebAuthnCredentialByUUIDParams) error
+	DisablePushDevice(ctx context.Context, arg DisablePushDeviceParams) error
+	// First device registration opts the user into push (the OS permission
+	// prompt is the consent). An existing preference row is left untouched.
+	EnsureNotificationPreferencesPushDefault(ctx context.Context, userID int64) error
 	ExtensionExists(ctx context.Context, extname string) (bool, error)
 	GetActiveOTPByEmailType(ctx context.Context, arg GetActiveOTPByEmailTypeParams) (OtpCode, error)
 	GetAppLogByUUID(ctx context.Context, argUuid uuid.UUID) (AppLog, error)
@@ -100,6 +106,7 @@ type Querier interface {
 	GetValidRefreshTokenByHash(ctx context.Context, tokenHash string) (RefreshToken, error)
 	GetWebAuthnCredentialByCredentialID(ctx context.Context, credentialID string) (WebauthnCredential, error)
 	GetWebAuthnCredentialByUUID(ctx context.Context, arg GetWebAuthnCredentialByUUIDParams) (WebauthnCredential, error)
+	HasActivePushDevices(ctx context.Context, userID int64) (bool, error)
 	IncrementOTPAttempts(ctx context.Context, id int64) (OtpCode, error)
 	InsertActivityEvent(ctx context.Context, arg InsertActivityEventParams) (ActivityEvent, error)
 	InsertAppLog(ctx context.Context, arg InsertAppLogParams) error
@@ -107,6 +114,7 @@ type Querier interface {
 	InsertImportChange(ctx context.Context, arg InsertImportChangeParams) (ImportChange, error)
 	InsertNotificationHistory(ctx context.Context, arg InsertNotificationHistoryParams) (NotificationHistory, error)
 	InsertOutboxEvent(ctx context.Context, arg InsertOutboxEventParams) (OutboxEvent, error)
+	InsertPushTicket(ctx context.Context, arg InsertPushTicketParams) error
 	InsertRolePermission(ctx context.Context, arg InsertRolePermissionParams) error
 	InsertStorageActivity(ctx context.Context, arg InsertStorageActivityParams) (StorageActivity, error)
 	InsertStorageLink(ctx context.Context, arg InsertStorageLinkParams) (StorageLink, error)
@@ -117,6 +125,7 @@ type Querier interface {
 	InvalidateActiveOTPs(ctx context.Context, arg InvalidateActiveOTPsParams) error
 	ListActivePublicKeys(ctx context.Context, keys []string) ([]string, error)
 	ListActivePublicLinks(ctx context.Context) ([]StorageLink, error)
+	ListActivePushDevicesByUser(ctx context.Context, userID int64) ([]PushDevice, error)
 	ListActiveRefreshTokensByUserID(ctx context.Context, userID int64) ([]RefreshToken, error)
 	ListActivityEvents(ctx context.Context, arg ListActivityEventsParams) ([]ActivityEvent, error)
 	ListAllBulkJobs(ctx context.Context, arg ListAllBulkJobsParams) ([]BulkJob, error)
@@ -127,6 +136,7 @@ type Querier interface {
 	ListAppLogs(ctx context.Context, arg ListAppLogsParams) ([]AppLog, error)
 	ListBulkChangesForJob(ctx context.Context, jobID int64) ([]BulkChange, error)
 	ListBulkJobsForActor(ctx context.Context, arg ListBulkJobsForActorParams) ([]BulkJob, error)
+	ListDuePushTickets(ctx context.Context, arg ListDuePushTicketsParams) ([]ListDuePushTicketsRow, error)
 	ListEnabledLogPurgeRules(ctx context.Context) ([]LogPurgeRule, error)
 	ListExportJobsForActor(ctx context.Context, arg ListExportJobsForActorParams) ([]ExportJob, error)
 	ListImportChangesForJob(ctx context.Context, jobID int64) ([]ImportChange, error)
@@ -224,6 +234,10 @@ type Querier interface {
 	UpdateWebAuthnCredentialCounter(ctx context.Context, arg UpdateWebAuthnCredentialCounterParams) error
 	UpdateWebAuthnCredentialName(ctx context.Context, arg UpdateWebAuthnCredentialNameParams) (WebauthnCredential, error)
 	UpsertNotificationPreferences(ctx context.Context, arg UpsertNotificationPreferencesParams) (NotificationPreference, error)
+	// Mobile push devices (Expo) and their pending push tickets.
+	// A token moves to the calling user when the device switches accounts and is
+	// re-enabled on every registration.
+	UpsertPushDevice(ctx context.Context, arg UpsertPushDeviceParams) (PushDevice, error)
 	UpsertPushSubscription(ctx context.Context, arg UpsertPushSubscriptionParams) (PushSubscription, error)
 	UpsertUserTOTPSetup(ctx context.Context, arg UpsertUserTOTPSetupParams) (UserTotp, error)
 	UserHasRoleSlug(ctx context.Context, arg UserHasRoleSlugParams) (bool, error)

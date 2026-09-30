@@ -301,6 +301,22 @@ type PgExtension struct {
 	Extname string `json:"extname"`
 }
 
+type PushDevice struct {
+	ID             int64              `json:"id"`
+	Uuid           uuid.UUID          `json:"uuid"`
+	UserID         int64              `json:"user_id"`
+	Token          string             `json:"token"`
+	Platform       string             `json:"platform"`
+	Locale         string             `json:"locale"`
+	AppVersion     string             `json:"app_version"`
+	DeviceName     string             `json:"device_name"`
+	LastSeenAt     pgtype.Timestamptz `json:"last_seen_at"`
+	DisabledAt     pgtype.Timestamptz `json:"disabled_at"`
+	DisabledReason string             `json:"disabled_reason"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
+}
+
 type PushSubscription struct {
 	ID        int64              `json:"id"`
 	Uuid      uuid.UUID          `json:"uuid"`
@@ -310,6 +326,14 @@ type PushSubscription struct {
 	KeyAuth   string             `json:"key_auth"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+}
+
+type PushTicket struct {
+	ID             int64              `json:"id"`
+	TicketID       string             `json:"ticket_id"`
+	PushDeviceID   int64              `json:"push_device_id"`
+	NotificationID pgtype.Int8        `json:"notification_id"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
 }
 
 type RefreshToken struct {
