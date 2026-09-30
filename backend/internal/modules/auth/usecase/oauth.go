@@ -62,8 +62,8 @@ func (u *OAuthUseCase) LinkOAuthAccount(ctx context.Context, in model.LinkOAuthA
 		}
 		return err
 	}
-	if user.Status != "active" {
-		return ErrUserDisabled
+	if err := userStatusError(user); err != nil {
+		return err
 	}
 
 	existing, err := u.repo.GetOAuthAccountByProviderAccount(ctx, provider, providerAccountID)

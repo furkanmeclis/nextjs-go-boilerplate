@@ -50,3 +50,13 @@ func TestValidateRejectsDefaultSecretsInProduction(t *testing.T) {
 		t.Fatalf("development must accept defaults: %v", err)
 	}
 }
+
+func TestParseReviewAccounts(t *testing.T) {
+	got := parseReviewAccounts(" Review@Example.com:246810 , bad, short@x.io:123, nocolon@x.io ,x:123456")
+	if len(got) != 1 || got["review@example.com"] != "246810" {
+		t.Fatalf("got %v", got)
+	}
+	if len(parseReviewAccounts("")) != 0 {
+		t.Fatal("empty must disable")
+	}
+}

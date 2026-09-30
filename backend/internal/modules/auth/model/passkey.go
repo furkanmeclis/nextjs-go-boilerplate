@@ -26,13 +26,13 @@ type PasskeyRecord struct {
 
 // Passkey is a user-facing passkey summary.
 type Passkey struct {
-	UUID         uuid.UUID  `json:"uuid"`
-	Name         *string    `json:"name,omitempty"`
-	DeviceType   string     `json:"device_type"`
-	BackedUp     bool       `json:"backed_up"`
-	Transports   *string    `json:"transports,omitempty"`
-	LastUsedAt   *time.Time `json:"last_used_at,omitempty"`
-	CreatedAt    time.Time  `json:"created_at"`
+	UUID       uuid.UUID  `json:"uuid"`
+	Name       *string    `json:"name,omitempty"`
+	DeviceType string     `json:"device_type"`
+	BackedUp   bool       `json:"backed_up"`
+	Transports *string    `json:"transports,omitempty"`
+	LastUsedAt *time.Time `json:"last_used_at,omitempty"`
+	CreatedAt  time.Time  `json:"created_at"`
 }
 
 // PasskeyList is a list payload for GET /v1/auth/passkeys.

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -562,7 +563,32 @@ func writeUsecaseError(w http.ResponseWriter, r *http.Request, err error) {
 		response.ValidationError(w, r, details)
 		return
 	}
+	var choice *usecase.LinkChoiceRequiredError
+	if errors.As(err, &choice) {
+		response.ErrorWithDetails(w, r, http.StatusConflict, response.CodeOAuthLinkChoiceRequired,
+			"Choose whether to link this sign-in to an existing account or create a new one", []response.Detail{
+				{Field: "link_ticket", Message: choice.Ticket},
+				{Field: "provider", Message: choice.Provider},
+				{Field: "expires_in", Message: strconv.FormatInt(choice.ExpiresIn, 10)},
+				{Field: "register_allowed", Message: strconv.FormatBool(choice.RegisterAllowed)},
+			})
+		return
+	}
 	switch {
+	case errors.Is(err, usecase.ErrAccountDeactivated):
+		response.Error(w, r, http.StatusForbidden, response.CodeAccountDeactivated, "This account has been deleted")
+	case errors.Is(err, usecase.ErrInvalidEmailCode):
+		response.BadRequest(w, r, response.CodeInvalidEmailCode, "The code is invalid or expired")
+	case errors.Is(err, usecase.ErrInvalidIDToken):
+		response.Error(w, r, http.StatusUnauthorized, response.CodeInvalidIDToken, "Provider sign-in token is invalid or expired")
+	case errors.Is(err, usecase.ErrOAuthNotLinked):
+		response.Conflict(w, r, response.CodeOAuthAccountNotLinked, "An account with this email already exists. Sign in with your existing method and link this provider from your profile.")
+	case errors.Is(err, usecase.ErrInvalidLinkTicket):
+		response.BadRequest(w, r, response.CodeInvalidLinkTicket, "The link session is invalid or expired. Sign in again.")
+	case errors.Is(err, usecase.ErrOAuthProviderDisabled):
+		response.Error(w, r, http.StatusForbidden, response.CodeOAuthProviderDisabled, "This sign-in method is not enabled")
+	case errors.Is(err, usecase.ErrConfirmationRequired):
+		response.StepUpRequired(w, r)
 	case errors.Is(err, usecase.ErrInvalidCredentials):
 		response.Error(w, r, http.StatusUnauthorized, response.CodeInvalidCredentials, "Email or password is incorrect")
 	case errors.Is(err, usecase.ErrMFARequired):

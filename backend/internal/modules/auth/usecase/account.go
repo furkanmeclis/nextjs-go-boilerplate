@@ -13,9 +13,9 @@ import (
 	"strings"
 	"time"
 
-	notifmodel "github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/modules/notifications/model"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/modules/auth/model"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/modules/auth/repository"
+	notifmodel "github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/modules/notifications/model"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/password"
 	"github.com/google/uuid"
 )
@@ -99,7 +99,7 @@ func (u *AuthUseCase) UpdateProfile(
 		_, _ = u.notifier.Enqueue(ctx, notifmodel.EnqueueInput{
 			UserID: &uid, Channels: []string{notifmodel.ChannelInapp},
 			TemplateCode: "auth.profile_updated", SourceEvent: "auth.profile_updated",
-			Language: lang,
+			Language:     lang,
 			TemplateVars: map[string]string{"name": user.Name},
 		})
 	}
@@ -136,7 +136,7 @@ func (u *AuthUseCase) ForgotPassword(ctx context.Context, email string) error {
 			UserID: &uid, Channels: []string{notifmodel.ChannelEmail},
 			TemplateCode: "auth.password_reset", SourceEvent: "auth.password_reset",
 			SecurityEmail: true,
-			Recipient:    &email,
+			Recipient:     &email,
 			TemplateVars: map[string]string{
 				"name": user.Name, "code": code, "expires_minutes": strconv.Itoa(int(otpTTL.Minutes())),
 			},
@@ -270,8 +270,8 @@ func (u *AuthUseCase) notifyWelcome(ctx context.Context, user model.User) {
 	}
 	uid := user.ID
 	_, _ = u.notifier.Enqueue(ctx, notifmodel.EnqueueInput{
-		UserID: &uid,
-		Channels: []string{notifmodel.ChannelInapp, notifmodel.ChannelEmail},
+		UserID:       &uid,
+		Channels:     []string{notifmodel.ChannelInapp, notifmodel.ChannelEmail},
 		TemplateCode: "auth.welcome", SourceEvent: "auth.register",
 		TemplateVars: map[string]string{"name": user.Name},
 	})

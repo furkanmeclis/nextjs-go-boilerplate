@@ -59,6 +59,7 @@ import (
 	storagehandler "github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/modules/storage/handler"
 	storageusecase "github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/modules/storage/usecase"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/activity"
+	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/appleauth"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/bulkengine"
 	bulkadapters "github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/bulkengine/adapters"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/crypto"
@@ -67,6 +68,7 @@ import (
 	ioadapters "github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/ioengine/adapters"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/jwt"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/mail"
+	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/oidc"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/outbox"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/ratelimit"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/searchengine"
@@ -215,6 +217,20 @@ func New(cfg config.Config, log *slog.Logger, deps Deps) (*Server, error) {
 	uc.SetAccessPolicy(stepUpSvc)
 	uc.SetSecretBox(secretBox, cfg.App.Name)
 	oauthUC := authusecase.NewOAuth(repo, secretBox)
+	uc.SetReviewAccounts(cfg.Auth.ReviewAccounts)
+	appleClient, err := appleauth.New(appleauth.Config{
+		TeamID: cfg.Auth.AppleTeamID, KeyID: cfg.Auth.AppleKeyID, PrivateKey: cfg.Auth.ApplePrivateKey,
+	}, nil)
+	if err != nil {
+		return nil, fmt.Errorf("httpserver: apple sign-in key: %w", err)
+	}
+	uc.SetNativeOAuth(authusecase.NativeOAuthConfig{
+		Verifier:        oidc.New(oidc.DefaultProviders(), nil),
+		Apple:           appleClient,
+		Clients:         oauthProvSvc,
+		AppleClientIDs:  cfg.Auth.AppleNativeClientIDs,
+		GoogleClientIDs: cfg.Auth.GoogleNativeClientIDs,
+	})
 	s.githubSvc = githubSvc
 	s.oauthProvSvc = oauthProvSvc
 	s.authSettings = authSettingsSvc

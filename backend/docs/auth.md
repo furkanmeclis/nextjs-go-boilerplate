@@ -47,6 +47,48 @@ Super admin bypasses permission checks in `HasPermission`. Most platform HTTP ro
 - **OAuth**: linked accounts can sign in when `login` is enabled. Unlinked accounts may self-register only when register is allowed for that provider.
 - Secrets for OAuth apps are encrypted with `APP_ENCRYPTION_KEY`.
 
+## Email code sign-in (web + mobile)
+
+| Method | Path | Auth |
+|--------|------|------|
+| POST | `/v1/auth/email-code/request` `{email}` | — |
+| POST | `/v1/auth/email-code/verify` `{email, code, totp_code?}` | — |
+
+- 6-digit code, 10 min TTL, 5 attempts, single use, stored as SHA-256 (`otp_codes.type = login_code`).
+- `request` always answers `200 {status: accepted}` (no enumeration). Disabled / deactivated users still get a code so `verify` can report `FORBIDDEN` / `ACCOUNT_DEACTIVATED` after the mailbox is proven.
+- Users with authenticator 2FA: `verify` without `totp_code` → `403 MFA_REQUIRED`, the email code stays valid; resend with `totp_code`. A wrong TOTP burns one of the code's attempts. The admin "password login requires 2FA" policy applies to password login only.
+- Email: `auth.login_code` template (tr/en, user locale), security email (ignores preferences).
+- **App review accounts**: `AUTH_REVIEW_ACCOUNTS=review@example.com:246810,other@x.com:135790` (comma-separated `email:code`, code ≥ 6 chars). For those emails no email is sent and the fixed code signs in (also confirms account deletion). The code works only for its own email; the account must exist. Unset/empty = disabled. Rotate or remove after review.
+
+## Native OAuth (mobile)
+
+NextAuth keeps handling web OAuth; mobile apps send the SDK id_token to the API.
+
+| Method | Path | Body |
+|--------|------|------|
+| POST | `/v1/auth/oauth/{apple\|google}/native` | `{id_token, nonce?, given_name?, family_name?, authorization_code?, totp_code?}` |
+| POST | `/v1/auth/oauth/link/request` | `{link_ticket, email}` |
+| POST | `/v1/auth/oauth/link/verify` | `{link_ticket, email, code, totp_code?}` |
+| POST | `/v1/auth/oauth/link/create` | `{link_ticket, totp_code?}` |
+
+- Verification: RS256 signature against the provider JWKS (cached per `Cache-Control`, refetch on unknown `kid` at most once a minute), `iss`, `exp`, `aud`, optional `nonce` (raw or SHA-256 hex).
+- Audiences: Apple `AUTH_APPLE_NATIVE_CLIENT_IDS`; Google `AUTH_GOOGLE_NATIVE_CLIENT_IDS` (iOS + Android client ids) plus the web client id stored in Google OAuth settings (Android Credential Manager tokens use it as `aud`). Native sign-in is enabled when a provider has at least one audience; otherwise `403 OAUTH_PROVIDER_DISABLED`.
+- Linked identity → login (2FA round-trip like password login). Unlinked + existing email → `409 OAUTH_ACCOUNT_NOT_LINKED` (same as NextAuth's `OAuthAccountNotLinked`: sign in with the existing method, then link from the profile). Unlinked + new email → OAuth sign-up (global `registration_enabled` must be on) + link.
+- **Apple private relay** (`@privaterelay.appleid.com`, no account): `409 OAUTH_LINK_CHOICE_REQUIRED` with `details` `link_ticket` (AES-GCM sealed with `APP_ENCRYPTION_KEY`, 15 min), `provider`, `expires_in`, `register_allowed`. "I have an account" → `link/request` + `link/verify` (email code `auth.oauth_link_code` to the existing account). "No" → `link/create`.
+- Apple tokens: when `authorization_code` is sent and `AUTH_APPLE_TEAM_ID` / `AUTH_APPLE_KEY_ID` / `AUTH_APPLE_PRIVATE_KEY` (the Sign in with Apple `.p8`, `\n` escapes allowed) are set, the refresh token is stored encrypted (`oauth_accounts.refresh_token_enc`, `client_id`) and revoked on account deletion.
+
+## Account deletion (deactivation)
+
+| Method | Path | Auth |
+|--------|------|------|
+| POST | `/v1/auth/account/deactivate/request` | Bearer — emails `auth.account_deactivation_code` |
+| POST | `/v1/auth/account/deactivate` `{code?}` | Bearer + recent step-up **or** `code` |
+
+- No data is deleted. `users.status = disabled`, `users.deactivated_at = now()`; all refresh tokens revoked; step-up grant revoked; stored Apple refresh tokens revoked via `https://appleid.apple.com/auth/revoke` (skipped when none stored or no key/secret configured); `auth.account_deactivated` email.
+- Every login path (password, refresh, email code, native OAuth, NextAuth OAuth / passkey session issue, org context) returns `403 ACCOUNT_DEACTIVATED`; existing access tokens stop working on the next request (identity loader rejects disabled users).
+- The last super admin cannot deactivate (`409`). Not allowed while impersonating.
+- Reactivation: a platform admin sets the user's status to `active` (clears `deactivated_at`).
+
 ## Linked identities
 
 | Method | Path | Auth |
@@ -84,7 +126,11 @@ Redis INCR, 15-minute window, fail-open if Redis is down. `429 RATE_LIMITED` + `
 | Reset password | IP | 10 |
 | Verify email (`/auth/email/verify`) | IP | 10 |
 | Verification email request | user | 5 |
-| Business register (`/public/organizations/register`) | IP | 5 |
+| Email code request / OAuth link request | IP 10, email 5 | |
+| Email code verify / OAuth link verify | IP 30, email 10 | |
+| Native OAuth | IP | 30 |
+| OAuth link create | IP (register bucket) | 5 |
+| Account deletion code request / deactivate | user | 5 / 10 |
 
 The BFF forwards the browser IP as `X-Forwarded-For`; the Go API must not be reachable directly from clients or the header could be spoofed.
 

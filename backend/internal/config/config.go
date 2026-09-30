@@ -36,6 +36,19 @@ type AuthConfig struct {
 	AdapterSecret string
 	WebAuthnRPID  string
 	FrontendURL   string
+	// ReviewAccounts maps a lower-cased email to a fixed sign-in code for
+	// App Store / Play review (AUTH_REVIEW_ACCOUNTS=email:code,...). Empty = off.
+	ReviewAccounts map[string]string
+	// AppleNativeClientIDs are accepted id_token audiences for native Apple
+	// sign-in (iOS bundle id). GoogleNativeClientIDs are the iOS/Android OAuth
+	// client ids; the web client id from OAuth settings is accepted as well.
+	AppleNativeClientIDs  []string
+	GoogleNativeClientIDs []string
+	// Sign in with Apple key (.p8) used to exchange native authorization codes
+	// and revoke refresh tokens on account deletion. Optional.
+	AppleTeamID     string
+	AppleKeyID      string
+	ApplePrivateKey string
 }
 
 // VAPIDConfig holds Web Push keys (empty = push disabled).
@@ -237,6 +250,13 @@ func Load() (Config, error) {
 			AdapterSecret: getEnv("AUTH_ADAPTER_SECRET", defaultAdapterSecret),
 			WebAuthnRPID:  getEnv("AUTH_WEBAUTHN_RP_ID", hostOf(frontendURL, "localhost")),
 			FrontendURL:   frontendURL,
+
+			ReviewAccounts:        parseReviewAccounts(getEnv("AUTH_REVIEW_ACCOUNTS", "")),
+			AppleNativeClientIDs:  splitCSV(getEnv("AUTH_APPLE_NATIVE_CLIENT_IDS", "")),
+			GoogleNativeClientIDs: splitCSV(getEnv("AUTH_GOOGLE_NATIVE_CLIENT_IDS", "")),
+			AppleTeamID:           getEnv("AUTH_APPLE_TEAM_ID", ""),
+			AppleKeyID:            getEnv("AUTH_APPLE_KEY_ID", ""),
+			ApplePrivateKey:       getEnv("AUTH_APPLE_PRIVATE_KEY", ""),
 		},
 		JWT: JWTConfig{
 			AccessSecret:  getEnv("JWT_ACCESS_SECRET", "app-dev-access-secret-change-me-32b"),
@@ -473,6 +493,22 @@ func splitCSV(v string) []string {
 		if p != "" {
 			out = append(out, p)
 		}
+	}
+	return out
+}
+
+// parseReviewAccounts parses "a@x.com:123456,b@y.com:654321". Entries without
+// an email or a code of at least 6 characters are ignored.
+func parseReviewAccounts(raw string) map[string]string {
+	out := map[string]string{}
+	for _, item := range splitCSV(raw) {
+		email, code, ok := strings.Cut(item, ":")
+		email = strings.ToLower(strings.TrimSpace(email))
+		code = strings.TrimSpace(code)
+		if !ok || email == "" || !strings.Contains(email, "@") || len(code) < 6 {
+			continue
+		}
+		out[email] = code
 	}
 	return out
 }

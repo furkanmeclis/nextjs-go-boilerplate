@@ -31,11 +31,8 @@ func (u *AuthUseCase) IssueSessionForUser(ctx context.Context, userUUID uuid.UUI
 		}
 		return model.Tokens{}, err
 	}
-	if user.Status == "disabled" {
-		return model.Tokens{}, ErrUserDisabled
-	}
-	if user.Status != "active" {
-		return model.Tokens{}, ErrUserDisabled
+	if err := userStatusError(user); err != nil {
+		return model.Tokens{}, err
 	}
 	if err := u.repo.UpdateLastLogin(ctx, user.ID); err != nil {
 		return model.Tokens{}, err

@@ -326,6 +326,25 @@ func (r *memRepo) UpdatePasskeyCounter(context.Context, string, int64) error { r
 func (r *memRepo) UpdatePasskeyName(context.Context, uuid.UUID, uuid.UUID, *string) (model.PasskeyRecord, error) {
 	return model.PasskeyRecord{}, repository.ErrNotFound
 }
+
+func (r *memRepo) DeactivateUser(_ context.Context, userID int64) (model.User, error) {
+	u, ok := r.users[userID]
+	if !ok {
+		return model.User{}, repository.ErrNotFound
+	}
+	now := time.Now().UTC()
+	u.Status = "disabled"
+	u.DeactivatedAt = &now
+	r.users[u.ID] = u
+	r.byEmail[u.Email] = u
+	r.byUUID[u.UUID] = u
+	return u, nil
+}
+
+func (r *memRepo) UpdateOAuthAccountRefreshToken(context.Context, int64, *string, *string) error {
+	return nil
+}
+
 func (r *memRepo) DeletePasskeyByCredentialID(context.Context, string) error       { return nil }
 func (r *memRepo) DeletePasskeyByUUID(context.Context, uuid.UUID, uuid.UUID) error { return nil }
 

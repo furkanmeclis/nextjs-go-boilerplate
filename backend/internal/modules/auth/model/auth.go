@@ -125,12 +125,12 @@ type RegisterInput struct {
 
 // CreatePlatformUserInput creates a platform-managed user.
 type CreatePlatformUserInput struct {
-	Email      string
-	Password   string
-	Name       string
-	Surname    string
-	Status     string
-	RoleUUIDs  []uuid.UUID
+	Email     string
+	Password  string
+	Name      string
+	Surname   string
+	Status    string
+	RoleUUIDs []uuid.UUID
 }
 
 // PatchPlatformUserInput partially updates a platform user.
@@ -228,7 +228,7 @@ type TOTPStatus struct {
 
 // TOTPSetupResult is returned when starting authenticator enrollment.
 type TOTPSetupResult struct {
-	Secret    string `json:"secret"`
+	Secret     string `json:"secret"`
 	OTPAuthURL string `json:"otpauth_url"`
 }
 

@@ -158,6 +158,28 @@ func (s *Service) GetAdapterOAuthConfig(ctx context.Context, provider string) (A
 	}, nil
 }
 
+// ClientCredentials returns the configured web client id and decrypted secret
+// regardless of the login/register flags. Native sign-in uses the id as an
+// accepted id_token audience and the secret to revoke web-issued Apple tokens.
+func (s *Service) ClientCredentials(ctx context.Context, provider string) (string, string, error) {
+	p, err := normalizeProvider(provider)
+	if err != nil {
+		return "", "", err
+	}
+	row, err := s.q.GetOAuthProviderSettings(ctx, p)
+	if err != nil {
+		return "", "", err
+	}
+	secret := ""
+	if row.ClientSecretEnc.Valid && row.ClientSecretEnc.String != "" {
+		secret, err = s.box.Decrypt(row.ClientSecretEnc.String)
+		if err != nil {
+			return "", "", fmt.Errorf("decrypt client secret: %w", err)
+		}
+	}
+	return strings.TrimSpace(row.ClientID), secret, nil
+}
+
 // Patch updates provider settings.
 func (s *Service) Patch(ctx context.Context, provider string, in PatchInput) (Settings, error) {
 	p, err := normalizeProvider(provider)

@@ -35,6 +35,12 @@ func RegisterRoutes(
 	mux.HandleFunc("POST /v1/auth/password/forgot", h.ForgotPassword)
 	mux.HandleFunc("POST /v1/auth/password/reset", h.ResetPassword)
 	mux.HandleFunc("POST /v1/auth/email/verify", h.VerifyEmail)
+	mux.HandleFunc("POST /v1/auth/email-code/request", h.RequestEmailCode)
+	mux.HandleFunc("POST /v1/auth/email-code/verify", h.VerifyEmailCode)
+	mux.HandleFunc("POST /v1/auth/oauth/{provider}/native", h.NativeOAuth)
+	mux.HandleFunc("POST /v1/auth/oauth/link/request", h.OAuthLinkRequest)
+	mux.HandleFunc("POST /v1/auth/oauth/link/verify", h.OAuthLinkVerify)
+	mux.HandleFunc("POST /v1/auth/oauth/link/create", h.OAuthLinkCreate)
 
 	mux.HandleFunc("GET /v1/internal/auth/users/by-email", h.AdapterGetUserByEmail)
 	mux.HandleFunc("GET /v1/internal/auth/users/{uuid}", h.AdapterGetUserByUUID)
@@ -62,6 +68,8 @@ func RegisterRoutes(
 	mux.Handle("PATCH /v1/auth/profile", middleware.Chain(http.HandlerFunc(h.UpdateProfile), authn))
 	mux.Handle("POST /v1/auth/password/change", middleware.Chain(http.HandlerFunc(h.ChangePassword), authn))
 	mux.Handle("POST /v1/auth/email/verify-request", middleware.Chain(http.HandlerFunc(h.VerifyEmailRequest), authn))
+	mux.Handle("POST /v1/auth/account/deactivate/request", middleware.Chain(http.HandlerFunc(h.RequestAccountDeactivationCode), authn))
+	mux.Handle("POST /v1/auth/account/deactivate", middleware.Chain(http.HandlerFunc(h.DeactivateAccount), authn))
 
 	mux.Handle("GET /v1/auth/sessions", middleware.Chain(http.HandlerFunc(h.ListSessions), authn))
 	mux.Handle("POST /v1/auth/sessions/revoke-others", middleware.Chain(http.HandlerFunc(h.RevokeOtherSessions), authn))
