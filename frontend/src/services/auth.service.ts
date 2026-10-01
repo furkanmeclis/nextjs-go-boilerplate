@@ -48,6 +48,8 @@ type SessionListResult = {
 };
 
 type StatusPayload = components["schemas"]["StatusPayload"];
+export type QRLoginCreated = components["schemas"]["QRLoginCreated"];
+export type QRLoginState = components["schemas"]["QRLoginState"];
 type PatchProfileRequest = components["schemas"]["PatchProfileRequest"];
 type ForgotPasswordRequest = components["schemas"]["ForgotPasswordRequest"];
 type ResetPasswordRequest = components["schemas"]["ResetPasswordRequest"];
@@ -98,6 +100,25 @@ export const authService = {
   async changePassword(body: ChangePasswordRequest) {
     return unwrap<StatusPayload>(
       await apiClient.POST("/v1/auth/password/change", { body }),
+    );
+  },
+
+  /** Starts a QR sign-in for this tab (login page; anonymous). */
+  async createQRLoginSession() {
+    return unwrap<QRLoginCreated>(
+      await apiClient.POST("/v1/auth/qr/sessions"),
+      { silent: true },
+    );
+  },
+
+  /** One-shot catch-up read after (re)subscribing; never polled. */
+  async getQRLoginState(sessionId: string, browserSecret: string) {
+    return unwrap<QRLoginState>(
+      await apiClient.POST("/v1/auth/qr/sessions/{id}/state", {
+        params: { path: { id: sessionId } },
+        body: { browser_secret: browserSecret },
+      }),
+      { silent: true },
     );
   },
 

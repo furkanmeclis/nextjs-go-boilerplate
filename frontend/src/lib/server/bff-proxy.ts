@@ -401,7 +401,17 @@ export function isForbiddenProxyPath(segments: string[]): boolean {
     if (seg === "" || seg === "." || seg === "..") return true;
     if (/[/\\%?#]/.test(seg)) return true;
   }
-  return segments[0] === "internal";
+  if (segments[0] === "internal") return true;
+  // QR sign-in exchange returns raw API tokens: only the NextAuth server
+  // (qr-login credentials provider) may call it, never browser JS.
+  return segments.join("/") === "auth/qr/exchange";
+}
+
+/** Edge geo headers forwarded for the QR sign-in approval screen. */
+const QR_GEO_HEADERS = ["cf-ipcountry", "cf-ipcity", "cf-region"] as const;
+
+function isQRSessionCreatePath(path: string, method: string) {
+  return method.toUpperCase() === "POST" && path === "auth/qr/sessions";
 }
 
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
@@ -457,6 +467,15 @@ export async function proxyToUpstream(
   // request would share the BFF's address (one global bucket).
   const clientIp = clientIpFromHeaders(request.headers);
   if (clientIp) headers.set("X-Forwarded-For", clientIp);
+  if (isQRSessionCreatePath(path, request.method)) {
+    // The phone shows which browser / where the sign-in request comes from.
+    const userAgent = request.headers.get("user-agent");
+    if (userAgent) headers.set("User-Agent", userAgent);
+    for (const name of QR_GEO_HEADERS) {
+      const value = request.headers.get(name);
+      if (value) headers.set(name, value);
+    }
+  }
 
   if (accessToken && !isAuthPublicTokenPath(path)) {
     headers.set("Authorization", `Bearer ${accessToken}`);

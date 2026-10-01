@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { signIn, signOut, useSession } from "next-auth/react";
 import { signIn as signInPasskey } from "next-auth/webauthn";
 import { useQuery } from "@tanstack/react-query";
-import { Fingerprint, Mail, ShieldCheck } from "lucide-react";
+import { Fingerprint, Mail, QrCode, ShieldCheck } from "lucide-react";
 import { useMemo, useState, type ReactNode } from "react";
 
 import { AppleIcon } from "@/components/icons/apple-icon";
@@ -35,6 +35,7 @@ import { authService } from "@/services/auth.service";
 import { z } from "zod";
 
 import { AuthCard } from "./auth-card";
+import { QRLoginPanel } from "./qr-login-panel";
 
 function resolveNext(raw: string | null, fallback: string) {
   // Only same-origin paths. Browsers treat a backslash like "/", so a value
@@ -102,6 +103,7 @@ export function LoginForm() {
   const emailCodeSchema = useMemo(() => createEmailCodeSchema(t), [t]);
   const [emailCodeStep, setEmailCodeStep] = useState<EmailCodeStep>("off");
   const [emailCodeEmail, setEmailCodeEmail] = useState("");
+  const [qrStep, setQrStep] = useState(false);
 
   const { data: appConfig } = useQuery({
     queryKey: ["app", "config", locale],
@@ -436,6 +438,38 @@ export function LoginForm() {
     );
   }
 
+  if (qrStep) {
+    return (
+      <AuthCard
+        title={t("auth.qr.title")}
+        description={t("auth.qr.description")}
+      >
+        <div className="space-y-4">
+          {displayError ? (
+            <Field data-invalid={true}>
+              <FieldError>{displayError}</FieldError>
+            </Field>
+          ) : null}
+          <QRLoginPanel
+            onSignedIn={finishLogin}
+            onErrorCode={(code) => setFormError(resolveCredentialsError(code))}
+          />
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full"
+            onClick={() => {
+              setFormError(null);
+              setQrStep(false);
+            }}
+          >
+            {t("common.back")}
+          </Button>
+        </div>
+      </AuthCard>
+    );
+  }
+
   if (emailCodeStep !== "off") {
     const errorBlock = displayError ? (
       <Field data-invalid={true}>
@@ -541,6 +575,20 @@ export function LoginForm() {
       description={t("auth.login.description")}
     >
       <div className="space-y-4">
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full"
+          disabled={authPending}
+          onClick={() => {
+            setFormError(null);
+            setQrStep(true);
+          }}
+        >
+          <QrCode aria-hidden />
+          {t("auth.qr.sign_in")}
+        </Button>
+
         {showPasskey ? (
           <Button
             type="button"

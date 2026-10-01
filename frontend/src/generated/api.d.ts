@@ -1113,6 +1113,168 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/auth/qr/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start a QR sign-in (web login page)
+         * @description Creates a short-lived (120 s) QR sign-in session for the calling browser
+         *     tab. Render `qr_url` (`{frontend}/login/qr/{session_id}`) as a QR; the
+         *     signed-in mobile app opens it (universal link or in-app scanner).
+         *
+         *     Keep `browser_secret` in the tab only: it is required to read the state
+         *     and to exchange an approval. `realtime` holds an **anonymous** Centrifugo
+         *     connection token (`sub: ""`) and a subscription token for exactly one
+         *     private channel `qrlogin:{random}` (unrelated to the session id). Both
+         *     expire 30 s after the session. Channel events (`data.type`):
+         *     `scanned`, `approved` (with `exchange_token`), `rejected`.
+         *
+         *     The request's User-Agent and client IP (first `X-Forwarded-For` hop) are
+         *     stored for the approval screen. Errors: `429 RATE_LIMITED` (60 / 15 min
+         *     per IP), `503 REALTIME_DISABLED`.
+         */
+        post: operations["postAuthQRSession"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/auth/qr/sessions/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * QR sign-in details (mobile)
+         * @description Shows who is asking to sign in: browser / OS parsed from the web
+         *     request's User-Agent, its IP and approximate location (`null` when
+         *     unknown), created / expiry time. The first signed-in viewer claims the
+         *     session; other accounts then get `409 QR_SESSION_CLAIMED`.
+         *
+         *     Errors: `404 QR_SESSION_NOT_FOUND` (unknown / expired / used),
+         *     `409 QR_SESSION_CLAIMED`, `429 RATE_LIMITED`.
+         */
+        get: operations["getAuthQRSession"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/auth/qr/sessions/{id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Approve a QR sign-in (mobile)
+         * @description Signs the waiting browser tab in as the caller, scoped to the caller's
+         *     active organization (the token's `oid`, re-validated at exchange).
+         *     Publishes `{type: "approved", exchange_token}` to the tab's channel;
+         *     the exchange window is 60 s. Exactly one approve / reject succeeds.
+         *
+         *     Errors: `403 ACCOUNT_DEACTIVATED`, `403 FORBIDDEN` (impersonating or
+         *     disabled), `404 QR_SESSION_NOT_FOUND`, `409 QR_SESSION_RESOLVED`,
+         *     `409 QR_SESSION_CLAIMED`, `429 RATE_LIMITED`.
+         */
+        post: operations["postAuthQRSessionApprove"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/auth/qr/sessions/{id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reject a QR sign-in (mobile)
+         * @description Publishes `{type: "rejected"}` to the tab's channel. Errors as approve
+         *     (no account-state check).
+         */
+        post: operations["postAuthQRSessionReject"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/auth/qr/sessions/{id}/state": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * QR sign-in state for the owning tab
+         * @description Read once after the tab (re)subscribes to its channel so an event sent
+         *     while the socket was down is not lost. Not meant for polling. Wrong
+         *     secrets count against 5 attempts, after which the session is deleted.
+         *
+         *     Errors: `400 QR_LOGIN_INVALID`, `404 QR_SESSION_NOT_FOUND`,
+         *     `429 RATE_LIMITED`.
+         */
+        post: operations["postAuthQRSessionState"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/auth/qr/exchange": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Redeem an approved QR sign-in (web server)
+         * @description Called by the web server (NextAuth `qr-login` credentials provider), not
+         *     by browser JS (the BFF blocks it). Needs the session id, the tab's
+         *     `browser_secret` and the `exchange_token` from the approval event.
+         *     Single use: the session is deleted on success. Returns the same token
+         *     pair as `/v1/auth/login` plus the signed-in user. The session row keeps
+         *     the User-Agent / IP of the browser that showed the QR.
+         *
+         *     Errors: `400 QR_LOGIN_INVALID` (wrong secret / token, not approved yet),
+         *     `404 QR_SESSION_NOT_FOUND`, `403 ACCOUNT_DEACTIVATED`,
+         *     `403 NO_TENANT_MEMBERSHIP`, `403 ORGANIZATION_ACCESS_EXPIRED`,
+         *     `429 RATE_LIMITED`.
+         */
+        post: operations["postAuthQRExchange"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/notifications": {
         parameters: {
             query?: never;
@@ -2081,6 +2243,108 @@ export interface components {
             data: components["schemas"]["ImpersonationResult"];
             meta: components["schemas"]["ResponseMeta"];
         };
+        QRLoginCreated: {
+            /** @description 43-char base64url id (in the QR) */
+            session_id: string;
+            /**
+             * Format: uri
+             * @example https://otopoly.app/login/qr/Zm9v...
+             */
+            qr_url: string;
+            /** @description Keep in the tab only */
+            browser_secret: string;
+            /** Format: date-time */
+            expires_at: string;
+            /**
+             * Format: int64
+             * @example 120
+             */
+            expires_in: number;
+            realtime: {
+                ws_url: string;
+                /** @description Anonymous Centrifugo connection JWT */
+                connection_token: string;
+                /** @description Subscription JWT for `channel` only */
+                subscription_token: string;
+                /** @example qrlogin:4Hq... */
+                channel: string;
+            };
+        };
+        EnvelopeQRLoginCreated: {
+            /** @enum {boolean} */
+            success: true;
+            data: components["schemas"]["QRLoginCreated"];
+            meta: components["schemas"]["ResponseMeta"];
+        };
+        QRLoginDetails: {
+            session_id: string;
+            /** @enum {string} */
+            status: "pending" | "approved" | "rejected";
+            client: {
+                /** @example Chrome */
+                browser: string;
+                /** @example 128 */
+                browser_version: string;
+                /** @example Windows */
+                os: string;
+                /** @enum {string} */
+                device_type: "desktop" | "mobile" | "tablet";
+                user_agent: string;
+            };
+            ip: string;
+            location: null | {
+                /** @example TR */
+                country_code?: string;
+                /** @description English name (GeoIP only) */
+                country?: string;
+                region?: string;
+                city?: string;
+                /** @enum {string} */
+                source?: "edge" | "geoip";
+            };
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            expires_at: string;
+        };
+        EnvelopeQRLoginDetails: {
+            /** @enum {boolean} */
+            success: true;
+            data: components["schemas"]["QRLoginDetails"];
+            meta: components["schemas"]["ResponseMeta"];
+        };
+        QRLoginState: {
+            /** @enum {string} */
+            status: "pending" | "scanned" | "approved" | "rejected";
+            /** @description Present when approved */
+            exchange_token?: string;
+        };
+        EnvelopeQRLoginState: {
+            /** @enum {boolean} */
+            success: true;
+            data: components["schemas"]["QRLoginState"];
+            meta: components["schemas"]["ResponseMeta"];
+        };
+        QRLoginExchangeRequest: {
+            session_id: string;
+            browser_secret: string;
+            exchange_token: string;
+        };
+        QRLoginExchanged: components["schemas"]["Tokens"] & {
+            user: {
+                /** Format: uuid */
+                uuid: string;
+                /** Format: email */
+                email: string;
+                name: string;
+            };
+        };
+        EnvelopeQRLoginExchanged: {
+            /** @enum {boolean} */
+            success: true;
+            data: components["schemas"]["QRLoginExchanged"];
+            meta: components["schemas"]["ResponseMeta"];
+        };
         EnvelopeStatus: {
             /** @enum {boolean} */
             success: true;
@@ -2318,6 +2582,8 @@ export interface components {
         };
     };
     parameters: {
+        /** @description QR sign-in session id (from the QR URL) */
+        QRSessionID: string;
         /** @description Resource UUID */
         ResourceUUID: string;
         Limit: number;
@@ -4107,6 +4373,182 @@ export interface operations {
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             409: components["responses"]["Conflict"];
+            429: components["responses"]["TooManyRequests"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    postAuthQRSession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description QR session created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnvelopeQRLoginCreated"];
+                };
+            };
+            429: components["responses"]["TooManyRequests"];
+            500: components["responses"]["InternalError"];
+            /** @description Realtime disabled */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getAuthQRSession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description QR sign-in session id (from the QR URL) */
+                id: components["parameters"]["QRSessionID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Session details */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnvelopeQRLoginDetails"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            429: components["responses"]["TooManyRequests"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    postAuthQRSessionApprove: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description QR sign-in session id (from the QR URL) */
+                id: components["parameters"]["QRSessionID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Approved */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnvelopeStatus"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            429: components["responses"]["TooManyRequests"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    postAuthQRSessionReject: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description QR sign-in session id (from the QR URL) */
+                id: components["parameters"]["QRSessionID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Rejected */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnvelopeStatus"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            429: components["responses"]["TooManyRequests"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    postAuthQRSessionState: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description QR sign-in session id (from the QR URL) */
+                id: components["parameters"]["QRSessionID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    browser_secret: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Current state */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnvelopeQRLoginState"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            404: components["responses"]["NotFound"];
+            429: components["responses"]["TooManyRequests"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    postAuthQRExchange: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["QRLoginExchangeRequest"];
+            };
+        };
+        responses: {
+            /** @description Authenticated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnvelopeQRLoginExchanged"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
             429: components["responses"]["TooManyRequests"];
             500: components["responses"]["InternalError"];
         };

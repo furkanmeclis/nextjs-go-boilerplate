@@ -301,3 +301,30 @@ export async function loginWithEmailCode(
   });
   return unwrap<GoTokensPayload>(result);
 }
+
+export type QRLoginExchangePayload = GoTokensPayload & {
+  user: { uuid: string; email: string; name: string };
+};
+
+/** Redeems an approved QR sign-in (server-side only; see auth.ts). */
+export async function exchangeQRLogin(
+  sessionId: string,
+  browserSecret: string,
+  exchangeToken: string,
+  clientIp?: string | null,
+) {
+  const result = await fetchUpstream("auth/qr/exchange", {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+      ...(clientIp ? { "X-Forwarded-For": clientIp } : {}),
+    },
+    body: JSON.stringify({
+      session_id: sessionId,
+      browser_secret: browserSecret,
+      exchange_token: exchangeToken,
+    }),
+  });
+  return unwrap<QRLoginExchangePayload>(result);
+}
