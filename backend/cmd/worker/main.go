@@ -127,6 +127,10 @@ func main() {
 	)
 	searchClient := searchengine.NewClient(cfg.Search, log)
 	searchIndexer := searchengine.NewIndexer(searchClient, searchReg, nil, log)
+	// Deliveries run inline here; mobile pushes go through the queue (retries).
+	queueClient := queue.NewClient(cfg.Redis)
+	defer func() { _ = queueClient.Close() }()
+	notifSvc.WithPushQueue(queueClient)
 	persist := logging.Attach(log, logsSvc)
 	log = persist.Logger()
 	defer persist.Close()

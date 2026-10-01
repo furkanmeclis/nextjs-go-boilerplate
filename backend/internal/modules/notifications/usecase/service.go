@@ -67,6 +67,7 @@ type Service struct {
 	syncMode     bool // when queue is nil, deliver inline
 	vapid        *VAPIDConfig
 	expo         *expoClient
+	pushQueue    Enqueuer
 	actionSecret []byte
 	actionTTL    time.Duration
 }

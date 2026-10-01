@@ -66,6 +66,13 @@ func (s *Service) WithExpo(cfg ExpoConfig) *Service {
 	return s
 }
 
+// WithPushQueue sends mobile pushes through the queue (retries on Expo
+// errors) even when notification delivery itself runs inline (worker).
+func (s *Service) WithPushQueue(enq Enqueuer) *Service {
+	s.pushQueue = enq
+	return s
+}
+
 // pushDeviceStore is the persistence surface for mobile devices.
 type pushDeviceStore interface {
 	UpsertPushDevice(ctx context.Context, arg db.UpsertPushDeviceParams) (db.PushDevice, error)
@@ -189,10 +196,14 @@ func (s *Service) scheduleMobilePush(ctx context.Context, row db.Notification) {
 	if err != nil || !has {
 		return
 	}
-	if !s.syncMode && s.queue != nil {
+	enq := s.pushQueue
+	if enq == nil && !s.syncMode {
+		enq = s.queue
+	}
+	if enq != nil {
 		task, err := queue.NewPushSendTask(row.ID)
 		if err == nil {
-			_, err = s.queue.Enqueue(task, queue.PushSendOptions()...)
+			_, err = enq.Enqueue(task, queue.PushSendOptions()...)
 		}
 		if err != nil {
 			s.log.Error("push_enqueue_failed", "notification_id", row.ID, "error", err)
