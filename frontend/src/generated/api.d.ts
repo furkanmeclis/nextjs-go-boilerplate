@@ -77,6 +77,9 @@ export interface paths {
         /**
          * Login
          * @description Authenticates with email/password and returns a token pair.
+         *     A self-deleted account returns `403 ACCOUNT_DEACTIVATED` (after the
+         *     password is verified); `/v1/auth/refresh` and every other sign-in path
+         *     do the same.
          */
         post: operations["postAuthLogin"];
         delete?: never;
@@ -897,7 +900,15 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Request an email sign-in code */
+        /**
+         * Request an email sign-in code
+         * @description Emails a 6-digit one-time sign-in code (valid 10 minutes, 5 attempts,
+         *     single use, stored hashed). The response is identical whether or not the
+         *     email belongs to an account. Rate limited per IP and per email.
+         *
+         *     App review: emails listed in `AUTH_REVIEW_ACCOUNTS` receive no email;
+         *     their fixed code works for that email only.
+         */
         post: operations["postAuthEmailCodeRequest"];
         delete?: never;
         options?: never;
@@ -914,7 +925,19 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Sign in with an email code */
+        /**
+         * Sign in with an email code
+         * @description Exchanges an email code for the same token pair as `/v1/auth/login`.
+         *     When the user has authenticator 2FA, a call without `totp_code` returns
+         *     `403 MFA_REQUIRED` and the email code stays valid; retry with the same
+         *     `code` plus `totp_code`. A wrong `totp_code` (`401 INVALID_MFA_CODE`)
+         *     counts against the code's 5 attempts.
+         *
+         *     Errors: `400 INVALID_EMAIL_CODE` (wrong / expired / used / exhausted),
+         *     `403 MFA_REQUIRED`, `401 INVALID_MFA_CODE`, `403 ACCOUNT_DEACTIVATED`,
+         *     `403 FORBIDDEN` (disabled by an admin), `403 NO_TENANT_MEMBERSHIP`,
+         *     `429 RATE_LIMITED`.
+         */
         post: operations["postAuthEmailCodeVerify"];
         delete?: never;
         options?: never;
@@ -931,7 +954,32 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Sign in with a native Apple / Google id_token */
+        /**
+         * Sign in with a native Apple / Google id_token
+         * @description For mobile apps using the platform SDKs. The `id_token` signature is
+         *     verified against the provider JWKS (cached), plus `iss`, `exp`, `aud`
+         *     (Apple: `AUTH_APPLE_NATIVE_CLIENT_IDS`, default `com.otopoly.app`;
+         *     Google: `AUTH_GOOGLE_NATIVE_CLIENT_IDS` plus the web client id from
+         *     OAuth settings) and `nonce` when sent (raw nonce, or its hex SHA-256
+         *     in the token).
+         *
+         *     - Identity already linked → tokens (same shape as `/v1/auth/login`,
+         *       including the `MFA_REQUIRED` / `totp_code` round-trip).
+         *     - Not linked, an account with the same email exists →
+         *       `409 OAUTH_ACCOUNT_NOT_LINKED` (same policy as the web: sign in with
+         *       the existing method and link from the profile).
+         *     - Not linked, Apple private-relay email (`@privaterelay.appleid.com`),
+         *       no account → `409 OAUTH_LINK_CHOICE_REQUIRED`; `error.details`
+         *       carries `link_ticket`, `provider`, `expires_in` (seconds, 900) and
+         *       `register_allowed` (`"true"`/`"false"`). Continue with
+         *       `/v1/auth/oauth/link/*`.
+         *     - Not linked, no account → the account is created (OAuth sign-up; needs
+         *       registration enabled, else `403 FORBIDDEN`) and tokens returned.
+         *
+         *     Apple: send `authorization_code` so the server can store a refresh
+         *     token (revoked on account deletion; needs `AUTH_APPLE_*` key config),
+         *     and `given_name` / `family_name` on the first sign-in.
+         */
         post: operations["postAuthOAuthNative"];
         delete?: never;
         options?: never;
@@ -948,7 +996,13 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Email a link code to an existing account */
+        /**
+         * Email a link code to an existing account
+         * @description "Yes, I have an account": emails a 6-digit link code (10 minutes) to
+         *     `email` if an account exists. Always `200 accepted` for a valid ticket
+         *     (no enumeration). `400 INVALID_LINK_TICKET` when the ticket is
+         *     tampered or expired.
+         */
         post: operations["postAuthOAuthLinkRequest"];
         delete?: never;
         options?: never;
@@ -965,7 +1019,15 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Link the provider identity to an existing account and sign in */
+        /**
+         * Link the provider identity to an existing account and sign in
+         * @description Verifies the link code, links the ticket's identity to the account and
+         *     returns tokens. Same `MFA_REQUIRED` / `totp_code` round-trip as login
+         *     (the code stays valid until it succeeds). Errors: `400 INVALID_LINK_TICKET`,
+         *     `400 INVALID_EMAIL_CODE`, `409 CONFLICT` (identity linked elsewhere or
+         *     the account already has another identity for this provider),
+         *     `403 ACCOUNT_DEACTIVATED`.
+         */
         post: operations["postAuthOAuthLinkVerify"];
         delete?: never;
         options?: never;
@@ -982,7 +1044,15 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Create a new account for the provider identity and sign in */
+        /**
+         * Create a new account for the provider identity and sign in
+         * @description "No, I don't have an account": creates the account exactly like an
+         *     OAuth sign-up (registration policy, default role, welcome email) with
+         *     the ticket's relay email, links the identity and returns tokens.
+         *     Retrying with the same ticket signs into the account created by the
+         *     first call. Errors: `400 INVALID_LINK_TICKET`, `403 FORBIDDEN`
+         *     (registration disabled), `409 CONFLICT` (email registered meanwhile).
+         */
         post: operations["postAuthOAuthLinkCreate"];
         delete?: never;
         options?: never;
@@ -999,7 +1069,12 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Email an account-deletion confirmation code */
+        /**
+         * Email an account-deletion confirmation code
+         * @description Sends a 6-digit confirmation code (10 minutes) to the caller's email.
+         *     Intended for passwordless accounts (Apple / Google / email code) that
+         *     cannot complete a password / passkey / TOTP step-up.
+         */
         post: operations["postAuthAccountDeactivateRequest"];
         delete?: never;
         options?: never;
@@ -1016,7 +1091,21 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Delete (deactivate) own account */
+        /**
+         * Delete (deactivate) own account
+         * @description Account deletion keeps all data: the user becomes `disabled` with
+         *     `deactivated_at`, every refresh session is revoked, stored Apple
+         *     refresh tokens are revoked via Apple `/auth/revoke` (best effort), and
+         *     every sign-in path returns `403 ACCOUNT_DEACTIVATED` afterwards.
+         *     Organizations the user owns are kept as-is (other members keep access).
+         *
+         *     Confirm with either a recent step-up grant (`/v1/auth/step-up/*`,
+         *     send `{}`) or `code` from `/v1/auth/account/deactivate/request`.
+         *     Without either → `403 STEP_UP_REQUIRED`. Wrong code →
+         *     `400 INVALID_EMAIL_CODE`. The last super admin gets `409 CONFLICT`.
+         *     Refused while impersonating (`403 FORBIDDEN`). A platform admin can
+         *     reactivate the user by setting status `active`.
+         */
         post: operations["postAuthAccountDeactivate"];
         delete?: never;
         options?: never;
@@ -1382,6 +1471,17 @@ export interface components {
              * @example CONFLICT
              * @example PASSWORD_RESET_FAILED
              * @example INTERNAL_ERROR
+             * @example MFA_REQUIRED
+             * @example INVALID_MFA_CODE
+             * @example RATE_LIMITED
+             * @example STEP_UP_REQUIRED
+             * @example ACCOUNT_DEACTIVATED
+             * @example INVALID_EMAIL_CODE
+             * @example INVALID_ID_TOKEN
+             * @example OAUTH_ACCOUNT_NOT_LINKED
+             * @example OAUTH_LINK_CHOICE_REQUIRED
+             * @example INVALID_LINK_TICKET
+             * @example OAUTH_PROVIDER_DISABLED
              */
             code: string;
             message: string;
@@ -1690,8 +1790,6 @@ export interface components {
             code: string;
             /** @description Authenticator or recovery code when 2FA is enabled */
             totp_code?: string;
-            /** @description When set, login is scoped to this organization membership */
-            organization_slug?: string;
         };
         NativeOAuthRequest: {
             /** @description Provider id_token from the native SDK */
@@ -1704,7 +1802,6 @@ export interface components {
             /** @description Apple authorization code; exchanged for a refresh token that is revoked on account deletion */
             authorization_code?: string;
             totp_code?: string;
-            organization_slug?: string;
         };
         OAuthLinkRequest: {
             /** @description From `OAUTH_LINK_CHOICE_REQUIRED` error details (valid 15 minutes) */
@@ -1721,12 +1818,10 @@ export interface components {
             email: string;
             code: string;
             totp_code?: string;
-            organization_slug?: string;
         };
         OAuthLinkCreateRequest: {
             link_ticket: string;
             totp_code?: string;
-            organization_slug?: string;
         };
         AccountDeactivateRequest: {
             /** @description Code from `/v1/auth/account/deactivate/request`; omit to use a step-up grant */
@@ -3814,10 +3909,64 @@ export interface operations {
                 };
             };
             400: components["responses"]["BadRequest"];
-            401: components["responses"]["Unauthenticated"];
-            403: components["responses"]["Forbidden"];
+            /** @description `INVALID_ID_TOKEN` or `INVALID_MFA_CODE` */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description `MFA_REQUIRED`, `ACCOUNT_DEACTIVATED`, `OAUTH_PROVIDER_DISABLED`, `FORBIDDEN` */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
             404: components["responses"]["NotFound"];
-            409: components["responses"]["Conflict"];
+            /** @description `OAUTH_ACCOUNT_NOT_LINKED` or `OAUTH_LINK_CHOICE_REQUIRED` */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": false,
+                     *       "error": {
+                     *         "code": "OAUTH_LINK_CHOICE_REQUIRED",
+                     *         "message": "Choose whether to link this sign-in to an existing account or create a new one",
+                     *         "details": [
+                     *           {
+                     *             "field": "link_ticket",
+                     *             "message": "<opaque>"
+                     *           },
+                     *           {
+                     *             "field": "provider",
+                     *             "message": "apple"
+                     *           },
+                     *           {
+                     *             "field": "expires_in",
+                     *             "message": "900"
+                     *           },
+                     *           {
+                     *             "field": "register_allowed",
+                     *             "message": "true"
+                     *           }
+                     *         ]
+                     *       },
+                     *       "meta": {
+                     *         "request_id": "00000000-0000-0000-0000-000000000000"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
             429: components["responses"]["TooManyRequests"];
             500: components["responses"]["InternalError"];
         };

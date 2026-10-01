@@ -52,7 +52,11 @@ function isLogoutPath(path: string) {
 }
 
 function isSessionInvalidatePath(path: string) {
-  return path === "auth/password/change" || path === "auth/password/reset";
+  return (
+    path === "auth/password/change" ||
+    path === "auth/password/reset" ||
+    path === "auth/account/deactivate"
+  );
 }
 
 function isRefreshPath(path: string) {

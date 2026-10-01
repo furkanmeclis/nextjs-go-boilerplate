@@ -101,6 +101,30 @@ export const authService = {
     );
   },
 
+  async requestEmailCode(email: string) {
+    return unwrap<StatusPayload>(
+      await apiClient.POST("/v1/auth/email-code/request", {
+        body: { email },
+      }),
+      { silent: true },
+    );
+  },
+
+  async requestAccountDeactivationCode() {
+    return unwrap<StatusPayload>(
+      await apiClient.POST("/v1/auth/account/deactivate/request"),
+    );
+  },
+
+  async deactivateAccount(code: string) {
+    return unwrap<StatusPayload>(
+      await apiClient.POST("/v1/auth/account/deactivate", {
+        body: { code },
+      }),
+      { silent: true },
+    );
+  },
+
   async forgotPassword(body: ForgotPasswordRequest) {
     return unwrap<StatusPayload>(
       await apiClient.POST("/v1/auth/password/forgot", { body }),

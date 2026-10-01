@@ -2914,9 +2914,6 @@ components:
           type: string
           description: Authenticator or recovery code when 2FA is enabled
           maxLength: 32
-        organization_slug:
-          type: string
-          description: When set, login is scoped to this organization membership
 
     NativeOAuthRequest:
       type: object
@@ -2939,8 +2936,6 @@ components:
         totp_code:
           type: string
           maxLength: 32
-        organization_slug:
-          type: string
 
     OAuthLinkRequest:
       type: object
@@ -2962,7 +2957,6 @@ components:
         email: { type: string, format: email }
         code: { type: string, maxLength: 32 }
         totp_code: { type: string, maxLength: 32 }
-        organization_slug: { type: string }
 
     OAuthLinkCreateRequest:
       type: object
@@ -2970,7 +2964,6 @@ components:
       properties:
         link_ticket: { type: string }
         totp_code: { type: string, maxLength: 32 }
-        organization_slug: { type: string }
 
     AccountDeactivateRequest:
       type: object

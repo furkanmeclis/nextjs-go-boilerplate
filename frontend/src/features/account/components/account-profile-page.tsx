@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { routes } from "@/config/routes";
 import { ChangePasswordForm } from "@/features/account/components/change-password-form";
+import { DeleteAccountDialog } from "@/features/account/components/delete-account-dialog";
 import { OAuthIdentityManager } from "@/features/account/components/github-identity-manager";
 import { NotificationPreferencesForm } from "@/features/account/components/notification-preferences-form";
 import { PasskeyManager } from "@/features/account/components/passkey-manager";
@@ -252,6 +253,16 @@ export function AccountProfilePage({ shell }: { shell: AccountShell }) {
         </CardHeader>
         <CardContent>
           <ProfilePermissionsList granted={user?.permissions} />
+        </CardContent>
+      </Card>
+
+      <Card className="border-destructive/40 shadow-none">
+        <CardHeader>
+          <CardTitle>{t("auth.delete_account.title")}</CardTitle>
+          <CardHint>{t("auth.delete_account.description")}</CardHint>
+        </CardHeader>
+        <CardContent>
+          <DeleteAccountDialog />
         </CardContent>
       </Card>
     </div>

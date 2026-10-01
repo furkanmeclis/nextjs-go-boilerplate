@@ -9,17 +9,14 @@ import Passkey from "next-auth/providers/passkey";
 import { NextResponse } from "next/server";
 
 import { routes } from "@/config/routes";
-import {
-  InvalidMFACodeError,
-  MFANotEnrolledError,
-  MFARequiredError,
-} from "@/lib/auth/credentials-errors";
+import { credentialsErrorFor } from "@/lib/auth/credentials-errors";
 import { goAdapter } from "@/lib/auth/go-adapter";
 import {
   adapterGetOAuthConfig,
   adapterGetOAuthAccountUser,
   adapterGetUserByEmail,
   adapterIssueSession,
+  loginWithEmailCode,
   loginWithPassword,
   type OAuthConfigPayload,
 } from "@/lib/auth/go-adapter-client";
@@ -150,21 +147,57 @@ async function _doBuildProviders(): Promise<Provider[]> {
               message: error instanceof Error ? error.message : String(error),
               status: (error as Error & { status?: number }).status,
             });
-            if (code === "MFA_REQUIRED") {
-              throw new MFARequiredError();
-            }
-            if (code === "INVALID_MFA_CODE") {
-              throw new InvalidMFACodeError();
-            }
-            if (code === "MFA_NOT_ENROLLED") {
-              throw new MFANotEnrolledError();
-            }
+            const mapped = credentialsErrorFor(code);
+            if (mapped) throw mapped;
             return null;
           }
         },
       }),
     );
   }
+
+  // Email one-time code sign-in (always available; the Go API owns policy).
+  providers.push(
+    Credentials({
+      id: "email-code",
+      name: "Email code",
+      credentials: {
+        email: { label: "Email", type: "email" },
+        code: { label: "Code", type: "text" },
+        totp_code: { label: "Authenticator code", type: "text" },
+      },
+      async authorize(credentials, request) {
+        const email = String(credentials?.email ?? "").trim();
+        const code = String(credentials?.code ?? "").trim();
+        const totpCode = String(credentials?.totp_code ?? "").trim();
+        if (!email || !code) return null;
+        try {
+          const tokens = await loginWithEmailCode(
+            email,
+            code,
+            totpCode || undefined,
+            request instanceof Request
+              ? clientIpFromHeaders(request.headers)
+              : null,
+          );
+          const user = await adapterGetUserByEmail(email);
+          return {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            accessToken: tokens.access_token,
+            refreshToken: tokens.refresh_token,
+            expiresIn: tokens.expires_in,
+          };
+        } catch (error) {
+          const errCode = (error as Error & { code?: string }).code;
+          const mapped = credentialsErrorFor(errCode);
+          if (mapped) throw mapped;
+          return null;
+        }
+      },
+    }),
+  );
 
   if (passkeyLogin) {
     providers.push(Passkey({}));

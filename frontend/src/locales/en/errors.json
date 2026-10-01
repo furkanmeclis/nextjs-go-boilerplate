@@ -3,5 +3,12 @@
   "forbidden_body": "You do not have a role for this panel.",
   "unauthorized_title": "Sign in required",
   "unauthorized_body": "Please sign in to continue.",
-  "role_mismatch": "Your account is not allowed on this panel."
+  "role_mismatch": "Your account is not allowed on this panel.",
+  "codes.ACCOUNT_DEACTIVATED": "This account has been deleted.",
+  "codes.INVALID_EMAIL_CODE": "The code is incorrect or has expired.",
+  "codes.INVALID_ID_TOKEN": "Sign-in with the provider failed. Please try again.",
+  "codes.OAUTH_ACCOUNT_NOT_LINKED": "An account with this email already exists. Sign in with it and link this provider from your profile.",
+  "codes.OAUTH_LINK_CHOICE_REQUIRED": "Choose whether to link to an existing account or create a new one.",
+  "codes.INVALID_LINK_TICKET": "The sign-in session expired. Please sign in again.",
+  "codes.OAUTH_PROVIDER_DISABLED": "This sign-in method is not enabled."
 }

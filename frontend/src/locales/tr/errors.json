@@ -3,5 +3,12 @@
   "forbidden_body": "Bu panele erişim için uygun rolünüz yok.",
   "unauthorized_title": "Oturum gerekli",
   "unauthorized_body": "Devam etmek için giriş yapın.",
-  "role_mismatch": "Hesabınız bu panel için uygun değil."
+  "role_mismatch": "Hesabınız bu panel için uygun değil.",
+  "codes.ACCOUNT_DEACTIVATED": "Bu hesap silinmiş.",
+  "codes.INVALID_EMAIL_CODE": "Kod hatalı veya süresi dolmuş.",
+  "codes.INVALID_ID_TOKEN": "Sağlayıcı ile giriş başarısız oldu. Lütfen tekrar deneyin.",
+  "codes.OAUTH_ACCOUNT_NOT_LINKED": "Bu e-posta ile bir hesap zaten var. O hesapla giriş yapıp bu yöntemi profilinizden bağlayın.",
+  "codes.OAUTH_LINK_CHOICE_REQUIRED": "Mevcut bir hesaba bağlamayı veya yeni hesap oluşturmayı seçin.",
+  "codes.INVALID_LINK_TICKET": "Giriş oturumunun süresi doldu. Lütfen tekrar giriş yapın.",
+  "codes.OAUTH_PROVIDER_DISABLED": "Bu giriş yöntemi etkin değil."
 }

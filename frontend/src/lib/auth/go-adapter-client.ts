@@ -279,3 +279,25 @@ export async function loginWithPassword(
   });
   return unwrap<GoTokensPayload>(result);
 }
+
+export async function loginWithEmailCode(
+  email: string,
+  code: string,
+  totpCode?: string,
+  clientIp?: string | null,
+) {
+  const result = await fetchUpstream("auth/email-code/verify", {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+      ...(clientIp ? { "X-Forwarded-For": clientIp } : {}),
+    },
+    body: JSON.stringify({
+      email,
+      code,
+      ...(totpCode ? { totp_code: totpCode } : {}),
+    }),
+  });
+  return unwrap<GoTokensPayload>(result);
+}
