@@ -127,6 +127,9 @@ paths:
       summary: Login
       description: |
         Authenticates with email/password and returns a token pair.
+        A self-deleted account returns `403 ACCOUNT_DEACTIVATED` (after the
+        password is verified); `/v1/auth/refresh` and every other sign-in path
+        do the same.
       security: []
       requestBody:
         required: true
@@ -1501,6 +1504,348 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  /v1/auth/email-code/request:
+    post:
+      tags: [Auth]
+      operationId: postAuthEmailCodeRequest
+      summary: Request an email sign-in code
+      description: |
+        Emails a 6-digit one-time sign-in code (valid 10 minutes, 5 attempts,
+        single use, stored hashed). The response is identical whether or not the
+        email belongs to an account. Rate limited per IP and per email.
+
+        App review: emails listed in `AUTH_REVIEW_ACCOUNTS` receive no email;
+        their fixed code works for that email only.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmailCodeRequest"
+      responses:
+        "200":
+          description: Accepted (always, for any well-formed email)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnvelopeStatus"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /v1/auth/email-code/verify:
+    post:
+      tags: [Auth]
+      operationId: postAuthEmailCodeVerify
+      summary: Sign in with an email code
+      description: |
+        Exchanges an email code for the same token pair as `/v1/auth/login`.
+        When the user has authenticator 2FA, a call without `totp_code` returns
+        `403 MFA_REQUIRED` and the email code stays valid; retry with the same
+        `code` plus `totp_code`. A wrong `totp_code` (`401 INVALID_MFA_CODE`)
+        counts against the code's 5 attempts.
+
+        Errors: `400 INVALID_EMAIL_CODE` (wrong / expired / used / exhausted),
+        `403 MFA_REQUIRED`, `401 INVALID_MFA_CODE`, `403 ACCOUNT_DEACTIVATED`,
+        `403 FORBIDDEN` (disabled by an admin), `403 NO_TENANT_MEMBERSHIP`,
+        `429 RATE_LIMITED`.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmailCodeVerifyRequest"
+      responses:
+        "200":
+          description: Authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnvelopeTokens"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /v1/auth/oauth/{provider}/native:
+    post:
+      tags: [Auth]
+      operationId: postAuthOAuthNative
+      summary: Sign in with a native Apple / Google id_token
+      description: |
+        For mobile apps using the platform SDKs. The `id_token` signature is
+        verified against the provider JWKS (cached), plus `iss`, `exp`, `aud`
+        (Apple: `AUTH_APPLE_NATIVE_CLIENT_IDS`, default `com.otopoly.app`;
+        Google: `AUTH_GOOGLE_NATIVE_CLIENT_IDS` plus the web client id from
+        OAuth settings) and `nonce` when sent (raw nonce, or its hex SHA-256
+        in the token).
+
+        - Identity already linked → tokens (same shape as `/v1/auth/login`,
+          including the `MFA_REQUIRED` / `totp_code` round-trip).
+        - Not linked, an account with the same email exists →
+          `409 OAUTH_ACCOUNT_NOT_LINKED` (same policy as the web: sign in with
+          the existing method and link from the profile).
+        - Not linked, Apple private-relay email (`@privaterelay.appleid.com`),
+          no account → `409 OAUTH_LINK_CHOICE_REQUIRED`; `error.details`
+          carries `link_ticket`, `provider`, `expires_in` (seconds, 900) and
+          `register_allowed` (`"true"`/`"false"`). Continue with
+          `/v1/auth/oauth/link/*`.
+        - Not linked, no account → the account is created (OAuth sign-up; needs
+          registration enabled, else `403 FORBIDDEN`) and tokens returned.
+
+        Apple: send `authorization_code` so the server can store a refresh
+        token (revoked on account deletion; needs `AUTH_APPLE_*` key config),
+        and `given_name` / `family_name` on the first sign-in.
+      security: []
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [apple, google]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NativeOAuthRequest"
+      responses:
+        "200":
+          description: Authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnvelopeTokens"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          description: "`INVALID_ID_TOKEN` or `INVALID_MFA_CODE`"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: "`MFA_REQUIRED`, `ACCOUNT_DEACTIVATED`, `OAUTH_PROVIDER_DISABLED`, `FORBIDDEN`"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: "`OAUTH_ACCOUNT_NOT_LINKED` or `OAUTH_LINK_CHOICE_REQUIRED`"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                success: false
+                error:
+                  code: OAUTH_LINK_CHOICE_REQUIRED
+                  message: Choose whether to link this sign-in to an existing account or create a new one
+                  details:
+                    - { field: link_ticket, message: "<opaque>" }
+                    - { field: provider, message: apple }
+                    - { field: expires_in, message: "900" }
+                    - { field: register_allowed, message: "true" }
+                meta: { request_id: "00000000-0000-0000-0000-000000000000" }
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /v1/auth/oauth/link/request:
+    post:
+      tags: [Auth]
+      operationId: postAuthOAuthLinkRequest
+      summary: Email a link code to an existing account
+      description: |
+        "Yes, I have an account": emails a 6-digit link code (10 minutes) to
+        `email` if an account exists. Always `200 accepted` for a valid ticket
+        (no enumeration). `400 INVALID_LINK_TICKET` when the ticket is
+        tampered or expired.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OAuthLinkRequest"
+      responses:
+        "200":
+          description: Accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnvelopeStatus"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /v1/auth/oauth/link/verify:
+    post:
+      tags: [Auth]
+      operationId: postAuthOAuthLinkVerify
+      summary: Link the provider identity to an existing account and sign in
+      description: |
+        Verifies the link code, links the ticket's identity to the account and
+        returns tokens. Same `MFA_REQUIRED` / `totp_code` round-trip as login
+        (the code stays valid until it succeeds). Errors: `400 INVALID_LINK_TICKET`,
+        `400 INVALID_EMAIL_CODE`, `409 CONFLICT` (identity linked elsewhere or
+        the account already has another identity for this provider),
+        `403 ACCOUNT_DEACTIVATED`.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OAuthLinkVerifyRequest"
+      responses:
+        "200":
+          description: Linked and authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnvelopeTokens"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /v1/auth/oauth/link/create:
+    post:
+      tags: [Auth]
+      operationId: postAuthOAuthLinkCreate
+      summary: Create a new account for the provider identity and sign in
+      description: |
+        "No, I don't have an account": creates the account exactly like an
+        OAuth sign-up (registration policy, default role, welcome email) with
+        the ticket's relay email, links the identity and returns tokens.
+        Retrying with the same ticket signs into the account created by the
+        first call. Errors: `400 INVALID_LINK_TICKET`, `403 FORBIDDEN`
+        (registration disabled), `409 CONFLICT` (email registered meanwhile).
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OAuthLinkCreateRequest"
+      responses:
+        "200":
+          description: Created and authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnvelopeTokens"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /v1/auth/account/deactivate/request:
+    post:
+      tags: [Auth]
+      operationId: postAuthAccountDeactivateRequest
+      summary: Email an account-deletion confirmation code
+      description: |
+        Sends a 6-digit confirmation code (10 minutes) to the caller's email.
+        Intended for passwordless accounts (Apple / Google / email code) that
+        cannot complete a password / passkey / TOTP step-up.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnvelopeStatus"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /v1/auth/account/deactivate:
+    post:
+      tags: [Auth]
+      operationId: postAuthAccountDeactivate
+      summary: Delete (deactivate) own account
+      description: |
+        Account deletion keeps all data: the user becomes `disabled` with
+        `deactivated_at`, every refresh session is revoked, stored Apple
+        refresh tokens are revoked via Apple `/auth/revoke` (best effort), and
+        every sign-in path returns `403 ACCOUNT_DEACTIVATED` afterwards.
+        Organizations the user owns are kept as-is (other members keep access).
+
+        Confirm with either a recent step-up grant (`/v1/auth/step-up/*`,
+        send `{}`) or `code` from `/v1/auth/account/deactivate/request`.
+        Without either → `403 STEP_UP_REQUIRED`. Wrong code →
+        `400 INVALID_EMAIL_CODE`. The last super admin gets `409 CONFLICT`.
+        Refused while impersonating (`403 FORBIDDEN`). A platform admin can
+        reactivate the user by setting status `active`.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AccountDeactivateRequest"
+      responses:
+        "200":
+          description: Deactivated (`data.status = deactivated`)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnvelopeStatus"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
   /v1/notifications:
     get:
       tags: [Notifications]
@@ -2081,6 +2426,17 @@ components:
             - CONFLICT
             - PASSWORD_RESET_FAILED
             - INTERNAL_ERROR
+            - MFA_REQUIRED
+            - INVALID_MFA_CODE
+            - RATE_LIMITED
+            - STEP_UP_REQUIRED
+            - ACCOUNT_DEACTIVATED
+            - INVALID_EMAIL_CODE
+            - INVALID_ID_TOKEN
+            - OAUTH_ACCOUNT_NOT_LINKED
+            - OAUTH_LINK_CHOICE_REQUIRED
+            - INVALID_LINK_TICKET
+            - OAUTH_PROVIDER_DISABLED
         message:
           type: string
         details:
@@ -2538,6 +2894,91 @@ components:
         locale:
           type: string
           enum: [tr, en]
+
+    EmailCodeRequest:
+      type: object
+      required: [email]
+      properties:
+        email: { type: string, format: email }
+
+    EmailCodeVerifyRequest:
+      type: object
+      required: [email, code]
+      properties:
+        email: { type: string, format: email }
+        code:
+          type: string
+          description: 6-digit code from the email
+          maxLength: 32
+        totp_code:
+          type: string
+          description: Authenticator or recovery code when 2FA is enabled
+          maxLength: 32
+        organization_slug:
+          type: string
+          description: When set, login is scoped to this organization membership
+
+    NativeOAuthRequest:
+      type: object
+      required: [id_token]
+      properties:
+        id_token:
+          type: string
+          description: Provider id_token from the native SDK
+        nonce:
+          type: string
+          description: Raw nonce passed to the SDK (token may carry it raw or SHA-256 hex)
+        given_name:
+          type: string
+          description: Apple first sign-in only (Apple sends the name to the app, not in the token)
+        family_name:
+          type: string
+        authorization_code:
+          type: string
+          description: Apple authorization code; exchanged for a refresh token that is revoked on account deletion
+        totp_code:
+          type: string
+          maxLength: 32
+        organization_slug:
+          type: string
+
+    OAuthLinkRequest:
+      type: object
+      required: [link_ticket, email]
+      properties:
+        link_ticket:
+          type: string
+          description: From `OAUTH_LINK_CHOICE_REQUIRED` error details (valid 15 minutes)
+        email:
+          type: string
+          format: email
+          description: Email of the existing account
+
+    OAuthLinkVerifyRequest:
+      type: object
+      required: [link_ticket, email, code]
+      properties:
+        link_ticket: { type: string }
+        email: { type: string, format: email }
+        code: { type: string, maxLength: 32 }
+        totp_code: { type: string, maxLength: 32 }
+        organization_slug: { type: string }
+
+    OAuthLinkCreateRequest:
+      type: object
+      required: [link_ticket]
+      properties:
+        link_ticket: { type: string }
+        totp_code: { type: string, maxLength: 32 }
+        organization_slug: { type: string }
+
+    AccountDeactivateRequest:
+      type: object
+      properties:
+        code:
+          type: string
+          description: Code from `/v1/auth/account/deactivate/request`; omit to use a step-up grant
+          maxLength: 32
 
     ForgotPasswordRequest:
       type: object
