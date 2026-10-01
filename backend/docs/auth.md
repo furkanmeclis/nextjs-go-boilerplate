@@ -89,6 +89,21 @@ NextAuth keeps handling web OAuth; mobile apps send the SDK id_token to the API.
 - The last super admin cannot deactivate (`409`). Not allowed while impersonating.
 - Reactivation: a platform admin sets the user's status to `active` (clears `deactivated_at`).
 
+## QR sign-in (web QR approved in the mobile app)
+
+Module: `internal/modules/qrlogin`. State is Redis only (`app:<env>:qrlogin:<sha256(id)>`, TTL 120 s; 60 s exchange window after approval). No migration.
+
+1. Web login page → `POST /v1/auth/qr/sessions` (public, 60 / 15 min per IP). Returns `session_id` (QR: `{PUBLIC_FRONTEND_URL}/login/qr/{id}`), a `browser_secret` that stays in the tab, and an **anonymous** Centrifugo grant: connection JWT with `sub: ""` + subscription JWT for one channel `qrlogin:{random}` (not derived from the session id), both expiring 30 s after the session. The tab subscribes; it never polls. After each (re)subscribe it reads `POST /v1/auth/qr/sessions/{id}/state {browser_secret}` once to catch events missed while offline.
+2. Phone (Bearer) → `GET /v1/auth/qr/sessions/{id}`: browser / OS from the web request's User-Agent, IP, approximate location, created / expires. The first viewer claims the session (`409 QR_SESSION_CLAIMED` for other accounts); the tab gets `{type:"scanned"}`.
+3. `POST …/{id}/approve` (caller's active org, re-validated at exchange) or `…/reject`. One Lua script per transition, so exactly one approve / reject wins (`409 QR_SESSION_RESOLVED`). Deactivated accounts get `403 ACCOUNT_DEACTIVATED`; impersonation sessions cannot approve. Events: `{type:"approved", exchange_token}` / `{type:"rejected"}`.
+4. NextAuth `qr-login` credentials provider → `POST /v1/auth/qr/exchange {session_id, browser_secret, exchange_token}` → normal token pair (+ `user`). Single use (key deleted); 5 wrong secrets delete the session. The BFF refuses `/api/v1/auth/qr/exchange` from browsers. No TOTP prompt: the approving phone already holds a signed-in session.
+
+Location: `AUTH_QR_TRUST_GEO_HEADERS=true` trusts `CF-IPCountry` / `CF-IPCity` / `CF-Region` (only behind Cloudflare with visitor location headers, otherwise they are spoofable); else `AUTH_QR_GEOIP_DB` (GeoLite2-City `.mmdb`); else IP only. The BFF forwards User-Agent and these headers for the create call only.
+
+Centrifugo: namespace `qrlogin` (all client permissions off) in `deploy/centrifugo/config*.json`. Anonymous JWT connections need no extra flag; `allow_anonymous_connect_without_token` stays off. Restart Centrifugo after deploying the config.
+
+Phishing note: QR sign-in can be abused by showing a victim an attacker's QR. The approval screen shows browser, IP and location and the app warns to approve only codes on a screen in front of you.
+
 ## Linked identities
 
 | Method | Path | Auth |

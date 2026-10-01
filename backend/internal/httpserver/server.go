@@ -49,6 +49,7 @@ import (
 	notifhandler "github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/modules/notifications/handler"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/modules/notifications/providers"
 	notifusecase "github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/modules/notifications/usecase"
+	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/modules/qrlogin"
 	searchmodule "github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/modules/search"
 	searchhandler "github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/modules/search/handler"
 	searchusecase "github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/modules/search/usecase"
@@ -240,6 +241,18 @@ func New(cfg config.Config, log *slog.Logger, deps Deps) (*Server, error) {
 	loader := identity.Loader{UC: uc}
 	authmodule.RegisterRoutes(mux, h, tokens, loader, stepUpSvc)
 	realtime.RegisterRoutes(mux, realtime.NewHandler(rtIssuer, uc), tokens, loader)
+
+	qrGeo, err := qrlogin.NewLocator(cfg.Auth.QRGeoIPDB, cfg.Auth.QRTrustGeoHeaders)
+	if err != nil {
+		// Location is a hint only: keep QR sign-in up and show the IP.
+		log.Warn("qrlogin_geoip_unavailable", "error", err)
+	}
+	var qrIssuer qrlogin.TokenIssuer
+	if rtIssuer != nil {
+		qrIssuer = rtIssuer
+	}
+	qrSvc := qrlogin.NewService(qrlogin.NewStore(deps.Redis, cfg.App.Env), uc, qrIssuer, deps.Realtime, cfg.Auth.FrontendURL, log)
+	qrlogin.RegisterRoutes(mux, qrlogin.NewHandler(qrSvc, qrGeo, ratelimit.New(deps.Redis, cfg.App.Env)), tokens, loader)
 
 	nh := notifhandler.New(notifSvc)
 	notifmodule.RegisterRoutes(mux, nh, tokens, loader)

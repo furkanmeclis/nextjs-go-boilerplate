@@ -49,6 +49,12 @@ type AuthConfig struct {
 	AppleTeamID     string
 	AppleKeyID      string
 	ApplePrivateKey string
+	// QR sign-in location lookup. QRGeoIPDB is an optional MaxMind
+	// GeoLite2-City .mmdb path (AUTH_QR_GEOIP_DB). QRTrustGeoHeaders trusts
+	// edge geo headers (CF-IPCountry / CF-IPCity / CF-Region) and must only be
+	// on when the edge (Cloudflare) overwrites them (AUTH_QR_TRUST_GEO_HEADERS).
+	QRGeoIPDB         string
+	QRTrustGeoHeaders bool
 }
 
 // VAPIDConfig holds Web Push keys (empty = push disabled).
@@ -257,6 +263,8 @@ func Load() (Config, error) {
 			AppleTeamID:           getEnv("AUTH_APPLE_TEAM_ID", ""),
 			AppleKeyID:            getEnv("AUTH_APPLE_KEY_ID", ""),
 			ApplePrivateKey:       getEnv("AUTH_APPLE_PRIVATE_KEY", ""),
+			QRGeoIPDB:             getEnv("AUTH_QR_GEOIP_DB", ""),
+			QRTrustGeoHeaders:     getBool("AUTH_QR_TRUST_GEO_HEADERS", false),
 		},
 		JWT: JWTConfig{
 			AccessSecret:  getEnv("JWT_ACCESS_SECRET", "app-dev-access-secret-change-me-32b"),

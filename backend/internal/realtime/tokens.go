@@ -100,3 +100,45 @@ func (i *TokenIssuer) SubscriptionToken(userUUID, channel string) (string, time.
 	}
 	return signed, exp, nil
 }
+
+// AnonymousConnectionToken issues a Centrifugo connection JWT with an empty
+// sub (anonymous user) that expires at exp. It grants no channel by itself:
+// every namespace keeps allow_subscribe_for_client=false, so the holder can
+// only join channels it also has a subscription token for.
+func (i *TokenIssuer) AnonymousConnectionToken(exp time.Time) (string, error) {
+	if i == nil {
+		return "", fmt.Errorf("realtime: token issuer disabled")
+	}
+	claims := jwt.MapClaims{
+		"sub": "",
+		"exp": exp.Unix(),
+		"iat": time.Now().UTC().Unix(),
+	}
+	signed, err := jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString(i.secret)
+	if err != nil {
+		return "", fmt.Errorf("realtime: sign anonymous connection token: %w", err)
+	}
+	return signed, nil
+}
+
+// AnonymousSubscriptionToken issues a subscription JWT for one channel to an
+// anonymous connection (sub must match the connection's empty sub).
+func (i *TokenIssuer) AnonymousSubscriptionToken(channel string, exp time.Time) (string, error) {
+	if i == nil {
+		return "", fmt.Errorf("realtime: token issuer disabled")
+	}
+	if channel == "" {
+		return "", fmt.Errorf("realtime: channel is required")
+	}
+	claims := jwt.MapClaims{
+		"sub":     "",
+		"channel": channel,
+		"exp":     exp.Unix(),
+		"iat":     time.Now().UTC().Unix(),
+	}
+	signed, err := jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString(i.secret)
+	if err != nil {
+		return "", fmt.Errorf("realtime: sign anonymous subscription token: %w", err)
+	}
+	return signed, nil
+}

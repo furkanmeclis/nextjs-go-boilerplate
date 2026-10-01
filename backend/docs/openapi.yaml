@@ -1846,6 +1846,225 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  /v1/auth/qr/sessions:
+    post:
+      tags: [Auth]
+      operationId: postAuthQRSession
+      summary: Start a QR sign-in (web login page)
+      description: |
+        Creates a short-lived (120 s) QR sign-in session for the calling browser
+        tab. Render `qr_url` (`{frontend}/login/qr/{session_id}`) as a QR; the
+        signed-in mobile app opens it (universal link or in-app scanner).
+
+        Keep `browser_secret` in the tab only: it is required to read the state
+        and to exchange an approval. `realtime` holds an **anonymous** Centrifugo
+        connection token (`sub: ""`) and a subscription token for exactly one
+        private channel `qrlogin:{random}` (unrelated to the session id). Both
+        expire 30 s after the session. Channel events (`data.type`):
+        `scanned`, `approved` (with `exchange_token`), `rejected`.
+
+        The request's User-Agent and client IP (first `X-Forwarded-For` hop) are
+        stored for the approval screen. Errors: `429 RATE_LIMITED` (60 / 15 min
+        per IP), `503 REALTIME_DISABLED`.
+      security: []
+      responses:
+        "201":
+          description: QR session created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnvelopeQRLoginCreated"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "503":
+          description: Realtime disabled
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /v1/auth/qr/sessions/{id}:
+    get:
+      tags: [Auth]
+      operationId: getAuthQRSession
+      summary: QR sign-in details (mobile)
+      description: |
+        Shows who is asking to sign in: browser / OS parsed from the web
+        request's User-Agent, its IP and approximate location (`null` when
+        unknown), created / expiry time. The first signed-in viewer claims the
+        session; other accounts then get `409 QR_SESSION_CLAIMED`.
+
+        Errors: `404 QR_SESSION_NOT_FOUND` (unknown / expired / used),
+        `409 QR_SESSION_CLAIMED`, `429 RATE_LIMITED`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/QRSessionID"
+      responses:
+        "200":
+          description: Session details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnvelopeQRLoginDetails"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /v1/auth/qr/sessions/{id}/approve:
+    post:
+      tags: [Auth]
+      operationId: postAuthQRSessionApprove
+      summary: Approve a QR sign-in (mobile)
+      description: |
+        Signs the waiting browser tab in as the caller.
+        Publishes `{type: "approved", exchange_token}` to the tab's channel;
+        the exchange window is 60 s. Exactly one approve / reject succeeds.
+
+        Errors: `403 ACCOUNT_DEACTIVATED`, `403 FORBIDDEN` (impersonating or
+        disabled), `404 QR_SESSION_NOT_FOUND`, `409 QR_SESSION_RESOLVED`,
+        `409 QR_SESSION_CLAIMED`, `429 RATE_LIMITED`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/QRSessionID"
+      responses:
+        "200":
+          description: Approved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnvelopeStatus"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /v1/auth/qr/sessions/{id}/reject:
+    post:
+      tags: [Auth]
+      operationId: postAuthQRSessionReject
+      summary: Reject a QR sign-in (mobile)
+      description: |
+        Publishes `{type: "rejected"}` to the tab's channel. Errors as approve
+        (no account-state check).
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/QRSessionID"
+      responses:
+        "200":
+          description: Rejected
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnvelopeStatus"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /v1/auth/qr/sessions/{id}/state:
+    post:
+      tags: [Auth]
+      operationId: postAuthQRSessionState
+      summary: QR sign-in state for the owning tab
+      description: |
+        Read once after the tab (re)subscribes to its channel so an event sent
+        while the socket was down is not lost. Not meant for polling. Wrong
+        secrets count against 5 attempts, after which the session is deleted.
+
+        Errors: `400 QR_LOGIN_INVALID`, `404 QR_SESSION_NOT_FOUND`,
+        `429 RATE_LIMITED`.
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/QRSessionID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [browser_secret]
+              additionalProperties: false
+              properties:
+                browser_secret: { type: string }
+      responses:
+        "200":
+          description: Current state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnvelopeQRLoginState"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /v1/auth/qr/exchange:
+    post:
+      tags: [Auth]
+      operationId: postAuthQRExchange
+      summary: Redeem an approved QR sign-in (web server)
+      description: |
+        Called by the web server (NextAuth `qr-login` credentials provider), not
+        by browser JS (the BFF blocks it). Needs the session id, the tab's
+        `browser_secret` and the `exchange_token` from the approval event.
+        Single use: the session is deleted on success. Returns the same token
+        pair as `/v1/auth/login` plus the signed-in user. The session row keeps
+        the User-Agent / IP of the browser that showed the QR.
+
+        Errors: `400 QR_LOGIN_INVALID` (wrong secret / token, not approved yet),
+        `404 QR_SESSION_NOT_FOUND`, `403 ACCOUNT_DEACTIVATED`,
+        `429 RATE_LIMITED`.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QRLoginExchangeRequest"
+      responses:
+        "200":
+          description: Authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnvelopeQRLoginExchanged"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
   /v1/notifications:
     get:
       tags: [Notifications]
@@ -2267,6 +2486,12 @@ components:
       bearerFormat: JWT
 
   parameters:
+    QRSessionID:
+      name: id
+      in: path
+      required: true
+      description: QR sign-in session id (from the QR URL)
+      schema: { type: string, pattern: "^[A-Za-z0-9_-]{43}$" }
     ResourceUUID:
       name: uuid
       in: path
@@ -3317,6 +3542,115 @@ components:
       properties:
         success: { type: boolean, enum: [true] }
         data: { $ref: "#/components/schemas/ImpersonationResult" }
+        meta: { $ref: "#/components/schemas/ResponseMeta" }
+
+    QRLoginCreated:
+      type: object
+      required: [session_id, qr_url, browser_secret, expires_at, expires_in, realtime]
+      properties:
+        session_id: { type: string, description: "43-char base64url id (in the QR)" }
+        qr_url: { type: string, format: uri, examples: ["https://app.example.com/login/qr/Zm9v..."] }
+        browser_secret: { type: string, description: Keep in the tab only }
+        expires_at: { type: string, format: date-time }
+        expires_in: { type: integer, format: int64, examples: [120] }
+        realtime:
+          type: object
+          required: [ws_url, connection_token, subscription_token, channel]
+          properties:
+            ws_url: { type: string }
+            connection_token: { type: string, description: Anonymous Centrifugo connection JWT }
+            subscription_token: { type: string, description: Subscription JWT for `channel` only }
+            channel: { type: string, examples: ["qrlogin:4Hq..."] }
+
+    EnvelopeQRLoginCreated:
+      type: object
+      required: [success, data, meta]
+      properties:
+        success: { type: boolean, enum: [true] }
+        data: { $ref: "#/components/schemas/QRLoginCreated" }
+        meta: { $ref: "#/components/schemas/ResponseMeta" }
+
+    QRLoginDetails:
+      type: object
+      required: [session_id, status, client, ip, location, created_at, expires_at]
+      properties:
+        session_id: { type: string }
+        status: { type: string, enum: [pending, approved, rejected] }
+        client:
+          type: object
+          required: [browser, browser_version, os, device_type, user_agent]
+          properties:
+            browser: { type: string, examples: [Chrome] }
+            browser_version: { type: string, examples: ["128"] }
+            os: { type: string, examples: [Windows] }
+            device_type: { type: string, enum: [desktop, mobile, tablet] }
+            user_agent: { type: string }
+        ip: { type: string }
+        location:
+          oneOf:
+            - type: "null"
+            - type: object
+              properties:
+                country_code: { type: string, examples: [TR] }
+                country: { type: string, description: English name (GeoIP only) }
+                region: { type: string }
+                city: { type: string }
+                source: { type: string, enum: [edge, geoip] }
+        created_at: { type: string, format: date-time }
+        expires_at: { type: string, format: date-time }
+
+    EnvelopeQRLoginDetails:
+      type: object
+      required: [success, data, meta]
+      properties:
+        success: { type: boolean, enum: [true] }
+        data: { $ref: "#/components/schemas/QRLoginDetails" }
+        meta: { $ref: "#/components/schemas/ResponseMeta" }
+
+    QRLoginState:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string, enum: [pending, scanned, approved, rejected] }
+        exchange_token: { type: string, description: Present when approved }
+
+    EnvelopeQRLoginState:
+      type: object
+      required: [success, data, meta]
+      properties:
+        success: { type: boolean, enum: [true] }
+        data: { $ref: "#/components/schemas/QRLoginState" }
+        meta: { $ref: "#/components/schemas/ResponseMeta" }
+
+    QRLoginExchangeRequest:
+      type: object
+      required: [session_id, browser_secret, exchange_token]
+      additionalProperties: false
+      properties:
+        session_id: { type: string }
+        browser_secret: { type: string }
+        exchange_token: { type: string }
+
+    QRLoginExchanged:
+      allOf:
+        - $ref: "#/components/schemas/Tokens"
+        - type: object
+          required: [user]
+          properties:
+            user:
+              type: object
+              required: [uuid, email, name]
+              properties:
+                uuid: { type: string, format: uuid }
+                email: { type: string, format: email }
+                name: { type: string }
+
+    EnvelopeQRLoginExchanged:
+      type: object
+      required: [success, data, meta]
+      properties:
+        success: { type: boolean, enum: [true] }
+        data: { $ref: "#/components/schemas/QRLoginExchanged" }
         meta: { $ref: "#/components/schemas/ResponseMeta" }
 
     EnvelopeStatus:

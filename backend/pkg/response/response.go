@@ -37,6 +37,10 @@ const (
 	CodeOAuthLinkChoiceRequired = "OAUTH_LINK_CHOICE_REQUIRED"
 	CodeInvalidLinkTicket       = "INVALID_LINK_TICKET"
 	CodeOAuthProviderDisabled   = "OAUTH_PROVIDER_DISABLED"
+	CodeQRSessionNotFound       = "QR_SESSION_NOT_FOUND"
+	CodeQRSessionResolved       = "QR_SESSION_RESOLVED"
+	CodeQRSessionClaimed        = "QR_SESSION_CLAIMED"
+	CodeQRLoginInvalid          = "QR_LOGIN_INVALID"
 )
 
 // RequestIDFunc resolves the correlation id from request context.

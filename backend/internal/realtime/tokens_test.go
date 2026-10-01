@@ -55,3 +55,39 @@ func TestDisabledIssuer(t *testing.T) {
 		t.Fatal("expected nil issuer when disabled")
 	}
 }
+
+func TestAnonymousTokens(t *testing.T) {
+	t.Parallel()
+	issuer, err := realtime.NewTokenIssuer(config.CentrifugoConfig{Enabled: true, TokenHMAC: "unit-test-hmac-secret"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	exp := time.Now().Add(2 * time.Minute)
+	conn, err := issuer.AnonymousConnectionToken(exp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sub, err := issuer.AnonymousSubscriptionToken(realtime.QRLoginChannel("abc"), exp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, raw := range map[string]string{"conn": conn, "sub": sub} {
+		parsed, err := jwt.Parse(raw, func(*jwt.Token) (any, error) { return []byte("unit-test-hmac-secret"), nil })
+		if err != nil || !parsed.Valid {
+			t.Fatalf("%s parse: %v", name, err)
+		}
+		claims, _ := parsed.Claims.(jwt.MapClaims)
+		if claims["sub"] != "" {
+			t.Fatalf("%s sub = %v, want anonymous", name, claims["sub"])
+		}
+		if int64(claims["exp"].(float64)) != exp.Unix() {
+			t.Fatalf("%s exp mismatch", name)
+		}
+		if name == "sub" && claims["channel"] != "qrlogin:abc" {
+			t.Fatalf("channel = %v", claims["channel"])
+		}
+	}
+	if _, err := issuer.AnonymousSubscriptionToken("", exp); err == nil {
+		t.Fatal("empty channel must fail")
+	}
+}
