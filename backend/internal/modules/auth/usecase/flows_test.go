@@ -649,3 +649,25 @@ func TestNativeSignUpHasNoPassword(t *testing.T) {
 		t.Fatal("password user must have PasswordSet")
 	}
 }
+
+func TestPasswordResetSetsPasswordSet(t *testing.T) {
+	e := newFlowEnv(t)
+	ctx := context.Background()
+	e.verify.claims = oidc.Claims{Subject: "g-10", Email: "oauth@example.com", EmailVerified: true}
+	if _, err := e.uc.NativeOAuthLogin(ctx, NativeOAuthInput{Provider: "google", IDToken: "t"}, model.SessionMeta{}); err != nil {
+		t.Fatal(err)
+	}
+	if e.repo.byEmail["oauth@example.com"].PasswordSet {
+		t.Fatal("OAuth sign-up must start without a password")
+	}
+	if err := e.uc.ForgotPassword(ctx, "oauth@example.com"); err != nil {
+		t.Fatal(err)
+	}
+	code := e.notif.lastCode(t, "auth.password_reset")
+	if err := e.uc.ResetPassword(ctx, "oauth@example.com", code, "NewSecret123!"); err != nil {
+		t.Fatalf("reset: %v", err)
+	}
+	if !e.repo.byEmail["oauth@example.com"].PasswordSet {
+		t.Fatal("password reset must set password_set")
+	}
+}
