@@ -491,8 +491,38 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        /** Unlink an OAuth identity */
+        /**
+         * Unlink an OAuth identity
+         * @description `409 LAST_SIGN_IN_METHOD` when the user has no password
+         *     (`has_password: false`), no passkey and this is the last linked identity.
+         */
         delete: operations["deleteAuthIdentity"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/auth/identities/{provider}/native": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Link a native Apple / Google id_token to the current user
+         * @description Mobile "linked accounts" screen. The `id_token` is verified exactly like
+         *     `POST /v1/auth/oauth/{provider}/native` (JWKS, `iss`, `exp`, `aud`,
+         *     `nonce`). Idempotent when the identity is already linked to the
+         *     caller. `409 CONFLICT` when the identity is linked to another user or
+         *     the caller already has a different identity for this provider.
+         *     Apple: send `authorization_code` to store a refresh token (revoked on
+         *     account deletion).
+         */
+        post: operations["postAuthIdentityNative"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -2140,6 +2170,22 @@ export interface components {
             items: components["schemas"]["LinkedIdentity"][];
             /** Format: int64 */
             total: number;
+            /** @description False when the user never chose a password (OAuth sign-up) */
+            has_password: boolean;
+        };
+        EnvelopeLinkedIdentity: {
+            /** @enum {boolean} */
+            success: true;
+            data: components["schemas"]["LinkedIdentity"];
+            meta: components["schemas"]["ResponseMeta"];
+        };
+        NativeIdentityLinkRequest: {
+            /** @description Provider id_token from the native SDK */
+            id_token: string;
+            /** @description Raw nonce passed to the SDK */
+            nonce?: string;
+            /** @description Apple authorization code; exchanged for a refresh token */
+            authorization_code?: string;
         };
         EnvelopeIdentityList: {
             /** @enum {boolean} */
@@ -3404,6 +3450,72 @@ export interface operations {
             };
             401: components["responses"]["Unauthenticated"];
             404: components["responses"]["NotFound"];
+            /** @description `LAST_SIGN_IN_METHOD` */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            500: components["responses"]["InternalError"];
+        };
+    };
+    postAuthIdentityNative: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                provider: "apple" | "google";
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NativeIdentityLinkRequest"];
+            };
+        };
+        responses: {
+            /** @description Linked */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnvelopeLinkedIdentity"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            /** @description `UNAUTHENTICATED` or `INVALID_ID_TOKEN` */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description `OAUTH_PROVIDER_DISABLED`, `ACCOUNT_DEACTIVATED`, `FORBIDDEN` */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            /** @description `CONFLICT` */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            429: components["responses"]["TooManyRequests"];
             500: components["responses"]["InternalError"];
         };
     };

@@ -99,6 +99,11 @@ func (r *Postgres) UpdatePassword(ctx context.Context, userID int64, hash string
 	return r.q.UpdateUserPasswordByID(ctx, db.UpdateUserPasswordByIDParams{ID: userID, PasswordHash: hash})
 }
 
+// MarkPasswordUnset records that the user never chose a password.
+func (r *Postgres) MarkPasswordUnset(ctx context.Context, userID int64) error {
+	return r.q.MarkUserPasswordUnset(ctx, userID)
+}
+
 func (r *Postgres) UpsertSuperAdmin(ctx context.Context, email, name, surname, hash string) (model.User, bool, error) {
 	existing, err := r.FindUserByEmail(ctx, email)
 	if err != nil && !errors.Is(err, ErrNotFound) {
@@ -637,7 +642,7 @@ func mapUser(row db.User) model.User {
 		ID: row.ID, UUID: row.Uuid, Email: row.Email, PasswordHash: row.PasswordHash,
 		Name: row.Name, Surname: row.Surname, Status: row.Status, Locale: locale,
 		EmailVerified: row.EmailVerifiedAt.Valid, CreatedAt: row.CreatedAt.Time,
-		DeactivatedAt: timePtr(row.DeactivatedAt),
+		DeactivatedAt: timePtr(row.DeactivatedAt), PasswordSet: row.PasswordSet,
 	}
 }
 

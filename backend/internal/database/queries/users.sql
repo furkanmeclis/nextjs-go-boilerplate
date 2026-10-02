@@ -22,7 +22,14 @@ WHERE id = $1 AND deleted_at IS NULL;
 
 -- name: UpdateUserPasswordByID :exec
 UPDATE users
-SET password_hash = $2
+SET password_hash = $2,
+    password_set = TRUE
+WHERE id = $1 AND deleted_at IS NULL;
+
+-- name: MarkUserPasswordUnset :exec
+-- OAuth sign-up stores a random hash; the user never chose a password.
+UPDATE users
+SET password_set = FALSE
 WHERE id = $1 AND deleted_at IS NULL;
 
 -- name: UpdateUserProfileBasics :exec

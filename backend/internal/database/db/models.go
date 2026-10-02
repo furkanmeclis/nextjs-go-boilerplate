@@ -421,6 +421,7 @@ type User struct {
 	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
 	DeletedAt       pgtype.Timestamptz `json:"deleted_at"`
 	DeactivatedAt   pgtype.Timestamptz `json:"deactivated_at"`
+	PasswordSet     bool               `json:"password_set"`
 }
 
 type UserRole struct {

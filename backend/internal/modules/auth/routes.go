@@ -58,6 +58,7 @@ func RegisterRoutes(
 	mux.HandleFunc("DELETE /v1/internal/auth/accounts", h.AdapterUnlinkOAuthAccount)
 
 	mux.Handle("GET /v1/auth/identities", middleware.Chain(http.HandlerFunc(h.ListIdentities), authn))
+	mux.Handle("POST /v1/auth/identities/{provider}/native", middleware.Chain(http.HandlerFunc(h.LinkNativeIdentity), authn))
 	mux.Handle("DELETE /v1/auth/identities/{provider}", middleware.Chain(http.HandlerFunc(h.UnlinkIdentity), authn))
 
 	mux.Handle("POST /v1/auth/logout", middleware.Chain(http.HandlerFunc(h.Logout), authn))

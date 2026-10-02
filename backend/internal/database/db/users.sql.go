@@ -61,7 +61,7 @@ func (q *Queries) CountUsersWithRole(ctx context.Context, roleSlug string) (int6
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (email, password_hash, name, surname, status, email_verified_at)
 VALUES ($1, $2, $3, $4, $5, $6)
-RETURNING id, uuid, email, password_hash, name, surname, status, email_verified_at, last_login_at, locale, created_at, updated_at, deleted_at, deactivated_at
+RETURNING id, uuid, email, password_hash, name, surname, status, email_verified_at, last_login_at, locale, created_at, updated_at, deleted_at, deactivated_at, password_set
 `
 
 type CreateUserParams struct {
@@ -98,6 +98,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.UpdatedAt,
 		&i.DeletedAt,
 		&i.DeactivatedAt,
+		&i.PasswordSet,
 	)
 	return i, err
 }
@@ -107,7 +108,7 @@ UPDATE users
 SET status = 'disabled',
     deactivated_at = COALESCE(deactivated_at, NOW())
 WHERE id = $1 AND deleted_at IS NULL
-RETURNING id, uuid, email, password_hash, name, surname, status, email_verified_at, last_login_at, locale, created_at, updated_at, deleted_at, deactivated_at
+RETURNING id, uuid, email, password_hash, name, surname, status, email_verified_at, last_login_at, locale, created_at, updated_at, deleted_at, deactivated_at, password_set
 `
 
 // Self-service account deletion: keep every row, mark the user disabled.
@@ -129,12 +130,13 @@ func (q *Queries) DeactivateUser(ctx context.Context, id int64) (User, error) {
 		&i.UpdatedAt,
 		&i.DeletedAt,
 		&i.DeactivatedAt,
+		&i.PasswordSet,
 	)
 	return i, err
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, uuid, email, password_hash, name, surname, status, email_verified_at, last_login_at, locale, created_at, updated_at, deleted_at, deactivated_at FROM users
+SELECT id, uuid, email, password_hash, name, surname, status, email_verified_at, last_login_at, locale, created_at, updated_at, deleted_at, deactivated_at, password_set FROM users
 WHERE email = $1 AND deleted_at IS NULL
 `
 
@@ -156,12 +158,13 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 		&i.UpdatedAt,
 		&i.DeletedAt,
 		&i.DeactivatedAt,
+		&i.PasswordSet,
 	)
 	return i, err
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, uuid, email, password_hash, name, surname, status, email_verified_at, last_login_at, locale, created_at, updated_at, deleted_at, deactivated_at FROM users
+SELECT id, uuid, email, password_hash, name, surname, status, email_verified_at, last_login_at, locale, created_at, updated_at, deleted_at, deactivated_at, password_set FROM users
 WHERE id = $1 AND deleted_at IS NULL
 `
 
@@ -183,12 +186,13 @@ func (q *Queries) GetUserByID(ctx context.Context, id int64) (User, error) {
 		&i.UpdatedAt,
 		&i.DeletedAt,
 		&i.DeactivatedAt,
+		&i.PasswordSet,
 	)
 	return i, err
 }
 
 const getUserByUUID = `-- name: GetUserByUUID :one
-SELECT id, uuid, email, password_hash, name, surname, status, email_verified_at, last_login_at, locale, created_at, updated_at, deleted_at, deactivated_at FROM users
+SELECT id, uuid, email, password_hash, name, surname, status, email_verified_at, last_login_at, locale, created_at, updated_at, deleted_at, deactivated_at, password_set FROM users
 WHERE uuid = $1 AND deleted_at IS NULL
 `
 
@@ -210,6 +214,7 @@ func (q *Queries) GetUserByUUID(ctx context.Context, argUuid uuid.UUID) (User, e
 		&i.UpdatedAt,
 		&i.DeletedAt,
 		&i.DeactivatedAt,
+		&i.PasswordSet,
 	)
 	return i, err
 }
@@ -258,7 +263,7 @@ func (q *Queries) ListUserUUIDsForBulk(ctx context.Context, arg ListUserUUIDsFor
 }
 
 const listUsersFiltered = `-- name: ListUsersFiltered :many
-SELECT DISTINCT u.id, u.uuid, u.email, u.password_hash, u.name, u.surname, u.status, u.email_verified_at, u.last_login_at, u.locale, u.created_at, u.updated_at, u.deleted_at, u.deactivated_at
+SELECT DISTINCT u.id, u.uuid, u.email, u.password_hash, u.name, u.surname, u.status, u.email_verified_at, u.last_login_at, u.locale, u.created_at, u.updated_at, u.deleted_at, u.deactivated_at, u.password_set
 FROM users u
 LEFT JOIN user_roles ur ON ur.user_id = u.id
 LEFT JOIN roles r ON r.id = ur.role_id
@@ -313,6 +318,7 @@ func (q *Queries) ListUsersFiltered(ctx context.Context, arg ListUsersFilteredPa
 			&i.UpdatedAt,
 			&i.DeletedAt,
 			&i.DeactivatedAt,
+			&i.PasswordSet,
 		); err != nil {
 			return nil, err
 		}
@@ -325,7 +331,7 @@ func (q *Queries) ListUsersFiltered(ctx context.Context, arg ListUsersFilteredPa
 }
 
 const listUsersForExport = `-- name: ListUsersForExport :many
-SELECT DISTINCT u.id, u.uuid, u.email, u.password_hash, u.name, u.surname, u.status, u.email_verified_at, u.last_login_at, u.locale, u.created_at, u.updated_at, u.deleted_at, u.deactivated_at
+SELECT DISTINCT u.id, u.uuid, u.email, u.password_hash, u.name, u.surname, u.status, u.email_verified_at, u.last_login_at, u.locale, u.created_at, u.updated_at, u.deleted_at, u.deactivated_at, u.password_set
 FROM users u
 LEFT JOIN user_roles ur ON ur.user_id = u.id
 LEFT JOIN roles r ON r.id = ur.role_id
@@ -371,6 +377,7 @@ func (q *Queries) ListUsersForExport(ctx context.Context, arg ListUsersForExport
 			&i.UpdatedAt,
 			&i.DeletedAt,
 			&i.DeactivatedAt,
+			&i.PasswordSet,
 		); err != nil {
 			return nil, err
 		}
@@ -380,6 +387,18 @@ func (q *Queries) ListUsersForExport(ctx context.Context, arg ListUsersForExport
 		return nil, err
 	}
 	return items, nil
+}
+
+const markUserPasswordUnset = `-- name: MarkUserPasswordUnset :exec
+UPDATE users
+SET password_set = FALSE
+WHERE id = $1 AND deleted_at IS NULL
+`
+
+// OAuth sign-up stores a random hash; the user never chose a password.
+func (q *Queries) MarkUserPasswordUnset(ctx context.Context, id int64) error {
+	_, err := q.db.Exec(ctx, markUserPasswordUnset, id)
+	return err
 }
 
 const updateUserLastLogin = `-- name: UpdateUserLastLogin :exec
@@ -411,7 +430,8 @@ func (q *Queries) UpdateUserLocale(ctx context.Context, arg UpdateUserLocalePara
 
 const updateUserPasswordByID = `-- name: UpdateUserPasswordByID :exec
 UPDATE users
-SET password_hash = $2
+SET password_hash = $2,
+    password_set = TRUE
 WHERE id = $1 AND deleted_at IS NULL
 `
 
@@ -432,7 +452,7 @@ SET name = COALESCE($1, name),
     status = COALESCE($3, status),
     deactivated_at = CASE WHEN $3::text = 'active' THEN NULL ELSE deactivated_at END
 WHERE uuid = $4 AND deleted_at IS NULL
-RETURNING id, uuid, email, password_hash, name, surname, status, email_verified_at, last_login_at, locale, created_at, updated_at, deleted_at, deactivated_at
+RETURNING id, uuid, email, password_hash, name, surname, status, email_verified_at, last_login_at, locale, created_at, updated_at, deleted_at, deactivated_at, password_set
 `
 
 type UpdateUserPlatformParams struct {
@@ -466,6 +486,7 @@ func (q *Queries) UpdateUserPlatform(ctx context.Context, arg UpdateUserPlatform
 		&i.UpdatedAt,
 		&i.DeletedAt,
 		&i.DeactivatedAt,
+		&i.PasswordSet,
 	)
 	return i, err
 }
@@ -502,7 +523,7 @@ SET name = COALESCE($1, name),
     surname = COALESCE($2, surname),
     locale = COALESCE($3, locale)
 WHERE uuid = $4 AND deleted_at IS NULL
-RETURNING id, uuid, email, password_hash, name, surname, status, email_verified_at, last_login_at, locale, created_at, updated_at, deleted_at, deactivated_at
+RETURNING id, uuid, email, password_hash, name, surname, status, email_verified_at, last_login_at, locale, created_at, updated_at, deleted_at, deactivated_at, password_set
 `
 
 type UpdateUserProfileByUUIDParams struct {
@@ -535,6 +556,7 @@ func (q *Queries) UpdateUserProfileByUUID(ctx context.Context, arg UpdateUserPro
 		&i.UpdatedAt,
 		&i.DeletedAt,
 		&i.DeactivatedAt,
+		&i.PasswordSet,
 	)
 	return i, err
 }

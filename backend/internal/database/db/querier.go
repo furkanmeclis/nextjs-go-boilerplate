@@ -187,6 +187,8 @@ type Querier interface {
 	MarkOutboxFailed(ctx context.Context, arg MarkOutboxFailedParams) error
 	MarkOutboxPublished(ctx context.Context, id int64) error
 	MarkOutboxRetry(ctx context.Context, arg MarkOutboxRetryParams) error
+	// OAuth sign-up stores a random hash; the user never chose a password.
+	MarkUserPasswordUnset(ctx context.Context, id int64) error
 	PingDB(ctx context.Context) (int32, error)
 	QueueImportJob(ctx context.Context, argUuid uuid.UUID) (ImportJob, error)
 	RemoveUserRoleBySlug(ctx context.Context, arg RemoveUserRoleBySlugParams) error

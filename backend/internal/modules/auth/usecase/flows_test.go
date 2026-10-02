@@ -602,3 +602,50 @@ func TestNativeOAuthDisabledWithoutAudiences(t *testing.T) {
 		t.Fatalf("got %v", err)
 	}
 }
+
+func TestLinkNativeIdentity(t *testing.T) {
+	e := newFlowEnv(t)
+	ctx := context.Background()
+	u := e.user(t, "ada@example.com")
+	e.verify.claims = oidc.Claims{Subject: "a-1", Audience: "com.otopoly.app"}
+	in := NativeLinkInput{Provider: "apple", IDToken: "t", AuthorizationCode: "code"}
+	got, err := e.uc.LinkNativeIdentity(ctx, u.UUID, in)
+	if err != nil || got.Provider != "apple" {
+		t.Fatalf("link: %+v %v", got, err)
+	}
+	if len(e.repo.accounts) != 1 || e.repo.accounts[0].UserID != u.ID || e.repo.accounts[0].RefreshTokenEnc == nil {
+		t.Fatalf("account not stored with refresh token: %+v", e.repo.accounts)
+	}
+	// Idempotent for the same user.
+	if _, err := e.uc.LinkNativeIdentity(ctx, u.UUID, in); err != nil || len(e.repo.accounts) != 1 {
+		t.Fatalf("relink: %v (%d accounts)", err, len(e.repo.accounts))
+	}
+	// Same identity, another user -> conflict.
+	other := e.user(t, "bob@example.com")
+	if _, err := e.uc.LinkNativeIdentity(ctx, other.UUID, in); !errors.Is(err, ErrConflict) {
+		t.Fatalf("other user: %v", err)
+	}
+	// Different Apple identity for a user that already has one -> conflict.
+	e.verify.claims = oidc.Claims{Subject: "a-2", Audience: "com.otopoly.app"}
+	if _, err := e.uc.LinkNativeIdentity(ctx, u.UUID, in); !errors.Is(err, ErrConflict) {
+		t.Fatalf("second apple identity: %v", err)
+	}
+	e.verify.err = oidc.ErrInvalidToken
+	if _, err := e.uc.LinkNativeIdentity(ctx, u.UUID, NativeLinkInput{Provider: "google", IDToken: "t"}); !errors.Is(err, ErrInvalidIDToken) {
+		t.Fatalf("invalid token: %v", err)
+	}
+}
+
+func TestNativeSignUpHasNoPassword(t *testing.T) {
+	e := newFlowEnv(t)
+	e.verify.claims = oidc.Claims{Subject: "g-9", Email: "np@example.com", EmailVerified: true}
+	if _, err := e.uc.NativeOAuthLogin(context.Background(), NativeOAuthInput{Provider: "google", IDToken: "t"}, model.SessionMeta{}); err != nil {
+		t.Fatal(err)
+	}
+	if e.repo.byEmail["np@example.com"].PasswordSet {
+		t.Fatal("OAuth sign-up must not count as a password")
+	}
+	if !e.user(t, "pw@example.com").PasswordSet {
+		t.Fatal("password user must have PasswordSet")
+	}
+}

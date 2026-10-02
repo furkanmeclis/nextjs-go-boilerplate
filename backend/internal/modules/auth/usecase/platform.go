@@ -168,7 +168,7 @@ func buildAuthMethods(
 	passkeys []model.PasskeyRecord,
 ) []model.UserAuthMethod {
 	out := make([]model.UserAuthMethod, 0, 1+len(oauth)+len(passkeys))
-	if strings.TrimSpace(user.PasswordHash) != "" {
+	if user.PasswordSet && strings.TrimSpace(user.PasswordHash) != "" {
 		linkedAt := user.CreatedAt
 		if linkedAt.IsZero() {
 			linkedAt = time.Now().UTC()

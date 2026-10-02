@@ -20,6 +20,9 @@ type User struct {
 	CreatedAt     time.Time
 	// DeactivatedAt is set when the user deleted (deactivated) their own account.
 	DeactivatedAt *time.Time
+	// PasswordSet is false when the user never chose a password (OAuth sign-up
+	// stores a random hash).
+	PasswordSet bool
 }
 
 // UserAuthMethod is a login option linked to a platform user.

@@ -11,6 +11,7 @@ import (
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/modules/auth/model"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/modules/auth/repository"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/oidc"
+	"github.com/google/uuid"
 )
 
 const (
@@ -453,4 +454,75 @@ func firstNonBlank(values ...string) string {
 		}
 	}
 	return ""
+}
+
+// NativeLinkInput is POST /v1/auth/identities/{provider}/native.
+type NativeLinkInput struct {
+	Provider          string
+	IDToken           string
+	Nonce             string
+	AuthorizationCode string
+}
+
+// LinkNativeIdentity links a provider id_token obtained by the mobile SDK to
+// the signed-in user. Idempotent when the identity is already linked to them.
+func (u *AuthUseCase) LinkNativeIdentity(ctx context.Context, userUUID uuid.UUID, in NativeLinkInput) (model.LinkedIdentity, error) {
+	provider := strings.ToLower(strings.TrimSpace(in.Provider))
+	if provider != model.OAuthProviderApple && provider != model.OAuthProviderGoogle {
+		return model.LinkedIdentity{}, ErrNotFound
+	}
+	if strings.TrimSpace(in.IDToken) == "" {
+		return model.LinkedIdentity{}, fmt.Errorf("%w: id_token is required", ErrInvalidRequest)
+	}
+	if u.native.Verifier == nil || u.box == nil {
+		return model.LinkedIdentity{}, ErrOAuthProviderDisabled
+	}
+	audiences := u.nativeAudiences(ctx, provider)
+	if len(audiences) == 0 {
+		return model.LinkedIdentity{}, ErrOAuthProviderDisabled
+	}
+	user, err := u.repo.FindUserByUUID(ctx, userUUID)
+	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return model.LinkedIdentity{}, ErrNotFound
+		}
+		return model.LinkedIdentity{}, err
+	}
+	if err := userStatusError(user); err != nil {
+		return model.LinkedIdentity{}, err
+	}
+	claims, err := u.native.Verifier.Verify(ctx, provider, in.IDToken, audiences, in.Nonce)
+	if err != nil {
+		if errors.Is(err, oidc.ErrInvalidToken) {
+			return model.LinkedIdentity{}, ErrInvalidIDToken
+		}
+		return model.LinkedIdentity{}, err
+	}
+	t := linkTicket{Provider: provider, Subject: claims.Subject, ClientID: claims.Audience}
+	if err := u.ensureLinkable(ctx, user.ID, t); err != nil {
+		return model.LinkedIdentity{}, err
+	}
+	hasCode := provider == model.OAuthProviderApple && strings.TrimSpace(in.AuthorizationCode) != ""
+
+	// Already linked to this user: refresh the stored Apple token only.
+	if existing, err := u.repo.GetOAuthAccountByProviderAccount(ctx, provider, claims.Subject); err == nil {
+		if hasCode {
+			u.storeAppleRefreshToken(ctx, existing.ID, claims.Audience, in.AuthorizationCode)
+		}
+		return model.LinkedIdentity{Provider: provider, LinkedAt: existing.CreatedAt}, nil
+	} else if !errors.Is(err, repository.ErrNotFound) {
+		return model.LinkedIdentity{}, err
+	}
+
+	if hasCode {
+		t.RefreshToken = u.exchangeAppleCode(ctx, claims.Audience, in.AuthorizationCode)
+	}
+	if err := u.linkIdentity(ctx, user.ID, t); err != nil {
+		return model.LinkedIdentity{}, err
+	}
+	account, err := u.repo.GetOAuthAccountByProviderAccount(ctx, provider, claims.Subject)
+	if err != nil {
+		return model.LinkedIdentity{}, err
+	}
+	return model.LinkedIdentity{Provider: provider, LinkedAt: account.CreatedAt}, nil
 }

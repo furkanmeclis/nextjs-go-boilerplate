@@ -7,6 +7,7 @@ import (
 
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/modules/auth/model"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/modules/auth/usecase"
+	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/authctx"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/pkg/response"
 )
 
@@ -41,6 +42,40 @@ func (h *Handler) NativeOAuth(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	response.JSON(w, r, http.StatusOK, tokens)
+}
+
+// LinkNativeIdentity is POST /v1/auth/identities/{provider}/native (apple | google):
+// links a mobile SDK id_token to the signed-in user.
+func (h *Handler) LinkNativeIdentity(w http.ResponseWriter, r *http.Request) {
+	p, ok := authctx.PrincipalFrom(r.Context())
+	if !ok {
+		response.Unauthorized(w, r, "Authentication is required")
+		return
+	}
+	provider := strings.ToLower(strings.TrimSpace(r.PathValue("provider")))
+	if provider != model.OAuthProviderApple && provider != model.OAuthProviderGoogle {
+		response.NotFound(w, r, "Unknown OAuth provider")
+		return
+	}
+	var in struct {
+		IDToken           string `json:"id_token"`
+		Nonce             string `json:"nonce"`
+		AuthorizationCode string `json:"authorization_code"`
+	}
+	if err := decodeJSON(w, r, &in); err != nil {
+		return
+	}
+	if !h.allowRates(w, r, rateCheck{"oauth_native_ip", sessionMeta(r).IP, nativeOAuthIPLimit}) {
+		return
+	}
+	identity, err := h.uc.LinkNativeIdentity(r.Context(), p.UserID, usecase.NativeLinkInput{
+		Provider: provider, IDToken: in.IDToken, Nonce: in.Nonce, AuthorizationCode: in.AuthorizationCode,
+	})
+	if err != nil {
+		writeUsecaseError(w, r, err)
+		return
+	}
+	response.JSON(w, r, http.StatusOK, identity)
 }
 
 // OAuthLinkRequest is POST /v1/auth/oauth/link/request.

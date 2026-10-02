@@ -52,6 +52,8 @@ type LinkedIdentity struct {
 type IdentityList struct {
 	Items []LinkedIdentity `json:"items"`
 	Total int64            `json:"total"`
+	// HasPassword is false when the user never chose a password (OAuth sign-up).
+	HasPassword bool `json:"has_password"`
 }
 
 // LinkOAuthAccountInput is the adapter link payload.

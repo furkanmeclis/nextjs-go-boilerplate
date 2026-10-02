@@ -31,6 +31,7 @@ type PasskeyListResult = {
 type IdentityListResult = {
   items: LinkedIdentitySummary[];
   total: number;
+  has_password: boolean;
 };
 
 export type DeviceSession = {

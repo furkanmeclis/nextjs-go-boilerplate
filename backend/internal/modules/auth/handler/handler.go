@@ -581,6 +581,8 @@ func writeUsecaseError(w http.ResponseWriter, r *http.Request, err error) {
 		response.BadRequest(w, r, response.CodeInvalidEmailCode, "The code is invalid or expired")
 	case errors.Is(err, usecase.ErrInvalidIDToken):
 		response.Error(w, r, http.StatusUnauthorized, response.CodeInvalidIDToken, "Provider sign-in token is invalid or expired")
+	case errors.Is(err, usecase.ErrLastSignInMethod):
+		response.Conflict(w, r, response.CodeLastSignInMethod, "Set a password or add a passkey before removing your last sign-in method")
 	case errors.Is(err, usecase.ErrOAuthNotLinked):
 		response.Conflict(w, r, response.CodeOAuthAccountNotLinked, "An account with this email already exists. Sign in with your existing method and link this provider from your profile.")
 	case errors.Is(err, usecase.ErrInvalidLinkTicket):

@@ -820,6 +820,9 @@ paths:
       tags: [Auth]
       operationId: deleteAuthIdentity
       summary: Unlink an OAuth identity
+      description: |
+        `409 LAST_SIGN_IN_METHOD` when the user has no password
+        (`has_password: false`), no passkey and this is the last linked identity.
       security:
         - bearerAuth: []
       parameters:
@@ -840,6 +843,74 @@ paths:
           $ref: "#/components/responses/Unauthenticated"
         "404":
           $ref: "#/components/responses/NotFound"
+        "409":
+          description: "`LAST_SIGN_IN_METHOD`"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /v1/auth/identities/{provider}/native:
+    post:
+      tags: [Auth]
+      operationId: postAuthIdentityNative
+      summary: Link a native Apple / Google id_token to the current user
+      description: |
+        Mobile "linked accounts" screen. The `id_token` is verified exactly like
+        `POST /v1/auth/oauth/{provider}/native` (JWKS, `iss`, `exp`, `aud`,
+        `nonce`). Idempotent when the identity is already linked to the
+        caller. `409 CONFLICT` when the identity is linked to another user or
+        the caller already has a different identity for this provider.
+        Apple: send `authorization_code` to store a refresh token (revoked on
+        account deletion).
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [apple, google]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NativeIdentityLinkRequest"
+      responses:
+        "200":
+          description: Linked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnvelopeLinkedIdentity"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          description: "`UNAUTHENTICATED` or `INVALID_ID_TOKEN`"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: "`OAUTH_PROVIDER_DISABLED`, `ACCOUNT_DEACTIVATED`, `FORBIDDEN`"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: "`CONFLICT`"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
         "500":
           $ref: "#/components/responses/InternalError"
 
@@ -3401,12 +3472,37 @@ components:
 
     IdentityList:
       type: object
-      required: [items, total]
+      required: [items, total, has_password]
       properties:
         items:
           type: array
           items: { $ref: "#/components/schemas/LinkedIdentity" }
         total: { type: integer, format: int64 }
+        has_password:
+          type: boolean
+          description: False when the user never chose a password (OAuth sign-up)
+
+    EnvelopeLinkedIdentity:
+      type: object
+      required: [success, data, meta]
+      properties:
+        success: { type: boolean, enum: [true] }
+        data: { $ref: "#/components/schemas/LinkedIdentity" }
+        meta: { $ref: "#/components/schemas/ResponseMeta" }
+
+    NativeIdentityLinkRequest:
+      type: object
+      required: [id_token]
+      properties:
+        id_token:
+          type: string
+          description: Provider id_token from the native SDK
+        nonce:
+          type: string
+          description: Raw nonce passed to the SDK
+        authorization_code:
+          type: string
+          description: Apple authorization code; exchanged for a refresh token
 
     EnvelopeIdentityList:
       type: object

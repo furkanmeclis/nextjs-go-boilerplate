@@ -159,3 +159,42 @@ func TestOAuthLinkConflictWhenOwnedByAnotherUser(t *testing.T) {
 		t.Fatalf("expected conflict, got %v", err)
 	}
 }
+
+func TestUnlinkLastSignInMethod(t *testing.T) {
+	userUUID := uuid.MustParse("33333333-3333-3333-3333-333333333333")
+	user := model.User{ID: 1, UUID: userUUID, Email: "c@example.com", Status: "active"}
+	base := &memRepo{
+		users:  map[int64]model.User{1: user},
+		byUUID: map[uuid.UUID]model.User{userUUID: user},
+	}
+	repo := &oauthMemRepo{memRepo: *base, accounts: []model.OAuthAccountRecord{
+		{UserID: 1, UserUUID: userUUID, Provider: "apple", ProviderAccountID: "a"},
+		{UserID: 1, UserUUID: userUUID, Provider: "google", ProviderAccountID: "g"},
+	}}
+	uc := NewOAuth(repo, testOAuthBox(t))
+	ctx := context.Background()
+
+	list, err := uc.ListIdentities(ctx, userUUID)
+	if err != nil || list.HasPassword {
+		t.Fatalf("list: %+v %v", list, err)
+	}
+	if err := uc.UnlinkOAuthAccountForUser(ctx, userUUID, "google"); err != nil {
+		t.Fatalf("unlink with another identity left: %v", err)
+	}
+	if err := uc.UnlinkOAuthAccountForUser(ctx, userUUID, "apple"); err != ErrLastSignInMethod {
+		t.Fatalf("expected ErrLastSignInMethod, got %v", err)
+	}
+	if err := uc.UnlinkOAuthAccountForUser(ctx, userUUID, "github"); err != ErrNotFound {
+		t.Fatalf("expected not found, got %v", err)
+	}
+
+	user.PasswordSet = true
+	repo.users[1] = user
+	repo.byUUID[userUUID] = user
+	if list, _ := uc.ListIdentities(ctx, userUUID); !list.HasPassword {
+		t.Fatal("expected has_password")
+	}
+	if err := uc.UnlinkOAuthAccountForUser(ctx, userUUID, "apple"); err != nil {
+		t.Fatalf("unlink with password: %v", err)
+	}
+}

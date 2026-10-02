@@ -48,6 +48,7 @@ func (r *memRepo) CreateUser(_ context.Context, u model.User, emailVerified bool
 	r.nextID++
 	u.ID = r.nextID
 	u.UUID = uuid.New()
+	u.PasswordSet = true // DB default
 	if emailVerified {
 		u.EmailVerified = true
 	}
@@ -89,6 +90,19 @@ func (r *memRepo) UpdatePassword(_ context.Context, userID int64, hash string) e
 		return repository.ErrNotFound
 	}
 	u.PasswordHash = hash
+	u.PasswordSet = true
+	r.users[userID] = u
+	r.byEmail[u.Email] = u
+	r.byUUID[u.UUID] = u
+	return nil
+}
+
+func (r *memRepo) MarkPasswordUnset(_ context.Context, userID int64) error {
+	u, ok := r.users[userID]
+	if !ok {
+		return repository.ErrNotFound
+	}
+	u.PasswordSet = false
 	r.users[userID] = u
 	r.byEmail[u.Email] = u
 	r.byUUID[u.UUID] = u

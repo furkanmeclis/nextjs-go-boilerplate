@@ -108,8 +108,13 @@ Phishing note: QR sign-in can be abused by showing a victim an attacker's QR. Th
 
 | Method | Path | Auth |
 |--------|------|------|
-| GET | `/v1/auth/identities` | Bearer |
+| GET | `/v1/auth/identities` | Bearer → `{items, total, has_password}` |
+| POST | `/v1/auth/identities/{apple\|google}/native` | Bearer, `{id_token, nonce?, authorization_code?}` → `LinkedIdentity` |
 | DELETE | `/v1/auth/identities/{provider}` | Bearer (`github`, `google`, `facebook`, `apple`) |
+
+- `has_password` comes from `users.password_set`: OAuth / native sign-up stores a random hash and sets it `false`; any password update (reset, change, admin set) sets it `true`.
+- Native link verifies the token like native sign-in (same audiences, nonce, rate limit). Idempotent for the same user; `409 CONFLICT` when the identity belongs to another user or the user already has a different identity for that provider. Apple `authorization_code` → stored refresh token.
+- Unlink → `409 LAST_SIGN_IN_METHOD` when the user has no password, no passkey and this is the last linked identity.
 
 GitHub: `GET/PATCH /v1/platform/integrations/github`. Google / Facebook / Apple: `/v1/platform/integrations/{provider}`. Auth policy: `GET/PATCH /v1/platform/auth/settings`.
 

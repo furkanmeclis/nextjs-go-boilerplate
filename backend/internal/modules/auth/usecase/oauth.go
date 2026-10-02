@@ -143,6 +143,9 @@ func (u *OAuthUseCase) UnlinkOAuthAccountForUser(ctx context.Context, userUUID u
 		}
 		return err
 	}
+	if err := u.ensureNotLastSignInMethod(ctx, user, provider); err != nil {
+		return err
+	}
 	if err := u.repo.DeleteOAuthAccountByUserProvider(ctx, user.ID, provider); err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
 			return ErrNotFound
@@ -150,6 +153,40 @@ func (u *OAuthUseCase) UnlinkOAuthAccountForUser(ctx context.Context, userUUID u
 		return err
 	}
 	return nil
+}
+
+// ensureNotLastSignInMethod refuses to remove the only way the user can sign
+// in: no password, no passkey and provider is the last linked identity.
+func (u *OAuthUseCase) ensureNotLastSignInMethod(ctx context.Context, user model.User, provider string) error {
+	if user.PasswordSet {
+		return nil
+	}
+	accounts, err := u.repo.ListOAuthAccountsByUserID(ctx, user.ID)
+	if err != nil {
+		return err
+	}
+	linked, others := false, 0
+	for _, a := range accounts {
+		if a.Provider == provider {
+			linked = true
+		} else {
+			others++
+		}
+	}
+	if !linked {
+		return ErrNotFound
+	}
+	if others > 0 {
+		return nil
+	}
+	passkeys, err := u.repo.ListPasskeysByUserID(ctx, user.ID)
+	if err != nil {
+		return err
+	}
+	if len(passkeys) > 0 {
+		return nil
+	}
+	return ErrLastSignInMethod
 }
 
 // ListIdentities returns linked providers for a user.
@@ -173,7 +210,7 @@ func (u *OAuthUseCase) ListIdentities(ctx context.Context, userUUID uuid.UUID) (
 			LinkedAt:    row.CreatedAt,
 		})
 	}
-	return model.IdentityList{Items: items, Total: int64(len(items))}, nil
+	return model.IdentityList{Items: items, Total: int64(len(items)), HasPassword: user.PasswordSet}, nil
 }
 
 // OAuthAccountExists reports whether a provider account is already linked.

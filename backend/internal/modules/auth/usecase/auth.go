@@ -22,11 +22,13 @@ import (
 )
 
 var (
-	ErrInvalidCredentials   = errors.New("invalid credentials")
-	ErrUserDisabled         = errors.New("user is disabled")
-	ErrForbidden            = errors.New("forbidden")
-	ErrNotFound             = errors.New("not found")
-	ErrConflict             = errors.New("conflict")
+	ErrInvalidCredentials = errors.New("invalid credentials")
+	ErrUserDisabled       = errors.New("user is disabled")
+	ErrForbidden          = errors.New("forbidden")
+	ErrNotFound           = errors.New("not found")
+	ErrConflict           = errors.New("conflict")
+	// ErrLastSignInMethod: unlinking would leave the user without any way to sign in.
+	ErrLastSignInMethod     = errors.New("cannot remove the last sign-in method")
 	ErrInvalidRequest       = errors.New("invalid request")
 	ErrLastSuperAdmin       = errors.New("cannot demote the last super admin")
 	ErrSystemRole           = errors.New("system role cannot be modified")
@@ -44,6 +46,7 @@ type Repository interface {
 	FindUserByID(ctx context.Context, id int64) (model.User, error)
 	UpdateLastLogin(ctx context.Context, userID int64) error
 	UpdatePassword(ctx context.Context, userID int64, hash string) error
+	MarkPasswordUnset(ctx context.Context, userID int64) error
 	UpdateProfile(ctx context.Context, userUUID uuid.UUID, name, surname, locale *string) (model.User, error)
 	SetEmailVerified(ctx context.Context, userID int64) (model.User, error)
 	UpdateUserPlatform(ctx context.Context, id uuid.UUID, name, surname, status *string) (model.User, error)
@@ -286,6 +289,10 @@ func (u *AuthUseCase) RegisterOAuthUser(ctx context.Context, email, name, surnam
 	if err != nil {
 		return model.AdapterUser{}, err
 	}
+	if err := u.repo.MarkPasswordUnset(ctx, user.ID); err != nil {
+		return model.AdapterUser{}, err
+	}
+	user.PasswordSet = false
 	if err := u.assignDefaultRole(ctx, user.ID); err != nil {
 		return model.AdapterUser{}, err
 	}
