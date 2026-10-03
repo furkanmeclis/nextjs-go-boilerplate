@@ -56,6 +56,7 @@ Super admin bypasses permission checks in `HasPermission`. Most platform HTTP ro
 
 - 6-digit code, 10 min TTL, 5 attempts, single use, stored as SHA-256 (`otp_codes.type = login_code`).
 - `request` always answers `200 {status: accepted}` (no enumeration). Disabled / deactivated users still get a code so `verify` can report `FORBIDDEN` / `ACCOUNT_DEACTIVATED` after the mailbox is proven.
+- **Sign-up by email code**: for an email without an account, when `registration_enabled` is on, `request` sends a code too (`otp_codes.user_id` NULL) and a valid `verify` creates the user (email verified, no password, `name` = email local part, empty `surname`, default role, welcome notification) and returns tokens like a login. With registration off, unknown emails get no code and `verify` answers `400 INVALID_EMAIL_CODE` as before.
 - Users with authenticator 2FA: `verify` without `totp_code` → `403 MFA_REQUIRED`, the email code stays valid; resend with `totp_code`. A wrong TOTP burns one of the code's attempts. The admin "password login requires 2FA" policy applies to password login only.
 - Email: `auth.login_code` template (tr/en, user locale), security email (ignores preferences).
 - **App review accounts**: `AUTH_REVIEW_ACCOUNTS=review@example.com:246810,other@x.com:135790` (comma-separated `email:code`, code ≥ 6 chars). For those emails no email is sent and the fixed code signs in (also confirms account deletion). The code works only for its own email; the account must exist. Unset/empty = disabled. Rotate or remove after review.

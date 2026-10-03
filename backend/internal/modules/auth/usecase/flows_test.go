@@ -276,14 +276,75 @@ func (e *flowEnv) enableTOTP(t *testing.T, userID int64) string {
 
 func TestEmailCodeLoginNoEnumeration(t *testing.T) {
 	e := newFlowEnv(t)
+	e.uc.SetAuthSettings(testAuthGate{passwordLogin: true, registration: false})
 	if err := e.uc.RequestLoginCode(context.Background(), "nobody@example.com"); err != nil {
 		t.Fatalf("unknown email must be accepted: %v", err)
 	}
 	if len(e.notif.sent) != 0 || len(e.repo.otps) != 0 {
-		t.Fatal("no code may be issued for unknown email")
+		t.Fatal("no code may be issued for unknown email while registration is off")
 	}
 	if _, err := e.uc.VerifyLoginCode(context.Background(), "nobody@example.com", "123456", "", model.SessionMeta{}); !errors.Is(err, ErrInvalidEmailCode) {
 		t.Fatalf("got %v", err)
+	}
+	if _, ok := e.repo.byEmail["nobody@example.com"]; ok {
+		t.Fatal("no account may be created while registration is off")
+	}
+}
+
+func TestEmailCodeSignUpCreatesAccount(t *testing.T) {
+	e := newFlowEnv(t) // registration enabled
+	ctx := context.Background()
+	if err := e.uc.RequestLoginCode(ctx, " New.Person@Example.com "); err != nil {
+		t.Fatalf("request: %v", err)
+	}
+	if len(e.repo.otps) != 1 {
+		t.Fatalf("sign-up code must be issued, otps=%d", len(e.repo.otps))
+	}
+	sent := e.notif.sent[len(e.notif.sent)-1]
+	if sent.UserID != nil || sent.Recipient == nil || *sent.Recipient != "new.person@example.com" {
+		t.Fatalf("sign-up code mail must go to the address without a user id: %+v", sent)
+	}
+	code := e.notif.lastCode(t, "auth.login_code")
+
+	if _, err := e.uc.VerifyLoginCode(ctx, "new.person@example.com", "000000", "", model.SessionMeta{}); !errors.Is(err, ErrInvalidEmailCode) {
+		t.Fatalf("wrong code: %v", err)
+	}
+	if _, ok := e.repo.byEmail["new.person@example.com"]; ok {
+		t.Fatal("wrong code must not create an account")
+	}
+
+	tok, err := e.uc.VerifyLoginCode(ctx, "new.person@example.com", code, "", model.SessionMeta{})
+	if err != nil || tok.AccessToken == "" || tok.RefreshToken == "" {
+		t.Fatalf("verify: %v %+v", err, tok)
+	}
+	u, ok := e.repo.byEmail["new.person@example.com"]
+	if !ok {
+		t.Fatal("account not created")
+	}
+	if !u.EmailVerified || u.PasswordSet || u.Name != "new.person" || u.Surname != "" || u.Status != "active" {
+		t.Fatalf("user = %+v", u)
+	}
+	if e.notif.count("auth.welcome") != 1 || e.notif.count("auth.email_verification") != 0 {
+		t.Fatalf("welcome=%d verification=%d", e.notif.count("auth.welcome"), e.notif.count("auth.email_verification"))
+	}
+	if _, err := e.uc.VerifyLoginCode(ctx, "new.person@example.com", code, "", model.SessionMeta{}); !errors.Is(err, ErrInvalidEmailCode) {
+		t.Fatalf("code reuse: %v", err)
+	}
+}
+
+func TestEmailCodeSignUpRegistrationTurnedOff(t *testing.T) {
+	e := newFlowEnv(t)
+	ctx := context.Background()
+	if err := e.uc.RequestLoginCode(ctx, "late@example.com"); err != nil {
+		t.Fatal(err)
+	}
+	code := e.notif.lastCode(t, "auth.login_code")
+	e.uc.SetAuthSettings(testAuthGate{passwordLogin: true, registration: false})
+	if _, err := e.uc.VerifyLoginCode(ctx, "late@example.com", code, "", model.SessionMeta{}); !errors.Is(err, ErrInvalidEmailCode) {
+		t.Fatalf("got %v", err)
+	}
+	if _, ok := e.repo.byEmail["late@example.com"]; ok {
+		t.Fatal("no account may be created after registration was turned off")
 	}
 }
 

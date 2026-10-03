@@ -1585,6 +1585,11 @@ paths:
         single use, stored hashed). The response is identical whether or not the
         email belongs to an account. Rate limited per IP and per email.
 
+        Unknown email: when self-registration is enabled
+        (`auth_settings.registration_enabled`) a sign-up code is sent as well
+        and `/v1/auth/email-code/verify` creates the account. When it is
+        disabled no email is sent (same response).
+
         App review: emails listed in `AUTH_REVIEW_ACCOUNTS` receive no email;
         their fixed code works for that email only.
       security: []
@@ -1619,6 +1624,12 @@ paths:
         `403 MFA_REQUIRED` and the email code stays valid; retry with the same
         `code` plus `totp_code`. A wrong `totp_code` (`401 INVALID_MFA_CODE`)
         counts against the code's 5 attempts.
+
+        Sign-up: for an email without an account, when self-registration is
+        enabled, a valid code creates the user (email verified, no password,
+        `name` = email local part, empty `surname`, default role) and returns
+        tokens like a normal login. With registration disabled an unknown email gets
+        `400 INVALID_EMAIL_CODE`.
 
         Errors: `400 INVALID_EMAIL_CODE` (wrong / expired / used / exhausted),
         `403 MFA_REQUIRED`, `401 INVALID_MFA_CODE`, `403 ACCOUNT_DEACTIVATED`,

@@ -275,6 +275,10 @@ func (u *AuthUseCase) notifyWelcome(ctx context.Context, user model.User) {
 		TemplateCode: "auth.welcome", SourceEvent: "auth.register",
 		TemplateVars: map[string]string{"name": user.Name},
 	})
+	if user.EmailVerified {
+		// OAuth / email-code sign-ups already proved the mailbox.
+		return
+	}
 	_ = u.issueEmailVerification(ctx, user)
 }
 

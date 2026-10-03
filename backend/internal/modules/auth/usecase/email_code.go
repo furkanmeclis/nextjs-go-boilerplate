@@ -65,6 +65,16 @@ func (u *AuthUseCase) RequestLoginCode(ctx context.Context, email string) error 
 	user, err := u.repo.FindUserByEmail(ctx, email)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
+			if u.selfRegistrationOpen(ctx) {
+				// Sign-up by email code: the code proves the mailbox and
+				// verify creates the account. Same response as a known email.
+				return u.sendEmailCode(ctx, model.User{Email: email}, email, otpTypeLoginCode, "auth.login_code", nil)
+			}
+			// Still "accepted" for the client (no account enumeration), but
+			// leave a trace for "I never got my code" reports.
+			if u.log != nil {
+				u.log.InfoContext(ctx, "auth_email_code_unknown_account")
+			}
 			return nil
 		}
 		return err
@@ -86,7 +96,7 @@ func (u *AuthUseCase) VerifyLoginCode(ctx context.Context, email, code, totpCode
 	user, err := u.repo.FindUserByEmail(ctx, email)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
-			return model.Tokens{}, ErrInvalidEmailCode
+			return u.signUpWithEmailCode(ctx, email, code, meta)
 		}
 		return model.Tokens{}, err
 	}
@@ -113,6 +123,52 @@ func (u *AuthUseCase) VerifyLoginCode(ctx context.Context, email, code, totpCode
 	return u.completeLogin(ctx, user, meta)
 }
 
+// signUpWithEmailCode creates an account for an unknown email once its code
+// is verified (self-registration on) and signs it in.
+// With registration off it keeps the old "invalid code" answer.
+func (u *AuthUseCase) signUpWithEmailCode(ctx context.Context, email, code string, meta model.SessionMeta) (model.Tokens, error) {
+	if !u.selfRegistrationOpen(ctx) {
+		return model.Tokens{}, ErrInvalidEmailCode
+	}
+	otpID, err := u.checkEmailCode(ctx, email, otpTypeLoginCode, code)
+	if err != nil {
+		return model.Tokens{}, err
+	}
+	if err := u.consumeEmailCode(ctx, otpID); err != nil {
+		return model.Tokens{}, err
+	}
+	user, err := u.createPasswordlessUser(ctx, email, emailLocalPart(email), "", true)
+	if errors.Is(err, ErrConflict) {
+		// Created concurrently (double submit): sign in the existing account.
+		user, err = u.repo.FindUserByEmail(ctx, email)
+		if err == nil {
+			err = userStatusError(user)
+		}
+	}
+	if err != nil {
+		return model.Tokens{}, err
+	}
+	return u.completeLogin(ctx, user, meta)
+}
+
+func (u *AuthUseCase) selfRegistrationOpen(ctx context.Context) bool {
+	if u.authSettings == nil {
+		return false
+	}
+	enabled, err := u.authSettings.RegistrationEnabled(ctx)
+	return err == nil && enabled
+}
+
+// emailLocalPart is the default display name for an email-code sign-up.
+func emailLocalPart(email string) string {
+	local, _, _ := strings.Cut(email, "@")
+	local = strings.TrimSpace(local)
+	if r := []rune(local); len(r) > 100 {
+		local = string(r[:100])
+	}
+	return local
+}
+
 // sendEmailCode issues a fresh code of otpType for recipient and emails it.
 func (u *AuthUseCase) sendEmailCode(
 	ctx context.Context,
@@ -125,8 +181,13 @@ func (u *AuthUseCase) sendEmailCode(
 		return err
 	}
 	_ = u.repo.InvalidateOTPs(ctx, recipient, otpType)
-	uid := user.ID
-	if err := u.repo.CreateOTP(ctx, &uid, recipient, hashOTP(code), otpType, u.now().UTC().Add(emailCodeTTL)); err != nil {
+	// user.ID is 0 for a sign-up code (no account yet).
+	var uidPtr *int64
+	if user.ID != 0 {
+		uid := user.ID
+		uidPtr = &uid
+	}
+	if err := u.repo.CreateOTP(ctx, uidPtr, recipient, hashOTP(code), otpType, u.now().UTC().Add(emailCodeTTL)); err != nil {
 		return err
 	}
 	if u.log != nil {
@@ -143,7 +204,7 @@ func (u *AuthUseCase) sendEmailCode(
 	}
 	to := recipient
 	_, err = u.notifier.Enqueue(ctx, notifmodel.EnqueueInput{
-		UserID: &uid, Channels: []string{notifmodel.ChannelEmail},
+		UserID: uidPtr, Channels: []string{notifmodel.ChannelEmail},
 		TemplateCode: templateCode, SourceEvent: templateCode,
 		SecurityEmail: true, Recipient: &to, Language: user.Locale,
 		TemplateVars: vars,

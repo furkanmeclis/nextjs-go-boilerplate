@@ -256,48 +256,60 @@ func (u *AuthUseCase) RegisterOAuthUser(ctx context.Context, email, name, surnam
 		return model.AdapterUser{}, fmt.Errorf("%w: registration is disabled", ErrForbidden)
 	}
 
-	email = strings.ToLower(strings.TrimSpace(email))
 	name = strings.TrimSpace(name)
 	surname = strings.TrimSpace(surname)
-	if email == "" {
-		return model.AdapterUser{}, fmt.Errorf("%w: email is required", ErrInvalidRequest)
-	}
 	if name == "" {
 		name = "User"
 	}
 	if surname == "" {
 		surname = "Account"
 	}
-	if _, err := u.repo.FindUserByEmail(ctx, email); err == nil {
-		return model.AdapterUser{}, fmt.Errorf("%w: email already registered", ErrConflict)
-	} else if !errors.Is(err, repository.ErrNotFound) {
+	user, err := u.createPasswordlessUser(ctx, email, name, surname, emailVerified)
+	if err != nil {
 		return model.AdapterUser{}, err
+	}
+	return toAdapterUser(user), nil
+}
+
+// createPasswordlessUser is the self-registration path for sign-ups that never
+// set a password (OAuth, native OAuth, email code): random unusable hash
+// marked unset, default role, welcome notification. The caller has already
+// checked that registration is enabled.
+func (u *AuthUseCase) createPasswordlessUser(ctx context.Context, email, name, surname string, emailVerified bool) (model.User, error) {
+	email = strings.ToLower(strings.TrimSpace(email))
+	if email == "" {
+		return model.User{}, fmt.Errorf("%w: email is required", ErrInvalidRequest)
+	}
+	if _, err := u.repo.FindUserByEmail(ctx, email); err == nil {
+		return model.User{}, fmt.Errorf("%w: email already registered", ErrConflict)
+	} else if !errors.Is(err, repository.ErrNotFound) {
+		return model.User{}, err
 	}
 
 	random := make([]byte, 32)
 	if _, err := rand.Read(random); err != nil {
-		return model.AdapterUser{}, err
+		return model.User{}, err
 	}
 	hash, err := password.Hash(base64.RawURLEncoding.EncodeToString(random))
 	if err != nil {
-		return model.AdapterUser{}, err
+		return model.User{}, err
 	}
 
 	user, err := u.repo.CreateUser(ctx, model.User{
 		Email: email, PasswordHash: hash, Name: name, Surname: surname, Status: "active",
 	}, emailVerified)
 	if err != nil {
-		return model.AdapterUser{}, err
+		return model.User{}, err
 	}
 	if err := u.repo.MarkPasswordUnset(ctx, user.ID); err != nil {
-		return model.AdapterUser{}, err
+		return model.User{}, err
 	}
 	user.PasswordSet = false
 	if err := u.assignDefaultRole(ctx, user.ID); err != nil {
-		return model.AdapterUser{}, err
+		return model.User{}, err
 	}
 	u.notifyWelcome(ctx, user)
-	return toAdapterUser(user), nil
+	return user, nil
 }
 
 // Login authenticates and issues tokens for any active user.
