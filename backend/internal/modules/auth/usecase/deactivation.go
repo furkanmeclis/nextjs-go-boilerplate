@@ -126,12 +126,12 @@ func (u *AuthUseCase) revokeAppleTokens(ctx context.Context, userID int64) {
 			id, secret, err := u.native.Clients.ClientCredentials(ctx, model.OAuthProviderApple)
 			if err == nil {
 				clientID = id
-				if !u.native.Apple.Configured() {
+				if !u.native.Apple.Configured(ctx) {
 					clientSecret = secret
 				}
 			}
 		}
-		if clientID == "" || (clientSecret == "" && !u.native.Apple.Configured()) {
+		if clientID == "" || (clientSecret == "" && !u.native.Apple.Configured(ctx)) {
 			continue
 		}
 		rctx, cancel := context.WithTimeout(ctx, 10*time.Second)

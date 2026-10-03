@@ -45,11 +45,17 @@ func (h *Handler) PatchSettings(w http.ResponseWriter, r *http.Request) {
 	}
 	if h.activity != nil {
 		uid := actorInternalID(r)
-		h.activity.Record(r.Context(), uid, "integrations.oauth.updated", "platform.integrations."+settings.Provider, nil, map[string]any{
+		meta := map[string]any{
 			"provider":         settings.Provider,
 			"login_enabled":    settings.LoginEnabled,
 			"register_enabled": settings.RegisterEnabled,
-		}, r)
+		}
+		if settings.PrivateKeyConfigured != nil {
+			// Key id only; the key itself never leaves the service.
+			meta["private_key_configured"] = *settings.PrivateKeyConfigured
+			meta["key_id"] = *settings.KeyID
+		}
+		h.activity.Record(r.Context(), uid, "integrations.oauth.updated", "platform.integrations."+settings.Provider, nil, meta, r)
 	}
 	response.JSON(w, r, http.StatusOK, settings)
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { KeyRound } from "lucide-react";
 import { useMemo } from "react";
 
 import {
@@ -14,6 +15,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { AppleSigningKeyFields } from "@/features/integrations/oauth/components/apple-signing-key-fields";
 import { oauthProviderIcons } from "@/features/integrations/oauth/oauth-provider-icons";
 import {
   oauthProviderFormSchema,
@@ -45,6 +47,11 @@ export function OAuthProviderSettingsForm({
   const Icon = oauthProviderIcons[provider];
   const { t } = useLocale();
   const ns = `integrations.${provider}`;
+  const isApple = provider === "apple";
+  // Apple: with a signing key the web client secret is generated, so the
+  // pasted JWT is only a fallback.
+  const appleKeyActive =
+    isApple && (settings.private_key_source ?? "none") !== "none";
 
   const defaultValues = useMemo<OAuthProviderFormValues>(
     () => ({
@@ -52,6 +59,10 @@ export function OAuthProviderSettingsForm({
       register_enabled: settings.register_enabled,
       client_id: settings.client_id,
       client_secret: "",
+      team_id: settings.team_id ?? "",
+      key_id: settings.key_id ?? "",
+      private_key: "",
+      remove_private_key: false,
     }),
     [settings],
   );
@@ -65,8 +76,18 @@ export function OAuthProviderSettingsForm({
           description: t(`${ns}.form.section_hint`),
           icon: Icon,
         },
+        ...(isApple
+          ? [
+              {
+                key: "apple_signing_key",
+                label: t("integrations.apple.form.signing_key_title"),
+                description: t("integrations.apple.form.signing_key_hint"),
+                icon: KeyRound,
+              },
+            ]
+          : []),
       ]),
-    [Icon, ns, provider, t],
+    [Icon, isApple, ns, provider, t],
   );
 
   return (
@@ -138,7 +159,11 @@ export function OAuthProviderSettingsForm({
             <AppInput
               name="client_secret"
               label={t(`${ns}.form.client_secret`)}
-              description={t(`${ns}.form.client_secret_hint`)}
+              description={
+                appleKeyActive
+                  ? t("integrations.apple.form.client_secret_generated_hint")
+                  : t(`${ns}.form.client_secret_hint`)
+              }
               type="password"
               placeholder={
                 settings.client_secret_configured
@@ -148,6 +173,19 @@ export function OAuthProviderSettingsForm({
               disabled={!canWrite || isSaving}
             />
           </FormSection>
+
+          {isApple ? (
+            <FormSection
+              id={sections.id("apple_signing_key")}
+              title={t("integrations.apple.form.signing_key_title")}
+              description={t("integrations.apple.form.signing_key_hint")}
+            >
+              <AppleSigningKeyFields
+                settings={settings}
+                disabled={!canWrite || isSaving}
+              />
+            </FormSection>
+          ) : null}
 
           {canWrite ? (
             <FormActions>

@@ -12,7 +12,7 @@ import (
 )
 
 const getOAuthProviderSettings = `-- name: GetOAuthProviderSettings :one
-SELECT provider, login_enabled, register_enabled, client_id, client_secret_enc, created_at, updated_at FROM oauth_provider_settings
+SELECT provider, login_enabled, register_enabled, client_id, client_secret_enc, created_at, updated_at, apple_team_id, apple_key_id, apple_private_key_enc FROM oauth_provider_settings
 WHERE provider = $1
 `
 
@@ -27,12 +27,15 @@ func (q *Queries) GetOAuthProviderSettings(ctx context.Context, provider string)
 		&i.ClientSecretEnc,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.AppleTeamID,
+		&i.AppleKeyID,
+		&i.ApplePrivateKeyEnc,
 	)
 	return i, err
 }
 
 const listOAuthProviderSettings = `-- name: ListOAuthProviderSettings :many
-SELECT provider, login_enabled, register_enabled, client_id, client_secret_enc, created_at, updated_at FROM oauth_provider_settings
+SELECT provider, login_enabled, register_enabled, client_id, client_secret_enc, created_at, updated_at, apple_team_id, apple_key_id, apple_private_key_enc FROM oauth_provider_settings
 ORDER BY provider ASC
 `
 
@@ -53,6 +56,9 @@ func (q *Queries) ListOAuthProviderSettings(ctx context.Context) ([]OauthProvide
 			&i.ClientSecretEnc,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.AppleTeamID,
+			&i.AppleKeyID,
+			&i.ApplePrivateKeyEnc,
 		); err != nil {
 			return nil, err
 		}
@@ -69,17 +75,27 @@ UPDATE oauth_provider_settings
 SET login_enabled = COALESCE($1, login_enabled),
     register_enabled = COALESCE($2, register_enabled),
     client_id = COALESCE($3, client_id),
-    client_secret_enc = COALESCE($4, client_secret_enc)
-WHERE provider = $5
-RETURNING provider, login_enabled, register_enabled, client_id, client_secret_enc, created_at, updated_at
+    client_secret_enc = COALESCE($4, client_secret_enc),
+    apple_team_id = COALESCE($5, apple_team_id),
+    apple_key_id = COALESCE($6, apple_key_id),
+    apple_private_key_enc = CASE
+        WHEN $7::boolean THEN NULL
+        ELSE COALESCE($8, apple_private_key_enc)
+    END
+WHERE provider = $9
+RETURNING provider, login_enabled, register_enabled, client_id, client_secret_enc, created_at, updated_at, apple_team_id, apple_key_id, apple_private_key_enc
 `
 
 type UpdateOAuthProviderSettingsParams struct {
-	LoginEnabled    pgtype.Bool `json:"login_enabled"`
-	RegisterEnabled pgtype.Bool `json:"register_enabled"`
-	ClientID        pgtype.Text `json:"client_id"`
-	ClientSecretEnc pgtype.Text `json:"client_secret_enc"`
-	Provider        string      `json:"provider"`
+	LoginEnabled         pgtype.Bool `json:"login_enabled"`
+	RegisterEnabled      pgtype.Bool `json:"register_enabled"`
+	ClientID             pgtype.Text `json:"client_id"`
+	ClientSecretEnc      pgtype.Text `json:"client_secret_enc"`
+	AppleTeamID          pgtype.Text `json:"apple_team_id"`
+	AppleKeyID           pgtype.Text `json:"apple_key_id"`
+	ClearApplePrivateKey bool        `json:"clear_apple_private_key"`
+	ApplePrivateKeyEnc   pgtype.Text `json:"apple_private_key_enc"`
+	Provider             string      `json:"provider"`
 }
 
 func (q *Queries) UpdateOAuthProviderSettings(ctx context.Context, arg UpdateOAuthProviderSettingsParams) (OauthProviderSetting, error) {
@@ -88,6 +104,10 @@ func (q *Queries) UpdateOAuthProviderSettings(ctx context.Context, arg UpdateOAu
 		arg.RegisterEnabled,
 		arg.ClientID,
 		arg.ClientSecretEnc,
+		arg.AppleTeamID,
+		arg.AppleKeyID,
+		arg.ClearApplePrivateKey,
+		arg.ApplePrivateKeyEnc,
 		arg.Provider,
 	)
 	var i OauthProviderSetting
@@ -99,6 +119,9 @@ func (q *Queries) UpdateOAuthProviderSettings(ctx context.Context, arg UpdateOAu
 		&i.ClientSecretEnc,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.AppleTeamID,
+		&i.AppleKeyID,
+		&i.ApplePrivateKeyEnc,
 	)
 	return i, err
 }

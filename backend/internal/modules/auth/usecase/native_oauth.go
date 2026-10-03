@@ -55,7 +55,7 @@ type IDTokenVerifier interface {
 
 // AppleTokenClient exchanges / revokes Sign in with Apple tokens.
 type AppleTokenClient interface {
-	Configured() bool
+	Configured(ctx context.Context) bool
 	ExchangeCode(ctx context.Context, clientID, code string) (string, error)
 	Revoke(ctx context.Context, clientID, clientSecret, refreshToken string) error
 }
@@ -375,7 +375,7 @@ func (u *AuthUseCase) nativeAudiences(ctx context.Context, provider string) []st
 // exchangeAppleCode best-effort trades an authorization code for a refresh
 // token (kept only to revoke it on account deletion).
 func (u *AuthUseCase) exchangeAppleCode(ctx context.Context, clientID, code string) string {
-	if u.native.Apple == nil || !u.native.Apple.Configured() || clientID == "" {
+	if u.native.Apple == nil || !u.native.Apple.Configured(ctx) || clientID == "" {
 		return ""
 	}
 	rt, err := u.native.Apple.ExchangeCode(ctx, clientID, code)

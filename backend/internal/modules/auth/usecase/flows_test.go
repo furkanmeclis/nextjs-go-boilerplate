@@ -204,7 +204,7 @@ type fakeApple struct {
 	revoked []string
 }
 
-func (f *fakeApple) Configured() bool { return true }
+func (f *fakeApple) Configured(context.Context) bool { return true }
 func (f *fakeApple) ExchangeCode(context.Context, string, string) (string, error) {
 	return "apple-refresh", nil
 }

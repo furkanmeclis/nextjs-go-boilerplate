@@ -3445,6 +3445,22 @@ components:
         register_enabled: { type: boolean }
         client_id: { type: string }
         client_secret_configured: { type: boolean }
+        team_id:
+          type: string
+          description: Apple only. Apple Developer Team ID of the signing key.
+        key_id:
+          type: string
+          description: Apple only. Key ID of the uploaded .p8 signing key.
+        private_key_configured:
+          type: boolean
+          description: Apple only. True when a .p8 signing key is stored (encrypted). The key is never returned.
+        private_key_source:
+          type: string
+          enum: [db, env, none]
+          description: >-
+            Apple only. Signing key in use at runtime: the uploaded key (db),
+            the AUTH_APPLE_* env fallback (env) or none. With a key, the web
+            client_secret is generated automatically.
 
     PatchOAuthProviderSettingsRequest:
       type: object
@@ -3452,7 +3468,29 @@ components:
         login_enabled: { type: boolean }
         register_enabled: { type: boolean }
         client_id: { type: string }
-        client_secret: { type: string }
+        client_secret:
+          type: string
+          description: >-
+            Write-only. For Apple it is optional when a signing key is
+            configured (the secret is then generated from the key).
+        team_id:
+          type: string
+          pattern: "^([A-Za-z0-9]{10})?$"
+          description: Apple only. 10-character Team ID (stored upper-case).
+        key_id:
+          type: string
+          pattern: "^([A-Za-z0-9]{10})?$"
+          description: Apple only. 10-character Key ID (the KEYID in AuthKey_KEYID.p8).
+        private_key:
+          type: string
+          writeOnly: true
+          description: >-
+            Apple only. Contents of the .p8 file (PEM, PKCS#8, EC P-256).
+            Requires team_id and key_id (sent or already stored). Stored
+            encrypted; never returned.
+        remove_private_key:
+          type: boolean
+          description: Apple only. Deletes the stored signing key (and its key_id). Cannot be combined with private_key.
 
     EnvelopeOAuthProviderSettings:
       type: object

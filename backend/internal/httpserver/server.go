@@ -219,12 +219,14 @@ func New(cfg config.Config, log *slog.Logger, deps Deps) (*Server, error) {
 	uc.SetSecretBox(secretBox, cfg.App.Name)
 	oauthUC := authusecase.NewOAuth(repo, secretBox)
 	uc.SetReviewAccounts(cfg.Auth.ReviewAccounts)
-	appleClient, err := appleauth.New(appleauth.Config{
+	// Apple signing key: admin-uploaded .p8 (DB) first, AUTH_APPLE_* env fallback.
+	appleClient, err := appleauth.NewResolver(oauthProvSvc, appleauth.Config{
 		TeamID: cfg.Auth.AppleTeamID, KeyID: cfg.Auth.AppleKeyID, PrivateKey: cfg.Auth.ApplePrivateKey,
 	}, nil)
 	if err != nil {
 		return nil, fmt.Errorf("httpserver: apple sign-in key: %w", err)
 	}
+	oauthProvSvc.SetAppleKeys(appleClient)
 	uc.SetNativeOAuth(authusecase.NativeOAuthConfig{
 		Verifier:        oidc.New(oidc.DefaultProviders(), nil),
 		Apple:           appleClient,

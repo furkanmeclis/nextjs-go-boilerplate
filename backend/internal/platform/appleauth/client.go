@@ -6,6 +6,7 @@ package appleauth
 import (
 	"context"
 	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
@@ -52,10 +53,21 @@ func New(cfg Config, httpClient *http.Client) (*Client, error) {
 		httpClient = &http.Client{Timeout: 10 * time.Second}
 	}
 	c := &Client{cfg: cfg, http: httpClient, baseURL: defaultBaseURL, now: time.Now}
-	pemText := strings.TrimSpace(strings.ReplaceAll(cfg.PrivateKey, `\n`, "\n"))
-	if pemText == "" || strings.TrimSpace(cfg.TeamID) == "" || strings.TrimSpace(cfg.KeyID) == "" {
+	if strings.TrimSpace(cfg.PrivateKey) == "" || strings.TrimSpace(cfg.TeamID) == "" || strings.TrimSpace(cfg.KeyID) == "" {
 		return c, nil
 	}
+	ec, err := ParsePrivateKey(cfg.PrivateKey)
+	if err != nil {
+		return nil, err
+	}
+	c.key = ec
+	return c, nil
+}
+
+// ParsePrivateKey parses a Sign in with Apple .p8 key: PEM, PKCS#8, EC P-256.
+// Literal "\n" sequences (single-line env values) are accepted.
+func ParsePrivateKey(pemText string) (*ecdsa.PrivateKey, error) {
+	pemText = strings.TrimSpace(strings.ReplaceAll(pemText, `\n`, "\n"))
 	block, _ := pem.Decode([]byte(pemText))
 	if block == nil {
 		return nil, errors.New("appleauth: private key is not PEM")
@@ -68,8 +80,10 @@ func New(cfg Config, httpClient *http.Client) (*Client, error) {
 	if !ok {
 		return nil, errors.New("appleauth: private key must be an EC (ES256) key")
 	}
-	c.key = ec
-	return c, nil
+	if ec.Curve != elliptic.P256() {
+		return nil, errors.New("appleauth: private key must use the P-256 curve")
+	}
+	return ec, nil
 }
 
 // SetBaseURL overrides the Apple endpoint host (tests).
@@ -80,19 +94,38 @@ func (c *Client) Configured() bool { return c != nil && c.key != nil }
 
 // GenerateClientSecret builds the short-lived ES256 client_secret JWT for clientID.
 func (c *Client) GenerateClientSecret(clientID string) (string, error) {
+	secret, _, err := c.GenerateClientSecretTTL(clientID, 5*time.Minute)
+	return secret, err
+}
+
+// MaxClientSecretTTL is Apple's cap on client_secret lifetime (6 months).
+const MaxClientSecretTTL = 180 * 24 * time.Hour
+
+// GenerateClientSecretTTL builds an ES256 client_secret JWT valid for ttl and
+// returns its expiry.
+func (c *Client) GenerateClientSecretTTL(clientID string, ttl time.Duration) (string, time.Time, error) {
 	if !c.Configured() {
-		return "", ErrNotConfigured
+		return "", time.Time{}, ErrNotConfigured
+	}
+	if ttl <= 0 || ttl > MaxClientSecretTTL {
+		return "", time.Time{}, fmt.Errorf("appleauth: client secret ttl %s out of range", ttl)
 	}
 	now := c.now().UTC()
-	tok := jwt.NewWithClaims(jwt.SigningMethodES256, jwt.RegisteredClaims{
-		Issuer:    c.cfg.TeamID,
-		Subject:   clientID,
-		Audience:  jwt.ClaimStrings{audience},
-		IssuedAt:  jwt.NewNumericDate(now),
-		ExpiresAt: jwt.NewNumericDate(now.Add(5 * time.Minute)),
+	exp := now.Add(ttl)
+	// aud is a plain string as in Apple's docs (ClaimStrings would encode an array).
+	tok := jwt.NewWithClaims(jwt.SigningMethodES256, jwt.MapClaims{
+		"iss": c.cfg.TeamID,
+		"sub": clientID,
+		"aud": audience,
+		"iat": now.Unix(),
+		"exp": exp.Unix(),
 	})
 	tok.Header["kid"] = c.cfg.KeyID
-	return tok.SignedString(c.key)
+	signed, err := tok.SignedString(c.key)
+	if err != nil {
+		return "", time.Time{}, err
+	}
+	return signed, exp.Truncate(time.Second), nil
 }
 
 // ExchangeCode trades a native authorization code for a refresh token.

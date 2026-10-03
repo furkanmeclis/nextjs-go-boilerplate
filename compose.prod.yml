@@ -67,6 +67,18 @@ x-backend-environment: &backend-environment
   MEILI_INDEX_PREFIX: ${MEILI_INDEX_PREFIX:-app}
   LOG_LEVEL: ${LOG_LEVEL:-info}
   LOG_FORMAT: ${LOG_FORMAT:-json}
+  # --- Mobile app (all optional; empty = feature off / defaults) ---
+  AUTH_REVIEW_ACCOUNTS: ${AUTH_REVIEW_ACCOUNTS:-}
+  AUTH_APPLE_NATIVE_CLIENT_IDS: ${AUTH_APPLE_NATIVE_CLIENT_IDS:-com.otopoly.app}
+  AUTH_GOOGLE_NATIVE_CLIENT_IDS: ${AUTH_GOOGLE_NATIVE_CLIENT_IDS:-}
+  # Sign in with Apple key fallback. Prefer uploading the .p8 in Platform →
+  # Integrations → Apple (stored encrypted in the DB, wins over these).
+  AUTH_APPLE_TEAM_ID: ${AUTH_APPLE_TEAM_ID:-}
+  AUTH_APPLE_KEY_ID: ${AUTH_APPLE_KEY_ID:-}
+  AUTH_APPLE_PRIVATE_KEY: ${AUTH_APPLE_PRIVATE_KEY:-}
+  AUTH_QR_TRUST_GEO_HEADERS: ${AUTH_QR_TRUST_GEO_HEADERS:-false}
+  AUTH_QR_GEOIP_DB: ${AUTH_QR_GEOIP_DB:-}
+  EXPO_ACCESS_TOKEN: ${EXPO_ACCESS_TOKEN:-}
 
 services:
   postgres:
@@ -274,6 +286,11 @@ services:
       NEXT_PUBLIC_CENTRIFUGO_URL: ${NEXT_PUBLIC_CENTRIFUGO_URL:-}
       NEXT_PUBLIC_DEFAULT_LOCALE: ${NEXT_PUBLIC_DEFAULT_LOCALE:-tr}
       NEXT_PUBLIC_FALLBACK_LOCALE: ${NEXT_PUBLIC_FALLBACK_LOCALE:-en}
+      # Universal Links / App Links (/.well-known/*); read at request time, optional.
+      APPLE_TEAM_ID: ${APPLE_TEAM_ID:-}
+      IOS_BUNDLE_ID: ${IOS_BUNDLE_ID:-com.otopoly.app}
+      ANDROID_PACKAGE_NAME: ${ANDROID_PACKAGE_NAME:-com.otopoly.app}
+      ANDROID_SHA256_CERT_FINGERPRINTS: ${ANDROID_SHA256_CERT_FINGERPRINTS:-}
     depends_on:
       backend:
         condition: service_healthy

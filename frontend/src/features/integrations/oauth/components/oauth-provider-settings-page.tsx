@@ -18,6 +18,18 @@ import { useLocale } from "@/providers/locale-provider";
 import { usePermission } from "@/providers/permission-provider";
 import { appToast } from "@/providers/toast-provider";
 
+function appleKeyPatch(values: OAuthProviderFormValues) {
+  const privateKey = values.private_key?.trim();
+  return {
+    team_id: values.team_id?.trim().toUpperCase() ?? "",
+    key_id: values.key_id?.trim().toUpperCase() ?? "",
+    ...(privateKey ? { private_key: privateKey } : {}),
+    ...(!privateKey && values.remove_private_key
+      ? { remove_private_key: true }
+      : {}),
+  };
+}
+
 type OAuthProviderSettingsPageProps = {
   provider: OAuthProviderSlug;
   writePermission: PermissionSlug;
@@ -53,6 +65,7 @@ export function OAuthProviderSettingsPage({
         ...(values.client_secret?.trim()
           ? { client_secret: values.client_secret.trim() }
           : {}),
+        ...(provider === "apple" ? appleKeyPatch(values) : {}),
       }),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey });

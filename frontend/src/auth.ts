@@ -64,7 +64,13 @@ function isOAuthProvider(provider: string | undefined): provider is OAuthProvide
 // PROVIDERS_CACHE_TTL ms so repeated session/CSRF requests don't re-issue all
 // those HTTP round-trips on every hit.
 const PROVIDERS_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
-let _providersCache: { providers: Provider[]; builtAt: number } | null = null;
+// Generated client secrets (Apple signing key, valid 24h) must never outlive
+// the cache: rebuild at least this long before the earliest expiry.
+const SECRET_EXPIRY_MARGIN = 10 * 60 * 1000; // 10 minutes
+let _providersCache: { providers: Provider[]; expiresAt: number } | null =
+  null;
+// Earliest client_secret_expires_at seen while building providers.
+let _buildSecretExpiry: number | null = null;
 let _providersBuildPromise: Promise<Provider[]> | null = null;
 
 async function loadOAuthConfig(
@@ -73,6 +79,16 @@ async function loadOAuthConfig(
   try {
     const config = await adapterGetOAuthConfig(provider);
     if (config.enabled && config.client_id && config.client_secret) {
+      if (config.client_secret_expires_at) {
+        const exp = Date.parse(config.client_secret_expires_at);
+        if (Number.isFinite(exp)) {
+          if (exp - SECRET_EXPIRY_MARGIN <= Date.now()) {
+            return null; // already (nearly) expired: never hand it to NextAuth
+          }
+          _buildSecretExpiry =
+            _buildSecretExpiry === null ? exp : Math.min(_buildSecretExpiry, exp);
+        }
+      }
       return config;
     }
   } catch {
@@ -289,14 +305,22 @@ async function _doBuildProviders(): Promise<Provider[]> {
 
 async function buildProviders(): Promise<Provider[]> {
   const now = Date.now();
-  if (_providersCache && now - _providersCache.builtAt < PROVIDERS_CACHE_TTL) {
+  if (_providersCache && now < _providersCache.expiresAt) {
     return _providersCache.providers;
   }
   // Deduplicate concurrent calls while the first build is in flight.
   if (!_providersBuildPromise) {
+    _buildSecretExpiry = null;
     _providersBuildPromise = _doBuildProviders()
       .then((providers) => {
-        _providersCache = { providers, builtAt: Date.now() };
+        let expiresAt = Date.now() + PROVIDERS_CACHE_TTL;
+        if (_buildSecretExpiry !== null) {
+          expiresAt = Math.min(
+            expiresAt,
+            _buildSecretExpiry - SECRET_EXPIRY_MARGIN,
+          );
+        }
+        _providersCache = { providers, expiresAt };
         _providersBuildPromise = null;
         return providers;
       })

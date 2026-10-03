@@ -2146,12 +2146,32 @@ export interface components {
             register_enabled: boolean;
             client_id: string;
             client_secret_configured: boolean;
+            /** @description Apple only. Apple Developer Team ID of the signing key. */
+            team_id?: string;
+            /** @description Apple only. Key ID of the uploaded .p8 signing key. */
+            key_id?: string;
+            /** @description Apple only. True when a .p8 signing key is stored (encrypted). The key is never returned. */
+            private_key_configured?: boolean;
+            /**
+             * @description Apple only. Signing key in use at runtime: the uploaded key (db), the AUTH_APPLE_* env fallback (env) or none. With a key, the web client_secret is generated automatically.
+             * @enum {string}
+             */
+            private_key_source?: "db" | "env" | "none";
         };
         PatchOAuthProviderSettingsRequest: {
             login_enabled?: boolean;
             register_enabled?: boolean;
             client_id?: string;
+            /** @description Write-only. For Apple it is optional when a signing key is configured (the secret is then generated from the key). */
             client_secret?: string;
+            /** @description Apple only. 10-character Team ID (stored upper-case). */
+            team_id?: string;
+            /** @description Apple only. 10-character Key ID (the KEYID in AuthKey_KEYID.p8). */
+            key_id?: string;
+            /** @description Apple only. Contents of the .p8 file (PEM, PKCS#8, EC P-256). Requires team_id and key_id (sent or already stored). Stored encrypted; never returned. */
+            private_key?: string;
+            /** @description Apple only. Deletes the stored signing key (and its key_id). Cannot be combined with private_key. */
+            remove_private_key?: boolean;
         };
         EnvelopeOAuthProviderSettings: {
             /** @enum {boolean} */

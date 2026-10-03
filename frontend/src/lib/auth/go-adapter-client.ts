@@ -78,6 +78,8 @@ export type GitHubOAuthConfigPayload = {
   register_allowed?: boolean;
   client_id: string;
   client_secret: string;
+  /** Set when the secret is generated (Apple signing key); RFC 3339. */
+  client_secret_expires_at?: string;
 };
 
 export type OAuthConfigPayload = GitHubOAuthConfigPayload;
