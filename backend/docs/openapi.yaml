@@ -2416,6 +2416,85 @@ paths:
         "401":
           $ref: "#/components/responses/Unauthenticated"
 
+  /v1/push-devices:
+    post:
+      tags: [Notifications]
+      operationId: registerPushDevice
+      summary: Register a mobile push device (Expo)
+      description: |
+        Upserts the caller's Expo push token (call after login and on app start).
+        The token is unique: a token already registered by another account on the
+        same phone moves to the caller. Refreshes `locale`, `app_version`,
+        `device_name` and `last_seen_at`, and re-enables a token that Expo had
+        reported as `DeviceNotRegistered`.
+
+        Devices are **user-level**: every in-app
+        notification of the user is mirrored as a push to all active devices,
+        in addition to browser Web Push. The first registration creates the
+        user's preference row with `push_enabled=true`; an existing preference
+        is left untouched and returned as `push_enabled` (toggle it with
+        `PUT /v1/notification-preferences`).
+
+        Push payload (Expo message) — lock-screen safe (fixed texts per
+        notification kind, only whitelisted variables); rendered in the user's locale (`users.locale`,
+        falling back to the device `locale`):
+        `{ "title": "...", "body": "...", "sound": "default", "priority": "high",
+        "data": { "url": "/platform/exports/{uuid}", "notification_uuid": "uuid", "kind": "exports.ready" } }`.
+        `data.url` is the same relative web path the in-app notification links to
+        (omitted when the notification has no link); `kind` is the
+        notification kind or template code.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PushDeviceInput"
+      responses:
+        "200":
+          description: Registered device
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnvelopePushDeviceRegistration"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /v1/push-devices/{token}:
+    delete:
+      tags: [Notifications]
+      operationId: deletePushDevice
+      summary: Unregister a mobile push device
+      description: |
+        Removes the caller's device (call on logout, before dropping the access
+        token). The token must be URL-encoded (`ExponentPushToken%5B...%5D`).
+        Idempotent: unknown tokens or tokens of another user return 200 and
+        change nothing.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: token
+          in: path
+          required: true
+          description: Expo push token, URL-encoded
+          schema: { type: string, example: "ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxx]" }
+      responses:
+        "200":
+          description: Removed (or nothing to remove)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnvelopeStatusOK"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
   /v1/platform/notifications:
     get:
       tags: [Platform]
@@ -2705,6 +2784,64 @@ components:
       properties:
         success: { type: boolean, enum: [true] }
         data: { $ref: "#/components/schemas/SearchHitsData" }
+        meta: { $ref: "#/components/schemas/ResponseMeta" }
+
+    PushDeviceInput:
+      type: object
+      required: [token, platform]
+      properties:
+        token:
+          type: string
+          description: Expo push token (`ExponentPushToken[...]` or `ExpoPushToken[...]`)
+          example: "ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxx]"
+        platform: { type: string, enum: [ios, android] }
+        locale:
+          type: string
+          description: Device locale (`tr`, `en`, `tr-TR`, ...); stored as `tr` | `en` | empty
+          example: tr-TR
+        app_version: { type: string, maxLength: 32, example: "1.4.0 (57)" }
+        device_name: { type: string, maxLength: 120, example: "iPhone 16" }
+
+    PushDevice:
+      type: object
+      required: [uuid, token, platform, locale, app_version, device_name, last_seen_at, created_at]
+      properties:
+        uuid: { type: string, format: uuid }
+        token: { type: string }
+        platform: { type: string, enum: [ios, android] }
+        locale: { type: string, enum: [tr, en, ""] }
+        app_version: { type: string }
+        device_name: { type: string }
+        last_seen_at: { type: string, format: date-time }
+        created_at: { type: string, format: date-time }
+
+    PushDeviceRegistration:
+      type: object
+      required: [device, push_enabled]
+      properties:
+        device: { $ref: "#/components/schemas/PushDevice" }
+        push_enabled:
+          type: boolean
+          description: Current `push_enabled` preference of the user
+
+    EnvelopePushDeviceRegistration:
+      type: object
+      required: [success, data, meta]
+      properties:
+        success: { type: boolean, enum: [true] }
+        data: { $ref: "#/components/schemas/PushDeviceRegistration" }
+        meta: { $ref: "#/components/schemas/ResponseMeta" }
+
+    EnvelopeStatusOK:
+      type: object
+      required: [success, data, meta]
+      properties:
+        success: { type: boolean, enum: [true] }
+        data:
+          type: object
+          required: [status]
+          properties:
+            status: { type: string, enum: [ok] }
         meta: { $ref: "#/components/schemas/ResponseMeta" }
 
     ErrorDetail:

@@ -258,6 +258,7 @@ func New(cfg config.Config, log *slog.Logger, deps Deps) (*Server, error) {
 	qrlogin.RegisterRoutes(mux, qrlogin.NewHandler(qrSvc, qrGeo, ratelimit.New(deps.Redis, cfg.App.Env)), tokens, loader)
 
 	nh := notifhandler.New(notifSvc)
+	nh.SetRateLimiter(ratelimit.New(deps.Redis, cfg.App.Env))
 	notifmodule.RegisterRoutes(mux, nh, tokens, loader)
 	notifmodule.RegisterEventHandlers(eventBus, notifSvc, log)
 

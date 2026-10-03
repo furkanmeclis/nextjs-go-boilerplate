@@ -1,11 +1,13 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/modules/notifications/model"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/modules/notifications/usecase"
@@ -18,12 +20,49 @@ import (
 
 // Handler exposes notification HTTP endpoints.
 type Handler struct {
-	svc *usecase.Service
+	svc     *usecase.Service
+	limiter RateLimiter
 }
+
+// RateLimiter is a fixed-window limiter (satisfied by *ratelimit.Limiter).
+type RateLimiter interface {
+	Allow(ctx context.Context, action, subject string, limit int, window time.Duration) (bool, time.Duration)
+}
+
+// Push device registration is called once per sign-in or token rotation. A
+// client bug once sent it non-stop (~18/s per phone), so cap it per user.
+const (
+	pushDeviceLimit  = 10
+	pushDeviceWindow = time.Minute
+)
 
 // New creates a notification handler.
 func New(svc *usecase.Service) *Handler {
 	return &Handler{svc: svc}
+}
+
+// SetRateLimiter enables per-user limits on push device registration.
+func (h *Handler) SetRateLimiter(l RateLimiter) { h.limiter = l }
+
+// rateLimited writes 429 RATE_LIMITED (with Retry-After) once the user is over
+// limit hits per window for action.
+func (h *Handler) rateLimited(w http.ResponseWriter, r *http.Request, action string, limit int, window time.Duration) bool {
+	if h.limiter == nil {
+		return false
+	}
+	p, ok := authctx.PrincipalFrom(r.Context())
+	if !ok || p.UserInternal <= 0 {
+		return false
+	}
+	allowed, retry := h.limiter.Allow(r.Context(), action, strconv.FormatInt(p.UserInternal, 10), limit, window)
+	if allowed {
+		return false
+	}
+	if retry > 0 {
+		w.Header().Set("Retry-After", strconv.Itoa(int(retry.Seconds())+1))
+	}
+	response.TooManyRequests(w, r, "Too many push device requests. Try again in a moment.")
+	return true
 }
 
 func (h *Handler) Meta(w http.ResponseWriter, r *http.Request) {
@@ -337,6 +376,9 @@ func (h *Handler) DeletePushSubscription(w http.ResponseWriter, r *http.Request)
 // RegisterPushDevice upserts the caller's Expo push token (login / app start).
 func (h *Handler) RegisterPushDevice(w http.ResponseWriter, r *http.Request) {
 	p := authctx.MustPrincipal(r.Context())
+	if h.rateLimited(w, r, "push_device", pushDeviceLimit, pushDeviceWindow) {
+		return
+	}
 	var body struct {
 		Token      string `json:"token"`
 		Platform   string `json:"platform"`
@@ -379,6 +421,9 @@ func (h *Handler) RegisterPushDevice(w http.ResponseWriter, r *http.Request) {
 // DeletePushDevice removes the caller's token (logout). Idempotent.
 func (h *Handler) DeletePushDevice(w http.ResponseWriter, r *http.Request) {
 	p := authctx.MustPrincipal(r.Context())
+	if h.rateLimited(w, r, "push_device", pushDeviceLimit, pushDeviceWindow) {
+		return
+	}
 	token := strings.TrimSpace(r.PathValue("token"))
 	if token == "" {
 		response.ValidationError(w, r, []response.Detail{{Field: "token", Message: "required", Code: "required"}})

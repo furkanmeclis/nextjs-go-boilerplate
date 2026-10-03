@@ -1495,6 +1495,69 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/push-devices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Register a mobile push device (Expo)
+         * @description Upserts the caller's Expo push token (call after login and on app start).
+         *     The token is unique: a token already registered by another account on the
+         *     same phone moves to the caller. Refreshes `locale`, `app_version`,
+         *     `device_name` and `last_seen_at`, and re-enables a token that Expo had
+         *     reported as `DeviceNotRegistered`.
+         *
+         *     Devices are **user-level**: every in-app
+         *     notification of the user is mirrored as a push to all active devices,
+         *     in addition to browser Web Push. The first registration creates the
+         *     user's preference row with `push_enabled=true`; an existing preference
+         *     is left untouched and returned as `push_enabled` (toggle it with
+         *     `PUT /v1/notification-preferences`).
+         *
+         *     Push payload (Expo message) — lock-screen safe (fixed texts per
+         *     notification kind, only whitelisted variables); rendered in the user's locale (`users.locale`,
+         *     falling back to the device `locale`):
+         *     `{ "title": "...", "body": "...", "sound": "default", "priority": "high",
+         *     "data": { "url": "/platform/exports/{uuid}", "notification_uuid": "uuid", "kind": "exports.ready" } }`.
+         *     `data.url` is the same relative web path the in-app notification links to
+         *     (omitted when the notification has no link); `kind` is the
+         *     notification kind or template code.
+         */
+        post: operations["registerPushDevice"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/push-devices/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Unregister a mobile push device
+         * @description Removes the caller's device (call on logout, before dropping the access
+         *     token). The token must be URL-encoded (`ExponentPushToken%5B...%5D`).
+         *     Idempotent: unknown tokens or tokens of another user return 200 and
+         *     change nothing.
+         */
+        delete: operations["deletePushDevice"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/platform/notifications": {
         parameters: {
             query?: never;
@@ -1652,6 +1715,59 @@ export interface components {
             /** @enum {boolean} */
             success: true;
             data: components["schemas"]["SearchHitsData"];
+            meta: components["schemas"]["ResponseMeta"];
+        };
+        PushDeviceInput: {
+            /**
+             * @description Expo push token (`ExponentPushToken[...]` or `ExpoPushToken[...]`)
+             * @example ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxx]
+             */
+            token: string;
+            /** @enum {string} */
+            platform: "ios" | "android";
+            /**
+             * @description Device locale (`tr`, `en`, `tr-TR`, ...); stored as `tr` | `en` | empty
+             * @example tr-TR
+             */
+            locale?: string;
+            /** @example 1.4.0 (57) */
+            app_version?: string;
+            /** @example iPhone 16 */
+            device_name?: string;
+        };
+        PushDevice: {
+            /** Format: uuid */
+            uuid: string;
+            token: string;
+            /** @enum {string} */
+            platform: "ios" | "android";
+            /** @enum {string} */
+            locale: "tr" | "en" | "";
+            app_version: string;
+            device_name: string;
+            /** Format: date-time */
+            last_seen_at: string;
+            /** Format: date-time */
+            created_at: string;
+        };
+        PushDeviceRegistration: {
+            device: components["schemas"]["PushDevice"];
+            /** @description Current `push_enabled` preference of the user */
+            push_enabled: boolean;
+        };
+        EnvelopePushDeviceRegistration: {
+            /** @enum {boolean} */
+            success: true;
+            data: components["schemas"]["PushDeviceRegistration"];
+            meta: components["schemas"]["ResponseMeta"];
+        };
+        EnvelopeStatusOK: {
+            /** @enum {boolean} */
+            success: true;
+            data: {
+                /** @enum {string} */
+                status: "ok";
+            };
             meta: components["schemas"]["ResponseMeta"];
         };
         ErrorDetail: {
@@ -4972,6 +5088,58 @@ export interface operations {
                 };
             };
             401: components["responses"]["Unauthenticated"];
+        };
+    };
+    registerPushDevice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PushDeviceInput"];
+            };
+        };
+        responses: {
+            /** @description Registered device */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnvelopePushDeviceRegistration"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthenticated"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    deletePushDevice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Expo push token, URL-encoded */
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed (or nothing to remove) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnvelopeStatusOK"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            429: components["responses"]["TooManyRequests"];
         };
     };
     getPlatformNotifications: {
