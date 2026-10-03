@@ -1,3 +1,4 @@
+import { withSentryConfig } from "@sentry/nextjs/config";
 import type { NextConfig } from "next";
 
 /**
@@ -34,4 +35,16 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+/**
+ * The error tracker is a self-hosted Sentry-protocol endpoint without the
+ * sentry-cli API, so nothing is uploaded at build time: no source maps, no
+ * release creation, no telemetry. The build needs no Sentry env or token;
+ * DSNs are read at runtime (SENTRY_DSN).
+ */
+export default withSentryConfig(nextConfig, {
+  silent: true,
+  telemetry: false,
+  authToken: undefined,
+  sourcemaps: { disable: true },
+  release: { create: false, finalize: false },
+});

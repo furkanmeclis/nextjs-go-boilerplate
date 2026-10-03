@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -17,6 +18,7 @@ import (
 	logsusecase "github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/modules/logs/usecase"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/modules/notifications/providers"
 	notifusecase "github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/modules/notifications/usecase"
+	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/observability"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/events"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/mail"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/storage"
@@ -32,6 +34,19 @@ func main() {
 	}
 
 	log := logging.New(cfg.Log.Level, cfg.Log.Format)
+	flushSentry, err := observability.Init(cfg.Sentry, "api")
+	if err != nil {
+		log.Warn("sentry_init_failed", "error", err)
+	} else if observability.Enabled() {
+		log.Info("sentry_enabled", "environment", cfg.Sentry.Environment, "traces_sample_rate", cfg.Sentry.TracesSampleRate)
+	}
+	defer flushSentry()
+	// exit flushes pending error events before leaving (os.Exit skips defers).
+	exit := func(code int) {
+		flushSentry()
+		os.Exit(code)
+	}
+	log = slog.New(observability.NewSlogHandler(log.Handler()))
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
@@ -39,27 +54,27 @@ func main() {
 	db, err := database.NewPostgresPool(ctx, cfg.DB)
 	if err != nil {
 		log.Error("database_init_failed", "error", err)
-		os.Exit(1)
+		exit(1)
 	}
 	defer db.Close()
 
 	rdb, err := cache.NewRedisClient(ctx, cfg.Redis)
 	if err != nil {
 		log.Error("redis_init_failed", "error", err)
-		os.Exit(1)
+		exit(1)
 	}
 	defer func() { _ = rdb.Close() }()
 
 	store, err := storage.NewFromConfig(ctx, cfg.Storage)
 	if err != nil {
 		log.Error("storage_init_failed", "error", err)
-		os.Exit(1)
+		exit(1)
 	}
 	pingCtx, pingCancel := context.WithTimeout(ctx, 5*time.Second)
 	if err := store.Ping(pingCtx); err != nil {
 		pingCancel()
 		log.Error("storage_ping_failed", "error", err)
-		os.Exit(1)
+		exit(1)
 	}
 	pingCancel()
 
@@ -114,7 +129,7 @@ func main() {
 	})
 	if err != nil {
 		log.Error("httpserver_init_failed", "error", err)
-		os.Exit(1)
+		exit(1)
 	}
 
 	errCh := make(chan error, 1)
@@ -128,7 +143,7 @@ func main() {
 	case err := <-errCh:
 		if err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Error("server_failed", "error", err)
-			os.Exit(1)
+			exit(1)
 		}
 	}
 
@@ -136,7 +151,7 @@ func main() {
 	defer cancel()
 	if err := srv.Shutdown(shutdownCtx); err != nil {
 		log.Error("shutdown_failed", "error", err)
-		os.Exit(1)
+		exit(1)
 	}
 	log.Info("server_stopped")
 }

@@ -1,3 +1,5 @@
+import * as Sentry from "@sentry/nextjs";
+
 import { proxyToUpstream } from "@/lib/server/bff-proxy";
 
 type RouteContext = {
@@ -15,11 +17,22 @@ async function handle(request: Request, context: RouteContext) {
   try {
     return await proxyToUpstream(path ?? [], request);
   } catch (err) {
+    if (request.signal.aborted) {
+      // Client went away mid-request: not a server fault.
+      return new Response(null, { status: 499 });
+    }
     console.error("[api/v1]", (path ?? []).join("/"), err);
-    return new Response(JSON.stringify({ success: false, error: "internal_error" }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" },
+    Sentry.captureException(err, {
+      tags: { "http.route": "/api/v1/[...path]", "http.method": request.method },
+      fingerprint: ["bff-proxy", request.method],
     });
+    return new Response(
+      JSON.stringify({ success: false, error: "internal_error" }),
+      {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      },
+    );
   }
 }
 

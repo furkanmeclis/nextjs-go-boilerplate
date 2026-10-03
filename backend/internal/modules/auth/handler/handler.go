@@ -554,6 +554,8 @@ func sessionMeta(r *http.Request) model.SessionMeta {
 }
 
 func writeUsecaseError(w http.ResponseWriter, r *http.Request, err error) {
+	// Keeps the cause (scrubbed) for the access log; 5xx are recorded by InternalErr.
+	response.RecordFailure(w, err)
 	var ve *apiquery.ValidationError
 	if errors.As(err, &ve) {
 		details := make([]response.Detail, 0, len(ve.Details))

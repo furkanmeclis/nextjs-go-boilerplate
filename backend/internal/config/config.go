@@ -29,7 +29,21 @@ type Config struct {
 	Log        LogConfig
 	VAPID      VAPIDConfig
 	Search     SearchConfig
+	Sentry     SentryConfig
 }
+
+// SentryConfig configures error reporting to a Sentry-protocol endpoint.
+// An empty DSN disables reporting entirely.
+type SentryConfig struct {
+	DSN         string
+	Environment string
+	// Release defaults to the SDK's own detection (SENTRY_RELEASE, build info).
+	Release string
+	// TracesSampleRate is the share of HTTP requests sent as performance
+	// transactions (0 = tracing off).
+	TracesSampleRate float64
+}
+
 
 // AuthConfig holds NextAuth adapter integration settings.
 type AuthConfig struct {
@@ -288,6 +302,12 @@ func Load() (Config, error) {
 			MeiliKey:    getEnv("MEILI_MASTER_KEY", "app-dev-meili-master-key-change-me"),
 			IndexPrefix: getEnv("MEILI_INDEX_PREFIX", "app"),
 		},
+		Sentry: SentryConfig{
+			DSN:              strings.TrimSpace(getEnv("SENTRY_DSN", "")),
+			Environment:      getEnv("SENTRY_ENVIRONMENT", getEnv("APP_ENV", "development")),
+			Release:          getEnv("SENTRY_RELEASE", ""),
+			TracesSampleRate: clampRate(getFloat("SENTRY_TRACES_SAMPLE_RATE", 0)),
+		},
 	}
 
 	if err := cfg.validate(); err != nil {
@@ -479,6 +499,28 @@ func getBool(key string, fallback bool) bool {
 		return fallback
 	}
 	return b
+}
+
+func getFloat(key string, fallback float64) float64 {
+	v := os.Getenv(key)
+	if v == "" {
+		return fallback
+	}
+	f, err := strconv.ParseFloat(strings.TrimSpace(v), 64)
+	if err != nil {
+		return fallback
+	}
+	return f
+}
+
+func clampRate(v float64) float64 {
+	if v != v || v < 0 { // NaN or negative
+		return 0
+	}
+	if v > 1 {
+		return 1
+	}
+	return v
 }
 
 func getDuration(key string, fallback time.Duration) time.Duration {

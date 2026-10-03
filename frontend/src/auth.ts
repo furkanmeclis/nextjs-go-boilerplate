@@ -21,6 +21,7 @@ import {
   loginWithPassword,
   type OAuthConfigPayload,
 } from "@/lib/auth/go-adapter-client";
+import { logAuthError } from "@/lib/observability/auth-logger";
 import { clientIpFromHeaders } from "@/lib/server/upstream";
 import { fetchAppPublicConfig } from "@/services/app-config.service";
 
@@ -362,6 +363,7 @@ const authHandlers = NextAuth(async () => ({
   trustHost: process.env.AUTH_TRUST_HOST === "true",
   session: { strategy: "jwt" },
   ...(oauthCheckCookies ? { cookies: oauthCheckCookies } : {}),
+  logger: { error: logAuthError },
   providers: await buildProviders(),
   experimental: {
     enableWebAuthn: true,

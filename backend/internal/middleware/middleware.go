@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/observability"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/authctx"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/jwt"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/pkg/response"
@@ -34,6 +35,7 @@ func Authenticate(tokens *jwt.Manager, loader IdentityLoader) func(http.Handler)
 				response.Unauthorized(w, r, "Session is no longer valid")
 				return
 			}
+			observability.SetUser(r.Context(), principal.UserID.String())
 			next.ServeHTTP(w, r.WithContext(authctx.WithPrincipal(r.Context(), principal)))
 		})
 	}

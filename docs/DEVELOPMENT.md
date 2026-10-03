@@ -90,6 +90,23 @@ Dokploy-attached services: **minio, centrifugo, backend, frontend**. Postgres, R
 
 `APP_ENCRYPTION_KEY` (32-byte, raw or base64) encrypts GitHub App secrets at rest. Generate: `openssl rand -base64 32`. Replace the example key in production.
 
+## Error tracking (optional, Sentry protocol)
+
+The tracker is a self-hosted, Sentry-protocol endpoint (events only; it has no `sentry-cli` API, so nothing is uploaded at build time: no source maps, no releases, no auth token). Every variable is optional; an empty DSN turns reporting off.
+
+| Env (Dokploy / `.env.server`) | Passed as | Read by |
+|---|---|---|
+| `BACKEND_SENTRY_DSN` | `SENTRY_DSN` | backend API + worker |
+| `FRONTEND_SENTRY_DSN` | `SENTRY_DSN` | Next.js server, edge, browser |
+| `SENTRY_ENVIRONMENT` (default `production`) | same | both |
+| `SENTRY_TRACES_SAMPLE_RATE` (default `0`) | same | backend only |
+
+Local dev reads `SENTRY_DSN` from the root `.env` directly.
+
+- **Backend**: 5xx responses and panics (route pattern, status, `request_id` tag), auth misconfiguration warnings (adapter secret mismatch, provider disabled, id_token audience/issuer), failed queue tasks (`task_type` tag), and `ERROR` log lines (one event per message per minute). Requests the client cancelled are logged as `499` at INFO and never reported. One `http_request` INFO line is written per 4xx and per `/v1/auth/*` / `/v1/internal/auth/*` request (method, route, status, duration, request_id, error_code, scrubbed reason).
+- **Frontend**: `instrumentation.ts` (server/edge, `onRequestError`), `instrumentation-client.ts` (browser), `global-error.tsx`, route error boundaries, the `/api/v1` BFF proxy, and the NextAuth `logger.error` hook (user errors like `CredentialsSignin` are logged, not reported). The browser gets its DSN at runtime from `/api/client-env` (loaded `beforeInteractive` in the root layout), so the image needs no build arg.
+- **Never sent**: request bodies, cookies, query strings, `Authorization` / adapter headers, tokens, secrets, emails, phone numbers. The user is the internal user uuid only. Code: `backend/internal/observability`, `frontend/src/lib/observability`.
+
 ## Super admin
 
 From the repo root (loads `.env`):

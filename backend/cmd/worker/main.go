@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
@@ -16,6 +17,7 @@ import (
 	notifmodule "github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/modules/notifications"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/modules/notifications/providers"
 	notifusecase "github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/modules/notifications/usecase"
+	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/observability"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/activity"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/bulkengine"
 	bulkadapters "github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/bulkengine/adapters"
@@ -39,9 +41,22 @@ func main() {
 	}
 
 	log := logging.New(cfg.Log.Level, cfg.Log.Format)
+	flushSentry, err := observability.Init(cfg.Sentry, "worker")
+	if err != nil {
+		log.Warn("sentry_init_failed", "error", err)
+	} else if observability.Enabled() {
+		log.Info("sentry_enabled", "environment", cfg.Sentry.Environment, "traces_sample_rate", cfg.Sentry.TracesSampleRate)
+	}
+	defer flushSentry()
+	// exit flushes pending error events before leaving (os.Exit skips defers).
+	exit := func(code int) {
+		flushSentry()
+		os.Exit(code)
+	}
+	log = slog.New(observability.NewSlogHandler(log.Handler()))
 	if !cfg.Queue.Enabled {
 		log.Error("queue_disabled")
-		os.Exit(1)
+		exit(1)
 	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
@@ -50,14 +65,14 @@ func main() {
 	pool, err := database.NewPostgresPool(ctx, cfg.DB)
 	if err != nil {
 		log.Error("database_init_failed", "error", err)
-		os.Exit(1)
+		exit(1)
 	}
 	defer pool.Close()
 
 	store, err := storage.NewFromConfig(ctx, cfg.Storage)
 	if err != nil {
 		log.Error("storage_init_failed", "error", err)
-		os.Exit(1)
+		exit(1)
 	}
 
 	var publisher realtime.Publisher
@@ -133,7 +148,7 @@ func main() {
 	scheduler, err := queue.StartLogPurgeScheduler(cfg, log)
 	if err != nil {
 		log.Error("log_purge_scheduler_failed", "error", err)
-		os.Exit(1)
+		exit(1)
 	}
 	go func() {
 		if err := scheduler.Run(); err != nil {
@@ -165,7 +180,7 @@ func main() {
 	case err := <-errCh:
 		if err != nil {
 			log.Error("worker_failed", "error", err)
-			os.Exit(1)
+			exit(1)
 		}
 	}
 	log.Info("worker_stopped")

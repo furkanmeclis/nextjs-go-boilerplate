@@ -179,6 +179,7 @@ func clientIP(r *http.Request) string {
 }
 
 func writeError(w http.ResponseWriter, r *http.Request, err error) {
+	response.RecordFailure(w, err)
 	switch {
 	case errors.Is(err, ErrNotFound):
 		response.Error(w, r, http.StatusNotFound, response.CodeQRSessionNotFound, "This QR code has expired or was already used")

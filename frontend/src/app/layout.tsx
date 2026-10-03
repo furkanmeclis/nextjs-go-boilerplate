@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import Script from "next/script";
 
 import { brand } from "@/config/brand";
 import { AppProviders } from "@/providers/app-providers";
@@ -35,6 +36,8 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} min-h-full font-sans antialiased`}
       >
+        {/* Runtime browser config (Sentry DSN); must run before hydration. */}
+        <Script src="/api/client-env" strategy="beforeInteractive" />
         <AppProviders>{children}</AppProviders>
       </body>
     </html>

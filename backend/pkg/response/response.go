@@ -91,6 +91,9 @@ func Error(w http.ResponseWriter, r *http.Request, status int, code, message str
 
 // ErrorWithDetails writes a failed envelope with optional field-level details.
 func ErrorWithDetails(w http.ResponseWriter, r *http.Request, status int, code, message string, details []Detail) {
+	if rec, ok := w.(errorCodeRecorder); ok {
+		rec.RecordErrorCode(code)
+	}
 	body := &ErrorBody{Code: code, Message: message}
 	if len(details) > 0 {
 		body.Details = details

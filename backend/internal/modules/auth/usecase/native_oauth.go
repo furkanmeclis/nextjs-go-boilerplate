@@ -123,7 +123,8 @@ func (u *AuthUseCase) NativeOAuthLogin(ctx context.Context, in NativeOAuthInput,
 	claims, err := u.native.Verifier.Verify(ctx, provider, in.IDToken, audiences, in.Nonce)
 	if err != nil {
 		if errors.Is(err, oidc.ErrInvalidToken) {
-			return model.Tokens{}, ErrInvalidIDToken
+			// Keep the verifier's reason (audience, nonce, expiry...) for logs.
+			return model.Tokens{}, fmt.Errorf("%w: %w", ErrInvalidIDToken, err)
 		}
 		return model.Tokens{}, err
 	}
@@ -421,17 +422,17 @@ func (u *AuthUseCase) openLinkTicket(raw string) (linkTicket, error) {
 	}
 	plain, err := u.box.Decrypt(raw)
 	if err != nil || plain == "" {
-		return linkTicket{}, ErrInvalidLinkTicket
+		return linkTicket{}, fmt.Errorf("%w: undecryptable", ErrInvalidLinkTicket)
 	}
 	var t linkTicket
 	if err := json.Unmarshal([]byte(plain), &t); err != nil {
-		return linkTicket{}, ErrInvalidLinkTicket
+		return linkTicket{}, fmt.Errorf("%w: malformed", ErrInvalidLinkTicket)
 	}
 	if t.V != linkTicketV1 || t.Subject == "" || t.Email == "" || !model.IsKnownOAuthProvider(t.Provider) {
-		return linkTicket{}, ErrInvalidLinkTicket
+		return linkTicket{}, fmt.Errorf("%w: incomplete", ErrInvalidLinkTicket)
 	}
 	if u.now().Unix() > t.ExpiresAt {
-		return linkTicket{}, ErrInvalidLinkTicket
+		return linkTicket{}, fmt.Errorf("%w: expired", ErrInvalidLinkTicket)
 	}
 	return t, nil
 }
@@ -494,7 +495,7 @@ func (u *AuthUseCase) LinkNativeIdentity(ctx context.Context, userUUID uuid.UUID
 	claims, err := u.native.Verifier.Verify(ctx, provider, in.IDToken, audiences, in.Nonce)
 	if err != nil {
 		if errors.Is(err, oidc.ErrInvalidToken) {
-			return model.LinkedIdentity{}, ErrInvalidIDToken
+			return model.LinkedIdentity{}, fmt.Errorf("%w: %w", ErrInvalidIDToken, err)
 		}
 		return model.LinkedIdentity{}, err
 	}
