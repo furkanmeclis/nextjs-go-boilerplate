@@ -44,12 +44,13 @@ func Init(cfg config.SentryConfig, component string) (flush func(), err error) {
 		release = buildRevision()
 	}
 	err = sentry.Init(sentry.ClientOptions{
-		Dsn:                   cfg.DSN,
-		Environment:           cfg.Environment,
-		Release:               release,
-		ServerName:            component,
-		AttachStacktrace:      true,
-		SendDefaultPII:        false,
+		Dsn:              cfg.DSN,
+		Environment:      cfg.Environment,
+		Release:          release,
+		ServerName:       component,
+		AttachStacktrace: true,
+		// DataCollection left nil: the SDK then keeps its no-PII defaults
+		// (same as the deprecated SendDefaultPII=false); scrubEvent runs on top.
 		EnableTracing:         cfg.TracesSampleRate > 0,
 		TracesSampleRate:      cfg.TracesSampleRate,
 		MaxBreadcrumbs:        30,
