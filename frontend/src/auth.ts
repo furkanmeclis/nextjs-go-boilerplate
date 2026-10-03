@@ -230,10 +230,36 @@ async function buildProviders(): Promise<Provider[]> {
   return _providersBuildPromise;
 }
 
+// Apple answers with response_mode=form_post: a cross-site POST to
+// /api/auth/callback/apple. Browsers leave SameSite=Lax cookies off such a
+// request, so the state/PKCE/nonce check cookies were missing and Apple
+// sign-in failed with InvalidCheck. Over https those three cookies are
+// SameSite=None (which requires Secure). Fixed names keep them independent of
+// the proxy's http/https detection; the session cookie is left untouched.
+const secureOrigin = (process.env.AUTH_URL ?? "").startsWith("https://");
+const crossSiteCheckCookie = (name: string, maxAge?: number) => ({
+  name,
+  options: {
+    httpOnly: true,
+    sameSite: "none" as const,
+    path: "/",
+    secure: true,
+    ...(maxAge ? { maxAge } : {}),
+  },
+});
+const oauthCheckCookies = secureOrigin
+  ? {
+      pkceCodeVerifier: crossSiteCheckCookie("authjs.pkce.code_verifier", 60 * 15),
+      state: crossSiteCheckCookie("authjs.state", 60 * 15),
+      nonce: crossSiteCheckCookie("authjs.nonce"),
+    }
+  : undefined;
+
 const authHandlers = NextAuth(async () => ({
   adapter: goAdapter({ pendingGitHubLogins }),
   trustHost: process.env.AUTH_TRUST_HOST === "true",
   session: { strategy: "jwt" },
+  ...(oauthCheckCookies ? { cookies: oauthCheckCookies } : {}),
   providers: await buildProviders(),
   experimental: {
     enableWebAuthn: true,
