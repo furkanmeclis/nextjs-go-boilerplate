@@ -4,7 +4,6 @@ export { ExportsPage } from "@/features/io/components/exports-page";
 export { ImportDetailPage } from "@/features/io/components/import-detail-page";
 export { ImportsPage } from "@/features/io/components/imports-page";
 export { SettingsForm } from "@/features/io/components/settings-form";
-export { SettingsPage } from "@/features/io/components/settings-page";
 export { ExportMenu } from "@/features/io/components/export-menu";
 export { ImportButton } from "@/features/io/components/import-button";
 export { ImportWizard } from "@/features/io/components/import-wizard";

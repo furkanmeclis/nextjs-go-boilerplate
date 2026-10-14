@@ -1,5 +1,5 @@
-import { SettingsPage } from "@/features/io";
+import { SettingsIndexPage } from "@/features/settings";
 
 export default function Page() {
-  return <SettingsPage />;
+  return <SettingsIndexPage />;
 }

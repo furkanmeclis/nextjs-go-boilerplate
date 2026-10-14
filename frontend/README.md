@@ -75,10 +75,10 @@ SSE / long-lived streams are proxied without buffering when `Accept: text/event-
 | `bulk-engine` | Row selection, bulk menu, job rollback |
 | `storage` | Object explorer (folders, versions, shares, links) |
 | `logs` | Application logs + purge rules |
-| `step-up-engine` | Re-auth gate/dialog; access policy under `/platform/access` |
+| `step-up-engine` | Re-auth gate/dialog; access policy under `/platform/settings/access` |
 | `access` | Step-up TTL / methods admin page |
 | `search-engine` | Cmd+K palette (Meilisearch via BFF) |
-| `integrations` | GitHub App settings (`/platform/integrations/github`) |
+| `integrations` | GitHub App settings (`/platform/settings/integrations?tab=github`) |
 
 Shared infra: `components/ui`, `tables`, `entity`, `forms`, `layout`, `dialogs`, `lib/query`, `lib/i18n`, `lib/realtime`.
 

@@ -16,7 +16,7 @@ That file only mounts `NavEngine`.
 
 | Piece | Path |
 |-------|------|
-| Catalog | `frontend/src/config/nav.ts` (`platformNav`, `cmsNav`) |
+| Catalog | `frontend/src/config/nav.ts` (`platformNav`, `settingsNav`, `cmsNav`) |
 | Engine | `frontend/src/features/nav-engine` |
 | Canonical example | `frontend/src/features/users/nav/` |
 
@@ -73,6 +73,10 @@ export const ordersNavItem = defineNavItem({
 ```
 
 Then import `ordersNavItem` into `platformNav` (same pattern as `usersNavItem`).
+
+## System Settings sub-sidebar
+
+Platform admin/config pages (roles, logs, storage, access, auth, integrations, imports/exports, branding, system diagnostics) live under `/platform/settings/*` and are listed in `settingsNav`, not `platformNav`. `features/settings` renders it as a grouped, searchable sub-sidebar; `platformNav` has a single "System Settings" item gated by `anyPermission: settingsNavPermissions` (derived from `settingsNav`). Add a new settings page by: route under `routes.platform.settings`, page in `src/app/(platform)/platform/settings/…`, item in the right `settingsNav` group. The command palette indexes `settingsNav` too.
 
 Copy `frontend/src/features/users/nav/` for a full example: count + pending label + custom pulse + status info popover.
 

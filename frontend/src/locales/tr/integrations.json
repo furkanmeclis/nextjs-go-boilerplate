@@ -105,5 +105,11 @@
   "apple.form.private_key_status_removing": "Kaydedince kaldırılacak",
   "apple.form.private_key_remove": "Anahtarı kaldır",
   "apple.form.private_key_keep": "Anahtarı koru",
-  "apple.form.private_key_clear_selection": "Seçimi temizle"
+  "apple.form.private_key_clear_selection": "Seçimi temizle",
+
+  "description": "Harici sosyal giriş ve OAuth kimlik sağlayıcı yapılandırmaları.",
+  "providers.google": "Google",
+  "providers.github": "GitHub",
+  "providers.facebook": "Facebook",
+  "providers.apple": "Apple"
 }

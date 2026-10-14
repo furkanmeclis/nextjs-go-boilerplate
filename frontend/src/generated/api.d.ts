@@ -386,6 +386,92 @@ export interface paths {
         patch: operations["patchPlatformGitHubIntegrationSettings"];
         trace?: never;
     };
+    "/v1/platform/system/info": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read system runtime metrics, infrastructure health, and environment diagnostics */
+        get: operations["getPlatformSystemInfo"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/platform/system/ping": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Trigger a live health and latency probe across all backing services */
+        post: operations["pingPlatformSystem"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/platform/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read app branding / letterhead settings (app_settings singleton)
+         * @description Requires `platform.settings.read`.
+         */
+        get: operations["getPlatformSettings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Partially update app branding / letterhead settings
+         * @description Requires `platform.settings.write`. Omitted fields are left unchanged.
+         */
+        patch: operations["patchPlatformSettings"];
+        trace?: never;
+    };
+    "/v1/platform/settings/logo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Stream the app logo image
+         * @description Any authenticated user. Returns the raw image bytes.
+         */
+        get: operations["getPlatformSettingsLogo"];
+        /**
+         * Upload or replace the app logo
+         * @description Requires `platform.settings.write`. Multipart form with a `logo` file field.
+         */
+        put: operations["putPlatformSettingsLogo"];
+        post?: never;
+        /**
+         * Remove the app logo
+         * @description Requires `platform.settings.write`.
+         */
+        delete: operations["deletePlatformSettingsLogo"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/platform/auth/settings": {
         parameters: {
             query?: never;
@@ -2237,6 +2323,118 @@ export interface components {
             data: components["schemas"]["GitHubIntegrationSettings"];
             meta: components["schemas"]["ResponseMeta"];
         };
+        SystemMemoryStats: {
+            /** Format: int64 */
+            alloc_bytes: number;
+            /** Format: int64 */
+            total_alloc_bytes: number;
+            /** Format: int64 */
+            sys_bytes: number;
+            /** Format: int64 */
+            heap_alloc_bytes: number;
+            /** Format: int64 */
+            heap_sys_bytes: number;
+            /** Format: int64 */
+            heap_idle_bytes: number;
+            /** Format: int64 */
+            heap_inuse_bytes: number;
+            num_gc: number;
+        };
+        SystemRuntimeInfo: {
+            go_version: string;
+            num_cpu: number;
+            num_goroutine: number;
+            compiler: string;
+            arch: string;
+            os: string;
+            memory: components["schemas"]["SystemMemoryStats"];
+            uptime_seconds: number;
+            /** Format: date-time */
+            server_time: string;
+        };
+        ServiceHealthInfo: {
+            /** @enum {string} */
+            status: "healthy" | "degraded" | "down" | "disabled";
+            latency_ms: number;
+            message?: string;
+        };
+        DatabasePoolStats: {
+            total_conns: number;
+            idle_conns: number;
+            acquired_conns: number;
+            max_conns: number;
+        };
+        DatabaseHealthInfo: {
+            /** @enum {string} */
+            status: "healthy" | "degraded" | "down" | "disabled";
+            latency_ms: number;
+            message?: string;
+            pool?: components["schemas"]["DatabasePoolStats"];
+        };
+        StorageHealthInfo: {
+            /** @enum {string} */
+            status: "healthy" | "degraded" | "down" | "disabled";
+            latency_ms: number;
+            message?: string;
+            driver: string;
+        };
+        SystemServicesHealth: {
+            database: components["schemas"]["DatabaseHealthInfo"];
+            redis: components["schemas"]["ServiceHealthInfo"];
+            storage: components["schemas"]["StorageHealthInfo"];
+            meilisearch: components["schemas"]["ServiceHealthInfo"];
+        };
+        SystemEnvironmentInfo: {
+            app_name: string;
+            env: string;
+            log_level: string;
+            centrifugo_enabled: boolean;
+            vapid_enabled: boolean;
+            search_enabled: boolean;
+        };
+        SystemInfo: {
+            /** @enum {string} */
+            status: "healthy" | "degraded" | "down";
+            runtime: components["schemas"]["SystemRuntimeInfo"];
+            services: components["schemas"]["SystemServicesHealth"];
+            environment: components["schemas"]["SystemEnvironmentInfo"];
+        };
+        EnvelopeSystemInfo: {
+            /** @enum {boolean} */
+            success: true;
+            data: components["schemas"]["SystemInfo"];
+            meta: components["schemas"]["ResponseMeta"];
+        };
+        AppSettings: {
+            company_name: string;
+            tagline: string;
+            primary_color: string;
+            address: string;
+            phone: string;
+            email: string;
+            website: string;
+            footer_text: string;
+            paper_size: string;
+            /** @description Same-origin API path to stream the logo; omitted when no logo is set. */
+            logo_url?: string;
+        };
+        PatchAppSettingsRequest: {
+            company_name?: string;
+            tagline?: string;
+            primary_color?: string;
+            address?: string;
+            phone?: string;
+            email?: string;
+            website?: string;
+            footer_text?: string;
+            paper_size?: string;
+        };
+        EnvelopeAppSettings: {
+            /** @enum {boolean} */
+            success: true;
+            data: components["schemas"]["AppSettings"];
+            meta: components["schemas"]["ResponseMeta"];
+        };
         AuthSettingsDefaultRole: {
             /** Format: uuid */
             uuid: string;
@@ -3342,6 +3540,183 @@ export interface operations {
                 };
             };
             400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    getPlatformSystemInfo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description System runtime info and health diagnostics */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnvelopeSystemInfo"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    pingPlatformSystem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Live probe results */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnvelopeSystemInfo"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    getPlatformSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description App settings */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnvelopeAppSettings"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    patchPlatformSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PatchAppSettingsRequest"];
+            };
+        };
+        responses: {
+            /** @description Updated app settings */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnvelopeAppSettings"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    getPlatformSettingsLogo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Logo image */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/png": string;
+                    "image/jpeg": string;
+                    "image/webp": string;
+                    "image/svg+xml": string;
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    putPlatformSettingsLogo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /** Format: binary */
+                    logo: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Updated app settings */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnvelopeAppSettings"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    deletePlatformSettingsLogo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Updated app settings */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnvelopeAppSettings"];
+                };
+            };
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             500: components["responses"]["InternalError"];

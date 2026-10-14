@@ -29,5 +29,7 @@
   "theme": "Tema",
   "theme_light": "Açık",
   "theme_dark": "Koyu",
-  "theme_system": "Sistem"
+  "theme_system": "Sistem",
+  "no_results": "Sonuç bulunamadı",
+  "copy": "Kopyala"
 }
