@@ -29,3 +29,6 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+
+# Claude Code personal overrides (project settings in .claude/settings.json are shared)
+.claude/settings.local.json
