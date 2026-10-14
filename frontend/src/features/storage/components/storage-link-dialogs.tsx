@@ -32,7 +32,7 @@ function LinkResult({
   const { t } = useLocale();
   return (
     <div className="bg-muted/40 space-y-2 rounded-md border p-3 text-sm">
-      <p className="break-all font-mono text-xs">{link.url}</p>
+      <p className="font-mono text-xs break-all">{link.url}</p>
       {link.expires_at ? (
         <p className="text-muted-foreground text-xs">
           {t("storage.expires_at")}: {link.expires_at}
@@ -292,7 +292,7 @@ function StorageQrContent({
           <img src={dataUrl} alt="QR" className="rounded-md border" />
         ) : null}
         <p className="text-muted-foreground text-sm">{t("storage.qr_scan")}</p>
-        <p className="break-all font-mono text-xs">{url}</p>
+        <p className="font-mono text-xs break-all">{url}</p>
       </div>
       <DialogFooter>
         <Button

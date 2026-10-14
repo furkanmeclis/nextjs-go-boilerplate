@@ -24,17 +24,11 @@ function normalizeRows(rows: unknown[][]): unknown[][] {
   return rows.map((row) => (Array.isArray(row) ? row : []));
 }
 
-function rowsToMatrix(
-  rows: unknown[][],
-  maxRows: number,
-): ParsedExportSheet {
+function rowsToMatrix(rows: unknown[][], maxRows: number): ParsedExportSheet {
   const normalized = normalizeRows(rows);
   const totalRows = normalized.length;
   const slice = normalized.slice(0, maxRows);
-  const columnCount = slice.reduce(
-    (max, row) => Math.max(max, row.length),
-    0,
-  );
+  const columnCount = slice.reduce((max, row) => Math.max(max, row.length), 0);
 
   const data: Matrix<CellBase<string>> = slice.map((row) =>
     Array.from({ length: columnCount }, (_, index) => ({

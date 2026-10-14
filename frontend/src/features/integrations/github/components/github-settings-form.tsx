@@ -88,7 +88,9 @@ export function GitHubSettingsForm({
 
             <div className="flex items-center justify-between gap-4 rounded-lg border p-4 sm:col-span-2">
               <div className="space-y-1">
-                <Label htmlFor="enabled">{t("integrations.github.form.enabled")}</Label>
+                <Label htmlFor="enabled">
+                  {t("integrations.github.form.enabled")}
+                </Label>
                 <p className="text-muted-foreground text-sm">
                   {t("integrations.github.form.enabled_hint")}
                 </p>
@@ -177,7 +179,9 @@ export function GitHubSettingsForm({
                 {t("common.cancel")}
               </Button>
               <Button type="submit" disabled={isSaving}>
-                {isSaving ? t("common.loading") : t("integrations.github.form.save")}
+                {isSaving
+                  ? t("common.loading")
+                  : t("integrations.github.form.save")}
               </Button>
             </FormActions>
           ) : null}

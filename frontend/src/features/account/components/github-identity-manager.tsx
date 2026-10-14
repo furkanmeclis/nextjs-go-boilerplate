@@ -156,9 +156,7 @@ export function OAuthIdentityManager({ providers }: OAuthIdentityManagerProps) {
                 ) : (
                   meta.icon
                 )}
-                {pending
-                  ? t("auth.oauth.connecting")
-                  : t(meta.connectKey)}
+                {pending ? t("auth.oauth.connecting") : t(meta.connectKey)}
               </Button>
             </div>
           );
@@ -214,7 +212,5 @@ export function OAuthIdentityManager({ providers }: OAuthIdentityManagerProps) {
 
 /** @deprecated Prefer OAuthIdentityManager */
 export function GitHubIdentityManager({ enabled }: { enabled: boolean }) {
-  return (
-    <OAuthIdentityManager providers={[{ id: "github", enabled }]} />
-  );
+  return <OAuthIdentityManager providers={[{ id: "github", enabled }]} />;
 }

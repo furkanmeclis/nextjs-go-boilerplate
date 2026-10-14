@@ -1,6 +1,9 @@
 import { platformRequest } from "@/lib/api/platform-request";
 
-import type { RemoteSearchSpec, SearchHit } from "@/features/search-engine/types";
+import type {
+  RemoteSearchSpec,
+  SearchHit,
+} from "@/features/search-engine/types";
 
 type SearchSpecsResponse = {
   items: RemoteSearchSpec[];

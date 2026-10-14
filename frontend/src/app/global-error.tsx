@@ -27,7 +27,9 @@ export default function GlobalError({
         }}
       >
         <div style={{ textAlign: "center" }}>
-          <h1 style={{ fontSize: 20 }}>Bir şeyler ters gitti / Something went wrong</h1>
+          <h1 style={{ fontSize: 20 }}>
+            Bir şeyler ters gitti / Something went wrong
+          </h1>
           <button type="button" onClick={reset} style={{ marginTop: 16 }}>
             Tekrar dene / Try again
           </button>

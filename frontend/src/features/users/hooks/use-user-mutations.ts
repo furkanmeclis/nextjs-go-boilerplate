@@ -46,9 +46,7 @@ function mergeUserDetail(
   queryClient.setQueryData<PlatformUserDetail>(
     usersKeys.detail(user.uuid),
     (prev) =>
-      prev
-        ? { ...prev, ...user }
-        : { ...user, roles: [], auth_methods: [] },
+      prev ? { ...prev, ...user } : { ...user, roles: [], auth_methods: [] },
   );
 }
 

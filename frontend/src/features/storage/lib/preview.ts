@@ -1,13 +1,7 @@
 import type { StorageFileKind, StorageObject } from "@/features/storage/types";
 
 export type PreviewKind =
-  | "image"
-  | "video"
-  | "audio"
-  | "pdf"
-  | "text"
-  | "spreadsheet"
-  | "none";
+  "image" | "video" | "audio" | "pdf" | "text" | "spreadsheet" | "none";
 
 export function previewKindFromMime(mime: string): PreviewKind {
   const value = mime.toLowerCase();
@@ -27,7 +21,9 @@ export function previewKindFromMime(mime: string): PreviewKind {
   return "none";
 }
 
-export function previewKind(object: Pick<StorageObject, "file_kind" | "mime_type">): PreviewKind {
+export function previewKind(
+  object: Pick<StorageObject, "file_kind" | "mime_type">,
+): PreviewKind {
   if (object.file_kind === "image") return "image";
   if (object.file_kind === "video") return "video";
   if (object.file_kind === "audio") return "audio";
@@ -54,7 +50,8 @@ export function fileKindFromMime(mime: string): StorageFileKind {
   if (value.startsWith("video/")) return "video";
   if (value.startsWith("audio/")) return "audio";
   if (value === "application/pdf") return "pdf";
-  if (value.includes("spreadsheet") || value.includes("excel")) return "spreadsheet";
+  if (value.includes("spreadsheet") || value.includes("excel"))
+    return "spreadsheet";
   if (value.includes("zip") || value.includes("archive")) return "archive";
   if (value.startsWith("text/") || value === "application/json") return "code";
   if (value.includes("word") || value.includes("document")) return "document";

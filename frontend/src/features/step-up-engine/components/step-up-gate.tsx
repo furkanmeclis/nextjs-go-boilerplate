@@ -36,7 +36,9 @@ export function StepUpGate({ children, purpose, className }: StepUpGateProps) {
       <div className="min-w-0 flex-1 space-y-1">
         <p className="text-sm font-medium">{t("stepup.gate.title")}</p>
         <p className="text-muted-foreground text-xs leading-relaxed">
-          {purpose ? t(`stepup.gate.purpose.${purpose}`) : t("stepup.gate.description")}
+          {purpose
+            ? t(`stepup.gate.purpose.${purpose}`)
+            : t("stepup.gate.description")}
         </p>
       </div>
       <Button

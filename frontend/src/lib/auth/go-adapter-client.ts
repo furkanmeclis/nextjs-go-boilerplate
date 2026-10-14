@@ -22,7 +22,9 @@ function adapterHeaders(): HeadersInit {
   };
 }
 
-async function unwrap<T>(result: Awaited<ReturnType<typeof fetchUpstream>>): Promise<T> {
+async function unwrap<T>(
+  result: Awaited<ReturnType<typeof fetchUpstream>>,
+): Promise<T> {
   const text = new TextDecoder().decode(result.body);
   if (result.status >= 400) {
     let message = `Adapter request failed (${result.status})`;

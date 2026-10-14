@@ -142,7 +142,8 @@ export function UsersPage() {
   const meta = metaQuery.data as ResourceMeta | undefined;
 
   const bulkActions = useMemo(
-    () => resolveBulkActionsWithIcons("platform.users", meta?.bulk_actions ?? []),
+    () =>
+      resolveBulkActionsWithIcons("platform.users", meta?.bulk_actions ?? []),
     [meta?.bulk_actions],
   );
 

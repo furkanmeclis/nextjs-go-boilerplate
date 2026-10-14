@@ -13,10 +13,10 @@ Next.js BFF for the boilerplate. The browser talks to same-origin `/api/v1/*`; t
 
 ## Panels
 
-| Who | Panel |
-|-----|-------|
+| Who                                          | Panel                                                                                                                    |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
 | `super_admin` or any `platform.*` permission | `/platform` — overview, users, roles, notifications, activity, logs, storage, imports, exports, settings, access, GitHub |
-| Other authenticated users | `/` — CMS placeholder + profile |
+| Other authenticated users                    | `/` — CMS placeholder + profile                                                                                          |
 
 Guest login: `/platform/login` (aliases at `/login`, `/forgot-password`, …).
 
@@ -36,13 +36,13 @@ pnpm dev            # http://localhost:3000
 
 ### Env (root `.env`)
 
-| Variable | Purpose |
-|----------|---------|
-| `API_URL` | Server-only Go upstream, default `http://127.0.0.1:8080/v1` |
-| `AUTH_SECRET` / `AUTH_URL` | NextAuth |
-| `NEXT_PUBLIC_BFF_BASE_URL` | Browser BFF base (`/api`) when set |
-| `NEXT_PUBLIC_REALTIME_ENABLED` | `false` skips Centrifugo connect |
-| `NEXT_PUBLIC_CENTRIFUGO_URL` | Fallback WS URL if the token response omits `ws_url` |
+| Variable                       | Purpose                                                     |
+| ------------------------------ | ----------------------------------------------------------- |
+| `API_URL`                      | Server-only Go upstream, default `http://127.0.0.1:8080/v1` |
+| `AUTH_SECRET` / `AUTH_URL`     | NextAuth                                                    |
+| `NEXT_PUBLIC_BFF_BASE_URL`     | Browser BFF base (`/api`) when set                          |
+| `NEXT_PUBLIC_REALTIME_ENABLED` | `false` skips Centrifugo connect                            |
+| `NEXT_PUBLIC_CENTRIFUGO_URL`   | Fallback WS URL if the token response omits `ws_url`        |
 
 Cookie names: `app_access_token` / `app_refresh_token` (HttpOnly).
 
@@ -62,23 +62,23 @@ SSE / long-lived streams are proxied without buffering when `Accept: text/event-
 
 ## Features
 
-| Feature | Path |
-|---------|------|
-| `auth` | Login, forgot/reset, verify email |
-| `account` | Profile, password, preferences, passkeys |
-| `users` | Platform user CRUD + export/import/bulk + impersonate |
-| `roles` | Platform role CRUD + export/import/bulk |
-| `notifications` | Inbox + platform log + export |
-| `platform-overview` | `/platform` home KPIs |
-| `nav-engine` | Sidebar catalog, accordion groups, badges, info popovers |
-| `io` | Import/export jobs, letterhead settings, activity (shared toolbar) |
-| `bulk-engine` | Row selection, bulk menu, job rollback |
-| `storage` | Object explorer (folders, versions, shares, links) |
-| `logs` | Application logs + purge rules |
-| `step-up-engine` | Re-auth gate/dialog; access policy under `/platform/settings/access` |
-| `access` | Step-up TTL / methods admin page |
-| `search-engine` | Cmd+K palette (Meilisearch via BFF) |
-| `integrations` | GitHub App settings (`/platform/settings/integrations?tab=github`) |
+| Feature             | Path                                                                 |
+| ------------------- | -------------------------------------------------------------------- |
+| `auth`              | Login, forgot/reset, verify email                                    |
+| `account`           | Profile, password, preferences, passkeys                             |
+| `users`             | Platform user CRUD + export/import/bulk + impersonate                |
+| `roles`             | Platform role CRUD + export/import/bulk                              |
+| `notifications`     | Inbox + platform log + export                                        |
+| `platform-overview` | `/platform` home KPIs                                                |
+| `nav-engine`        | Sidebar catalog, accordion groups, badges, info popovers             |
+| `io`                | Import/export jobs, letterhead settings, activity (shared toolbar)   |
+| `bulk-engine`       | Row selection, bulk menu, job rollback                               |
+| `storage`           | Object explorer (folders, versions, shares, links)                   |
+| `logs`              | Application logs + purge rules                                       |
+| `step-up-engine`    | Re-auth gate/dialog; access policy under `/platform/settings/access` |
+| `access`            | Step-up TTL / methods admin page                                     |
+| `search-engine`     | Cmd+K palette (Meilisearch via BFF)                                  |
+| `integrations`      | GitHub App settings (`/platform/settings/integrations?tab=github`)   |
 
 Shared infra: `components/ui`, `tables`, `entity`, `forms`, `layout`, `dialogs`, `lib/query`, `lib/i18n`, `lib/realtime`.
 
@@ -88,12 +88,12 @@ Media: never assemble MinIO/S3 URLs in the browser. Use `assertServiceMediaURL` 
 
 ## Scripts
 
-| Script | Purpose |
-|--------|---------|
-| `pnpm dev` | Next.js dev server |
-| `pnpm build` | Production build |
-| `pnpm typecheck` | `tsc --noEmit` |
-| `pnpm lint` | ESLint |
+| Script              | Purpose                         |
+| ------------------- | ------------------------------- |
+| `pnpm dev`          | Next.js dev server              |
+| `pnpm build`        | Production build                |
+| `pnpm typecheck`    | `tsc --noEmit`                  |
+| `pnpm lint`         | ESLint                          |
 | `pnpm api:generate` | Regenerate OpenAPI client types |
 
 `src/generated/api.d.ts` is generated. If it still lists deleted product paths, ignore unused ones and regenerate after the OpenAPI spec is trimmed.

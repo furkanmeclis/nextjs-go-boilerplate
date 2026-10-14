@@ -48,13 +48,18 @@ function isProtectedPath(pathname: string) {
   if (pathname === routes.cms.root) return true;
   if (pathname.startsWith(`${routes.cms.profile.root}`)) return true;
   if (pathname === routes.platform.root) return true;
-  if (pathname.startsWith(`${routes.platform.root}/`) && !isGuestAuthPath(pathname)) {
+  if (
+    pathname.startsWith(`${routes.platform.root}/`) &&
+    !isGuestAuthPath(pathname)
+  ) {
     return true;
   }
   return false;
 }
 
-function isOAuthProvider(provider: string | undefined): provider is OAuthProviderId {
+function isOAuthProvider(
+  provider: string | undefined,
+): provider is OAuthProviderId {
   return (
     provider !== undefined &&
     (OAUTH_PROVIDERS as readonly string[]).includes(provider)
@@ -68,8 +73,7 @@ const PROVIDERS_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 // Generated client secrets (Apple signing key, valid 24h) must never outlive
 // the cache: rebuild at least this long before the earliest expiry.
 const SECRET_EXPIRY_MARGIN = 10 * 60 * 1000; // 10 minutes
-let _providersCache: { providers: Provider[]; expiresAt: number } | null =
-  null;
+let _providersCache: { providers: Provider[]; expiresAt: number } | null = null;
 // Earliest client_secret_expires_at seen while building providers.
 let _buildSecretExpiry: number | null = null;
 let _providersBuildPromise: Promise<Provider[]> | null = null;
@@ -87,7 +91,9 @@ async function loadOAuthConfig(
             return null; // already (nearly) expired: never hand it to NextAuth
           }
           _buildSecretExpiry =
-            _buildSecretExpiry === null ? exp : Math.min(_buildSecretExpiry, exp);
+            _buildSecretExpiry === null
+              ? exp
+              : Math.min(_buildSecretExpiry, exp);
         }
       }
       return config;
@@ -352,7 +358,10 @@ const crossSiteCheckCookie = (name: string, maxAge?: number) => ({
 });
 const oauthCheckCookies = secureOrigin
   ? {
-      pkceCodeVerifier: crossSiteCheckCookie("authjs.pkce.code_verifier", 60 * 15),
+      pkceCodeVerifier: crossSiteCheckCookie(
+        "authjs.pkce.code_verifier",
+        60 * 15,
+      ),
       state: crossSiteCheckCookie("authjs.state", 60 * 15),
       nonce: crossSiteCheckCookie("authjs.nonce"),
     }
@@ -481,9 +490,7 @@ const authHandlers = NextAuth(async () => ({
         session.user.id = token.sub ?? "";
       }
       (session as { error?: string }).error = token.error as
-        | "PasskeySessionError"
-        | "OAuthSessionError"
-        | undefined;
+        "PasskeySessionError" | "OAuthSessionError" | undefined;
       return session;
     },
   },

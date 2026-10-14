@@ -138,18 +138,10 @@ export function StoragePreviewDialog({
                 }}
               />
             ) : (
-              <StorageMediaPreview
-                url={url}
-                name={object.name}
-                kind={kind}
-              />
+              <StorageMediaPreview url={url} name={object.name} kind={kind} />
             )
           ) : (
-            <StorageMediaPreview
-              url={url}
-              name={object.name}
-              kind="none"
-            />
+            <StorageMediaPreview url={url} name={object.name} kind="none" />
           )}
         </div>
       </DialogContent>

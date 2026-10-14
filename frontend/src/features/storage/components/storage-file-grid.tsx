@@ -66,7 +66,7 @@ export function StorageFileGrid({
               )}
               onDoubleClick={() => onOpen(item)}
             >
-              <div className="absolute top-2 start-2 z-10">
+              <div className="absolute start-2 top-2 z-10">
                 <Checkbox
                   checked={checked}
                   onCheckedChange={(value) =>

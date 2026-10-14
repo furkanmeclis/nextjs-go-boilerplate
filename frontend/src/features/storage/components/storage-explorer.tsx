@@ -74,9 +74,7 @@ export function StorageExplorer() {
   const [preview, setPreview] = useState<StorageObject | null>(null);
   const [inputMode, setInputMode] = useState<InputMode>(null);
   const [inputTarget, setInputTarget] = useState<StorageObject | null>(null);
-  const [confirm, setConfirm] = useState<
-    "delete" | "purge" | null
-  >(null);
+  const [confirm, setConfirm] = useState<"delete" | "purge" | null>(null);
   const [share, setShare] = useState<{
     object: StorageObject;
     tab: ShareTab;
@@ -146,9 +144,12 @@ export function StorageExplorer() {
     [view],
   );
 
-  const openShare = useCallback((item: StorageObject, tab: ShareTab = "signed") => {
-    setShare({ object: item, tab });
-  }, []);
+  const openShare = useCallback(
+    (item: StorageObject, tab: ShareTab = "signed") => {
+      setShare({ object: item, tab });
+    },
+    [],
+  );
 
   const selectedObjects = useMemo(
     () => items.filter((item) => selected.has(item.key)),
@@ -249,7 +250,15 @@ export function StorageExplorer() {
         copyFile.mutate({ source_key: inputTarget.key, dest_key: dest });
       }
     },
-    [copyFile, createFolder, inputMode, inputTarget, moveFile, prefix, renameFile],
+    [
+      copyFile,
+      createFolder,
+      inputMode,
+      inputTarget,
+      moveFile,
+      prefix,
+      renameFile,
+    ],
   );
 
   const bulkKeys = useMemo(
@@ -265,9 +274,7 @@ export function StorageExplorer() {
       title={t("storage.title")}
       description={t("storage.description")}
       permission={permissions.storage.read}
-      forbiddenFallback={
-        <ErrorState title={t("storage.forbidden")} />
-      }
+      forbiddenFallback={<ErrorState title={t("storage.forbidden")} />}
     >
       <div className="flex min-h-[70vh] overflow-hidden rounded-xl border">
         <div className="hidden lg:block">
@@ -324,7 +331,9 @@ export function StorageExplorer() {
               onModifiedFromChange={setModifiedFrom}
               onModifiedToChange={setModifiedTo}
               onNewFolder={() => setInputMode("folder")}
-              onUpload={() => document.getElementById("storage-file-input")?.click()}
+              onUpload={() =>
+                document.getElementById("storage-file-input")?.click()
+              }
             />
             {selected.size > 0 ? (
               <div className="bg-muted/40 flex flex-wrap items-center gap-2 rounded-md border px-3 py-2 text-sm">
@@ -355,14 +364,20 @@ export function StorageExplorer() {
                       size="sm"
                       variant="outline"
                       onClick={() =>
-                        selectedObjects.forEach((item) =>
-                          void storageService.downloadFile(item.key, item.name),
+                        selectedObjects.forEach(
+                          (item) =>
+                            void storageService.downloadFile(
+                              item.key,
+                              item.name,
+                            ),
                         )
                       }
                     >
                       {t("storage.download")}
                     </Button>
-                    {canWrite && selected.size === 1 && selectedObjects[0]?.kind === "file" ? (
+                    {canWrite &&
+                    selected.size === 1 &&
+                    selectedObjects[0]?.kind === "file" ? (
                       <Button
                         type="button"
                         size="sm"
@@ -403,7 +418,9 @@ export function StorageExplorer() {
               <StorageEmptyState
                 view={view}
                 canWrite={canWrite}
-                onUpload={() => document.getElementById("storage-file-input")?.click()}
+                onUpload={() =>
+                  document.getElementById("storage-file-input")?.click()
+                }
               />
             ) : viewMode === "grid" ? (
               <StorageFileGrid

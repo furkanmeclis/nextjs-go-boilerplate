@@ -1,4 +1,7 @@
-import type { SearchCatalog, SearchSpecDef } from "@/features/search-engine/types";
+import type {
+  SearchCatalog,
+  SearchSpecDef,
+} from "@/features/search-engine/types";
 
 export function defineSearchSpec(spec: SearchSpecDef): SearchSpecDef {
   return spec;

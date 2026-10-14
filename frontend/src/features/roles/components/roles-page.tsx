@@ -121,7 +121,8 @@ export function RolesPage() {
   const meta = metaQuery.data as ResourceMeta | undefined;
 
   const bulkActions = useMemo(
-    () => resolveBulkActionsWithIcons("platform.roles", meta?.bulk_actions ?? []),
+    () =>
+      resolveBulkActionsWithIcons("platform.roles", meta?.bulk_actions ?? []),
     [meta?.bulk_actions],
   );
 

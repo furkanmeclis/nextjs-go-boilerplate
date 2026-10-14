@@ -18,7 +18,10 @@ import {
 import { Field, FieldError, FieldGroup } from "@/components/ui/field";
 import { Separator } from "@/components/ui/separator";
 import { stepUpService } from "@/features/step-up-engine/services/stepup.service";
-import type { StepUpMethod, StepUpStatus } from "@/features/step-up-engine/types";
+import type {
+  StepUpMethod,
+  StepUpStatus,
+} from "@/features/step-up-engine/types";
 import { isApiError } from "@/lib/api";
 import { useLocale } from "@/providers/locale-provider";
 
@@ -99,9 +102,7 @@ export function StepUpDialog({
       await onVerified();
     } catch (error) {
       setFormError(
-        isApiError(error)
-          ? error.message
-          : t("stepup.error.totp_failed"),
+        isApiError(error) ? error.message : t("stepup.error.totp_failed"),
       );
     } finally {
       setTotpPending(false);
@@ -118,9 +119,7 @@ export function StepUpDialog({
       await onVerified();
     } catch (error) {
       setFormError(
-        isApiError(error)
-          ? error.message
-          : t("stepup.error.passkey_failed"),
+        isApiError(error) ? error.message : t("stepup.error.passkey_failed"),
       );
     } finally {
       setPasskeyPending(false);
@@ -137,7 +136,9 @@ export function StepUpDialog({
             <LockKeyhole className="size-5" aria-hidden />
             {t("stepup.dialog.title")}
           </DialogTitle>
-          <DialogDescription>{t("stepup.dialog.description")}</DialogDescription>
+          <DialogDescription>
+            {t("stepup.dialog.description")}
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
@@ -185,7 +186,9 @@ export function StepUpDialog({
             </AppForm>
           ) : null}
 
-          {enabledCount > 1 && (passkeyEnabled || totpEnabled) && passwordEnabled ? (
+          {enabledCount > 1 &&
+          (passkeyEnabled || totpEnabled) &&
+          passwordEnabled ? (
             <div className="flex items-center gap-3">
               <Separator className="flex-1" />
               <span className="text-muted-foreground text-xs uppercase">

@@ -32,12 +32,24 @@ export function SelectionBanner({
           : t("table.selected", { count: selectedCount })}
       </span>
       {showSelectAll ? (
-        <Button type="button" size="sm" variant="link" className="h-auto p-0" onClick={onSelectAllMatching}>
+        <Button
+          type="button"
+          size="sm"
+          variant="link"
+          className="h-auto p-0"
+          onClick={onSelectAllMatching}
+        >
           {t("bulk.select_all_matching", { total })}
         </Button>
       ) : null}
       {allMatchingSelected ? (
-        <Button type="button" size="sm" variant="link" className="h-auto p-0" onClick={onClearSelection}>
+        <Button
+          type="button"
+          size="sm"
+          variant="link"
+          className="h-auto p-0"
+          onClick={onClearSelection}
+        >
           {t("bulk.clear_selection")}
         </Button>
       ) : null}

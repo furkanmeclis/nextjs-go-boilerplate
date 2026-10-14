@@ -20,7 +20,11 @@ self.addEventListener("push", (event) => {
 });
 
 function resolveNotificationUrl(data) {
-  if (data && typeof data.action_url === "string" && data.action_url.startsWith("/")) {
+  if (
+    data &&
+    typeof data.action_url === "string" &&
+    data.action_url.startsWith("/")
+  ) {
     return data.action_url;
   }
   return "/platform/notifications";
@@ -30,16 +34,18 @@ self.addEventListener("notificationclick", (event) => {
   event.notification.close();
   const targetUrl = resolveNotificationUrl(event.notification.data);
   event.waitUntil(
-    clients.matchAll({ type: "window", includeUncontrolled: true }).then((windowClients) => {
-      for (const client of windowClients) {
-        if ("focus" in client) {
-          return client.focus();
+    clients
+      .matchAll({ type: "window", includeUncontrolled: true })
+      .then((windowClients) => {
+        for (const client of windowClients) {
+          if ("focus" in client) {
+            return client.focus();
+          }
         }
-      }
-      if (clients.openWindow) {
-        return clients.openWindow(targetUrl);
-      }
-      return undefined;
-    }),
+        if (clients.openWindow) {
+          return clients.openWindow(targetUrl);
+        }
+        return undefined;
+      }),
   );
 });

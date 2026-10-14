@@ -216,7 +216,11 @@ export function TotpManager() {
           {t("auth.totp.disable")}
         </Button>
       ) : (
-        <Button type="button" disabled={pending} onClick={() => void beginSetup()}>
+        <Button
+          type="button"
+          disabled={pending}
+          onClick={() => void beginSetup()}
+        >
           {pending ? t("auth.totp.setting_up") : t("auth.totp.enable")}
         </Button>
       )}
@@ -230,7 +234,9 @@ export function TotpManager() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
-            <Label htmlFor="totp-disable-code">{t("auth.totp.confirm_code")}</Label>
+            <Label htmlFor="totp-disable-code">
+              {t("auth.totp.confirm_code")}
+            </Label>
             <Input
               id="totp-disable-code"
               inputMode="numeric"

@@ -2,7 +2,11 @@
 
 import { Contact, Palette } from "lucide-react";
 import { useMemo } from "react";
-import { Controller, useFormContext, type UseFormReturn } from "react-hook-form";
+import {
+  Controller,
+  useFormContext,
+  type UseFormReturn,
+} from "react-hook-form";
 
 import {
   AppForm,
@@ -195,7 +199,11 @@ function SettingsFormFields({
           disabled={!canWrite}
           className="sm:col-span-2"
         />
-        <AppInput name="phone" label={t("settings.phone")} disabled={!canWrite} />
+        <AppInput
+          name="phone"
+          label={t("settings.phone")}
+          disabled={!canWrite}
+        />
         <AppInput
           name="email"
           label={t("settings.email")}
@@ -226,7 +234,9 @@ function SettingsFormFields({
           </Button>
         </FormActions>
       ) : (
-        <p className="text-muted-foreground text-sm">{t("settings.read_only")}</p>
+        <p className="text-muted-foreground text-sm">
+          {t("settings.read_only")}
+        </p>
       )}
     </FormLayout>
   );

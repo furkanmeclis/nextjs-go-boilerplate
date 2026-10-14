@@ -26,25 +26,37 @@ export function formatActivityResource(
   return label === key ? resource : label;
 }
 
-export function formatImportStatus(t: (key: string) => string, status: string): string {
+export function formatImportStatus(
+  t: (key: string) => string,
+  status: string,
+): string {
   const key = `imports.status.${status}`;
   const translated = t(key);
   return translated === key ? status : translated;
 }
 
-export function formatExportStatus(t: (key: string) => string, status: string): string {
+export function formatExportStatus(
+  t: (key: string) => string,
+  status: string,
+): string {
   const key = `exports.status.${status}`;
   const translated = t(key);
   return translated === key ? status : translated;
 }
 
-export function formatImportFormat(t: (key: string) => string, format: string): string {
+export function formatImportFormat(
+  t: (key: string) => string,
+  format: string,
+): string {
   const key = `imports.formats.${format.toLowerCase()}`;
   const translated = t(key);
   return translated === key ? format.toUpperCase() : translated;
 }
 
-export function formatExportFormat(t: (key: string) => string, format: string): string {
+export function formatExportFormat(
+  t: (key: string) => string,
+  format: string,
+): string {
   const key = `exports.formats.${format.toLowerCase()}`;
   const translated = t(key);
   return translated === key ? format.toUpperCase() : translated;
@@ -58,7 +70,11 @@ export function rollbackWindowOpen(
 }
 
 /** Client-side fallback when Content-Disposition is missing. */
-export function exportDownloadFilename(resource: string, format: string, at?: Date): string {
+export function exportDownloadFilename(
+  resource: string,
+  format: string,
+  at?: Date,
+): string {
   const slug = resource.includes(".") ? resource.split(".").pop()! : resource;
   const ext =
     format.toLowerCase() === "pdf"

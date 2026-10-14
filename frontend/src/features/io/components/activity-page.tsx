@@ -64,8 +64,7 @@ export function ActivityPage() {
       createColumn<ActivityEvent>({
         accessorKey: "resource",
         labelKey: "activity.columns.resource",
-        cell: ({ row }) =>
-          formatActivityResource(t, row.original.resource),
+        cell: ({ row }) => formatActivityResource(t, row.original.resource),
       }),
       createColumn<ActivityEvent>({
         accessorKey: "actor_user_id",

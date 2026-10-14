@@ -74,7 +74,9 @@ export function ImportsPage() {
         columns={columns}
         data={listQuery.data?.items ?? []}
         getRowId={(row) => row.uuid}
-        onRowClick={(job) => router.push(routes.platform.imports.detail(job.uuid))}
+        onRowClick={(job) =>
+          router.push(routes.platform.imports.detail(job.uuid))
+        }
         isLoading={listQuery.isLoading}
         isError={listQuery.isError}
         onRetry={() => void listQuery.refetch()}

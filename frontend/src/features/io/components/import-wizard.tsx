@@ -118,10 +118,7 @@ export function ImportWizard({
 }: ImportWizardProps) {
   const { t, locale } = useLocale();
   const paths = IMPORT_PATHS[resource];
-  const schema = useMemo(
-    () => IMPORT_SCHEMA[resource] ?? [],
-    [resource],
-  );
+  const schema = useMemo(() => IMPORT_SCHEMA[resource] ?? [], [resource]);
 
   const [step, setStep] = useState<Step>("upload");
   const [format, setFormat] = useState<ImportFormat>("xlsx");
@@ -152,13 +149,13 @@ export function ImportWizard({
 
   const runAutoMatch = useCallback(
     (headerList: string[], baseMapping?: Record<string, string>) => {
-      const suggested = suggestColumnMapping(headerList, schema, (key) => t(key));
+      const suggested = suggestColumnMapping(headerList, schema, (key) =>
+        t(key),
+      );
       const merged = { ...baseMapping, ...suggested };
       const count = countMappedFields(merged);
       setMapping(merged);
-      setDefaults((prev) =>
-        applyAutoDefaults(resource, merged, prev),
-      );
+      setDefaults((prev) => applyAutoDefaults(resource, merged, prev));
       if (count > 0) {
         appToast.success(t("imports.toast.auto_mapped", { count }));
       }
@@ -197,7 +194,9 @@ export function ImportWizard({
         locale,
       );
       const detected = await readFileHeaders(file, format);
-      setHeaders(detected.length ? detected : Object.keys(created.mapping ?? {}));
+      setHeaders(
+        detected.length ? detected : Object.keys(created.mapping ?? {}),
+      );
 
       let uiMapping = apiMappingToUi(created.mapping);
       if (detected.length) {
@@ -318,7 +317,9 @@ export function ImportWizard({
       <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto">
         <DialogHeader className="space-y-3">
           <DialogTitle>{t("imports.wizard_title")}</DialogTitle>
-          <DialogDescription>{t("imports.wizard_description")}</DialogDescription>
+          <DialogDescription>
+            {t("imports.wizard_description")}
+          </DialogDescription>
           <StepIndicator step={step} t={t} />
         </DialogHeader>
 
@@ -341,7 +342,9 @@ export function ImportWizard({
                   ))}
                 </SelectContent>
               </Select>
-              <p className="text-muted-foreground text-xs">{t("imports.format_hint")}</p>
+              <p className="text-muted-foreground text-xs">
+                {t("imports.format_hint")}
+              </p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="import-file">{t("imports.file")}</Label>
@@ -351,10 +354,14 @@ export function ImportWizard({
                 accept=".csv,.tsv,.xlsx,.json"
                 onChange={(e) => setFile(e.target.files?.[0] ?? null)}
               />
-              <p className="text-muted-foreground text-xs">{t("imports.file_hint")}</p>
+              <p className="text-muted-foreground text-xs">
+                {t("imports.file_hint")}
+              </p>
             </div>
             <div className="space-y-2">
-              <p className="text-sm font-medium">{t("imports.samples_title")}</p>
+              <p className="text-sm font-medium">
+                {t("imports.samples_title")}
+              </p>
               <div className="flex flex-wrap gap-2">
                 {FORMATS.map((f) => (
                   <Button
@@ -378,7 +385,9 @@ export function ImportWizard({
           <div className="space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
-                <p className="text-sm font-medium">{t("imports.mapping_title")}</p>
+                <p className="text-sm font-medium">
+                  {t("imports.mapping_title")}
+                </p>
                 <p className="text-muted-foreground text-xs">
                   {t("imports.mapping_hint")}
                 </p>
@@ -448,12 +457,17 @@ export function ImportWizard({
         {step === "defaults" ? (
           <div className="space-y-3">
             <div>
-              <p className="text-sm font-medium">{t("imports.defaults_title")}</p>
-              <p className="text-muted-foreground text-sm">{t("imports.defaults_hint")}</p>
+              <p className="text-sm font-medium">
+                {t("imports.defaults_title")}
+              </p>
+              <p className="text-muted-foreground text-sm">
+                {t("imports.defaults_hint")}
+              </p>
             </div>
             {resource === "platform.users" ? (
               <p className="text-muted-foreground text-xs">
-                {t("imports.defaults_users_status")} · {t("imports.defaults_users_locale")}
+                {t("imports.defaults_users_status")} ·{" "}
+                {t("imports.defaults_users_locale")}
               </p>
             ) : null}
             {schema.map((field) => (
@@ -492,20 +506,32 @@ export function ImportWizard({
           <div className="space-y-3 text-sm">
             <div>
               <p className="font-medium">{t("imports.preview_title")}</p>
-              <p className="text-muted-foreground text-xs">{t("imports.preview_hint")}</p>
+              <p className="text-muted-foreground text-xs">
+                {t("imports.preview_hint")}
+              </p>
             </div>
             <div className="grid grid-cols-3 gap-2">
               <div className="rounded-md border p-2 text-center">
                 <div className="font-medium">{preview.total}</div>
-                <div className="text-muted-foreground">{t("imports.preview_total")}</div>
+                <div className="text-muted-foreground">
+                  {t("imports.preview_total")}
+                </div>
               </div>
               <div className="rounded-md border p-2 text-center">
-                <div className="font-medium text-green-600">{preview.valid}</div>
-                <div className="text-muted-foreground">{t("imports.preview_valid")}</div>
+                <div className="font-medium text-green-600">
+                  {preview.valid}
+                </div>
+                <div className="text-muted-foreground">
+                  {t("imports.preview_valid")}
+                </div>
               </div>
               <div className="rounded-md border p-2 text-center">
-                <div className="font-medium text-destructive">{preview.invalid}</div>
-                <div className="text-muted-foreground">{t("imports.preview_invalid")}</div>
+                <div className="text-destructive font-medium">
+                  {preview.invalid}
+                </div>
+                <div className="text-muted-foreground">
+                  {t("imports.preview_invalid")}
+                </div>
               </div>
             </div>
             {(preview.errors?.length ?? 0) > 0 ? (
@@ -529,7 +555,9 @@ export function ImportWizard({
                 ) : null}
               </>
             ) : null}
-            <p className="text-muted-foreground text-xs">{t("imports.confirm_hint")}</p>
+            <p className="text-muted-foreground text-xs">
+              {t("imports.confirm_hint")}
+            </p>
           </div>
         ) : null}
 
@@ -548,7 +576,11 @@ export function ImportWizard({
         <DialogFooter className="gap-2 sm:gap-0">
           {step === "upload" ? (
             <>
-              <Button type="button" variant="ghost" onClick={() => handleClose(false)}>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => handleClose(false)}
+              >
                 {t("imports.cancel")}
               </Button>
               <Button
@@ -562,7 +594,11 @@ export function ImportWizard({
           ) : null}
           {step === "mapping" ? (
             <>
-              <Button type="button" variant="outline" onClick={() => setStep("upload")}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setStep("upload")}
+              >
                 {t("imports.back")}
               </Button>
               <Button
@@ -576,7 +612,11 @@ export function ImportWizard({
           ) : null}
           {step === "defaults" ? (
             <>
-              <Button type="button" variant="outline" onClick={() => setStep("mapping")}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setStep("mapping")}
+              >
                 {t("imports.back")}
               </Button>
               <Button
@@ -590,10 +630,18 @@ export function ImportWizard({
           ) : null}
           {step === "preview" ? (
             <>
-              <Button type="button" variant="outline" onClick={() => setStep("defaults")}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setStep("defaults")}
+              >
                 {t("imports.back")}
               </Button>
-              <Button type="button" disabled={pending} onClick={() => void handleConfirm()}>
+              <Button
+                type="button"
+                disabled={pending}
+                onClick={() => void handleConfirm()}
+              >
                 {t("imports.confirm")}
               </Button>
             </>

@@ -1,6 +1,13 @@
 "use client";
 
-import { Eye, KeyRound, Pencil, ShieldCheck, ShieldOff, UserRoundSearch } from "lucide-react";
+import {
+  Eye,
+  KeyRound,
+  Pencil,
+  ShieldCheck,
+  ShieldOff,
+  UserRoundSearch,
+} from "lucide-react";
 import { useMemo } from "react";
 
 import { EntityRowActions, type EntityRowAction } from "@/components/entity";

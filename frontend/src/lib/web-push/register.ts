@@ -76,7 +76,9 @@ export async function registerWebPush(opts?: {
   const vapidKey = await fetchVapidPublicKey();
   if (!vapidKey) return null;
 
-  const reg = await getPushRegistration(opts?.serviceWorkerUrl ?? DEFAULT_SW_URL);
+  const reg = await getPushRegistration(
+    opts?.serviceWorkerUrl ?? DEFAULT_SW_URL,
+  );
   const keyBytes = urlBase64ToUint8Array(vapidKey);
   const existing = await reg.pushManager.getSubscription();
   const sub =
@@ -108,7 +110,9 @@ export async function unregisterWebPush(opts?: {
   if (!hasBrowserPushSupport()) return;
 
   try {
-    const reg = await getPushRegistration(opts?.serviceWorkerUrl ?? DEFAULT_SW_URL);
+    const reg = await getPushRegistration(
+      opts?.serviceWorkerUrl ?? DEFAULT_SW_URL,
+    );
     const sub = await reg.pushManager.getSubscription();
     if (!sub) return;
 

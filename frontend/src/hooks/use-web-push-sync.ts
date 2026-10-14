@@ -14,7 +14,10 @@ export function useWebPushSync(enabled = true) {
 
   useEffect(() => {
     if (!enabled || syncedRef.current) return;
-    if (typeof window === "undefined" || Notification.permission !== "granted") {
+    if (
+      typeof window === "undefined" ||
+      Notification.permission !== "granted"
+    ) {
       return;
     }
 

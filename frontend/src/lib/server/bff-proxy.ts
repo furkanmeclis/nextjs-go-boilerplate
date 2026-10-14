@@ -116,7 +116,8 @@ async function persistTokensFromEnvelope(envelope: Envelope | null) {
   const refresh = envelope?.data?.refresh_token;
   if (!access || !refresh) return false;
 
-  const sessionPayload = envelope?.data?.session as SessionSwitchData | undefined;
+  const sessionPayload = envelope?.data?.session as
+    SessionSwitchData | undefined;
   const existing = await getApiTokens();
   const userId = sessionPayload?.user_uuid ?? existing.userId;
   if (!userId) return false;
@@ -215,7 +216,7 @@ function passthroughHeaders(
 ): Headers {
   const out = new Headers();
   const allow = [
-	"content-type",
+    "content-type",
     "content-disposition",
     "cache-control",
     "location",

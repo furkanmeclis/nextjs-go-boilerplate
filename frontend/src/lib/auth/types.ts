@@ -69,7 +69,9 @@ export function mapMeToAuthUser(me: Me): AuthUser {
   return mapped;
 }
 
-export function hasPlatformPermission(user: AuthUser | null | undefined): boolean {
+export function hasPlatformPermission(
+  user: AuthUser | null | undefined,
+): boolean {
   if (!user) return false;
   if (user.isSuperAdmin || user.roles.includes("super_admin")) return true;
   return user.permissions.some((p) => p.startsWith("platform."));

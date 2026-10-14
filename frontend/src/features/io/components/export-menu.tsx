@@ -90,7 +90,9 @@ export function ExportMenu({ resource, query, disabled }: ExportMenuProps) {
           </DropdownMenuItem>
         ))}
         <DropdownMenuItem asChild>
-          <Link href={routes.platform.exports.root}>{t("exports.view_jobs")}</Link>
+          <Link href={routes.platform.exports.root}>
+            {t("exports.view_jobs")}
+          </Link>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

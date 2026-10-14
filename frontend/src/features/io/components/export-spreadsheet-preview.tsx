@@ -2,7 +2,10 @@
 
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useRef } from "react";
-import type { KeyboardEvent, ClipboardEvent as ReactClipboardEvent } from "react";
+import type {
+  KeyboardEvent,
+  ClipboardEvent as ReactClipboardEvent,
+} from "react";
 import { useTheme } from "next-themes";
 import { FileSpreadsheet } from "lucide-react";
 

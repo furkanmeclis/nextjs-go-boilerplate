@@ -70,8 +70,7 @@ export function useExportsColumns() {
         accessorKey: "created_at",
         labelKey: "exports.columns.created_at",
         enableColumnFilter: false,
-        cell: ({ row }) =>
-          new Date(row.original.created_at).toLocaleString(),
+        cell: ({ row }) => new Date(row.original.created_at).toLocaleString(),
       }),
       createColumn<ExportJob>({
         id: "actions",

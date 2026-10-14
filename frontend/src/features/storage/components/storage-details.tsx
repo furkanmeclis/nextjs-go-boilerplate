@@ -61,7 +61,9 @@ export function StorageDetailsPanel({
 }) {
   const { t, locale } = useLocale();
   const [restoreVersionId, setRestoreVersionId] = useState<string | null>(null);
-  const versionsQuery = useStorageVersions(object?.kind === "file" ? object.key : null);
+  const versionsQuery = useStorageVersions(
+    object?.kind === "file" ? object.key : null,
+  );
   const activityQuery = useStorageActivity(object?.key ?? null);
   const sharesQuery = useStorageShares(object?.key ?? null);
   const linksQuery = useStorageLinks(object?.key ?? null);
@@ -84,8 +86,12 @@ export function StorageDetailsPanel({
           </SheetHeader>
           <Tabs defaultValue="general" className="mt-4">
             <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="general">{t("storage.details_general")}</TabsTrigger>
-              <TabsTrigger value="object">{t("storage.details_object")}</TabsTrigger>
+              <TabsTrigger value="general">
+                {t("storage.details_general")}
+              </TabsTrigger>
+              <TabsTrigger value="object">
+                {t("storage.details_object")}
+              </TabsTrigger>
               <TabsTrigger value="more">{t("storage.activity")}</TabsTrigger>
             </TabsList>
             <ScrollArea className="h-[calc(100vh-12rem)] pe-3">
@@ -99,25 +105,46 @@ export function StorageDetailsPanel({
                     />
                   </div>
                 ) : null}
-                <DetailRow label={t("storage.field_name")} value={object.name} />
+                <DetailRow
+                  label={t("storage.field_name")}
+                  value={object.name}
+                />
                 <DetailRow
                   label={t("storage.field_type")}
-                  value={t(`storage.kind_${object.file_kind}` as "storage.kind_unknown")}
+                  value={t(
+                    `storage.kind_${object.file_kind}` as "storage.kind_unknown",
+                  )}
                 />
-                <DetailRow label={t("storage.field_mime")} value={object.mime_type} />
+                <DetailRow
+                  label={t("storage.field_mime")}
+                  value={object.mime_type}
+                />
                 <DetailRow
                   label={t("storage.field_size")}
-                  value={object.kind === "folder" ? "—" : formatBytes(object.size)}
+                  value={
+                    object.kind === "folder" ? "—" : formatBytes(object.size)
+                  }
                 />
                 <DetailRow
                   label={t("storage.field_created")}
-                  value={datetime(object.created_at, "dd.MM.yyyy HH:mm", locale)}
+                  value={datetime(
+                    object.created_at,
+                    "dd.MM.yyyy HH:mm",
+                    locale,
+                  )}
                 />
                 <DetailRow
                   label={t("storage.field_updated")}
-                  value={datetime(object.updated_at, "dd.MM.yyyy HH:mm", locale)}
+                  value={datetime(
+                    object.updated_at,
+                    "dd.MM.yyyy HH:mm",
+                    locale,
+                  )}
                 />
-                <DetailRow label={t("storage.field_owner")} value={object.owner ?? ""} />
+                <DetailRow
+                  label={t("storage.field_owner")}
+                  value={object.owner ?? ""}
+                />
                 <DetailRow
                   label={t("storage.field_class")}
                   value={object.storage_class ?? ""}
@@ -146,7 +173,10 @@ export function StorageDetailsPanel({
                         size="sm"
                         variant="outline"
                         onClick={() =>
-                          void storageService.downloadFile(object.key, object.name)
+                          void storageService.downloadFile(
+                            object.key,
+                            object.name,
+                          )
                         }
                       >
                         <Download /> {t("storage.download")}
@@ -165,7 +195,9 @@ export function StorageDetailsPanel({
                         type="button"
                         size="sm"
                         variant="outline"
-                        onClick={() => copy(storageService.previewUrl(object.key))}
+                        onClick={() =>
+                          copy(storageService.previewUrl(object.key))
+                        }
                       >
                         <Copy /> {t("storage.copy_link")}
                       </Button>
@@ -175,8 +207,14 @@ export function StorageDetailsPanel({
               </TabsContent>
               <TabsContent value="object" className="space-y-4">
                 <DetailRow label={t("storage.field_key")} value={object.key} />
-                <DetailRow label={t("storage.field_bucket")} value={object.bucket} />
-                <DetailRow label={t("storage.field_etag")} value={object.etag ?? ""} />
+                <DetailRow
+                  label={t("storage.field_bucket")}
+                  value={object.bucket}
+                />
+                <DetailRow
+                  label={t("storage.field_etag")}
+                  value={object.etag ?? ""}
+                />
                 <DetailRow
                   label={t("storage.field_version")}
                   value={object.version_id ?? ""}
@@ -213,11 +251,17 @@ export function StorageDetailsPanel({
                           <div>
                             <p className="font-medium">
                               {version.label}{" "}
-                              {version.is_latest ? `(${t("storage.current")})` : ""}
+                              {version.is_latest
+                                ? `(${t("storage.current")})`
+                                : ""}
                             </p>
                             <p className="text-muted-foreground text-xs">
                               {formatBytes(version.size)} ·{" "}
-                              {datetime(version.created_at, "dd.MM.yyyy HH:mm", locale)}
+                              {datetime(
+                                version.created_at,
+                                "dd.MM.yyyy HH:mm",
+                                locale,
+                              )}
                             </p>
                           </div>
                           {canWrite && !version.is_latest ? (
@@ -248,9 +292,13 @@ export function StorageDetailsPanel({
                           key={share.uuid}
                           className="rounded-md border p-2 text-sm"
                         >
-                          <p className="font-medium">{share.name || share.email}</p>
+                          <p className="font-medium">
+                            {share.name || share.email}
+                          </p>
                           <p className="text-muted-foreground text-xs">
-                            {t(`storage.role_${share.role}` as "storage.role_viewer")}
+                            {t(
+                              `storage.role_${share.role}` as "storage.role_viewer",
+                            )}
                           </p>
                         </div>
                       ))}
@@ -260,7 +308,9 @@ export function StorageDetailsPanel({
                   )}
                 </div>
                 <div>
-                  <p className="mb-2 font-medium">{t("storage.details_urls")}</p>
+                  <p className="mb-2 font-medium">
+                    {t("storage.details_urls")}
+                  </p>
                   {(linksQuery.data ?? []).length ? (
                     <div className="space-y-2">
                       {linksQuery.data?.map((link) => {
@@ -282,7 +332,7 @@ export function StorageDetailsPanel({
                               <Badge variant="secondary">{link.status}</Badge>
                             </div>
                             {url ? (
-                              <p className="text-muted-foreground break-all text-xs">
+                              <p className="text-muted-foreground text-xs break-all">
                                 {url}
                               </p>
                             ) : (

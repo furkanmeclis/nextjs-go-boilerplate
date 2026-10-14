@@ -1,6 +1,10 @@
 "use client";
 
-import type { BulkActionMeta, BulkResource, SelectionScope } from "@/features/bulk-engine/types";
+import type {
+  BulkActionMeta,
+  BulkResource,
+  SelectionScope,
+} from "@/features/bulk-engine/types";
 import { resolveBulkActionsWithIcons } from "@/features/bulk-engine/lib/bulk-action-icons";
 import { BulkActionMenu } from "@/features/bulk-engine/components/bulk-action-menu";
 import { SelectionBanner } from "@/features/bulk-engine/components/selection-banner";

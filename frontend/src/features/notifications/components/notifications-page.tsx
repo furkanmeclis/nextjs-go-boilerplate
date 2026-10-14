@@ -56,9 +56,7 @@ export function NotificationsPage() {
     const columnValue = (id: string) =>
       firstString(
         listState.columnFilters.find((filter) => filter.id === id)?.value as
-          | string
-          | string[]
-          | undefined,
+          string | string[] | undefined,
       );
 
     const q = listState.params.q || columnValue("title")?.trim() || undefined;
@@ -69,13 +67,11 @@ export function NotificationsPage() {
       status: columnValue("status"),
       channel: NOTIFICATION_INBOX_CHANNEL,
       scope: audience.scope === "all" ? "all" : "me",
-      user_uuid:
-        audience.scope === "user" ? audience.userUuid : undefined,
+      user_uuid: audience.scope === "user" ? audience.userUuid : undefined,
     };
   }, [audience, listState.columnFilters, listState.params]);
 
-  const listEnabled =
-    audience.scope !== "user" || Boolean(audience.userUuid);
+  const listEnabled = audience.scope !== "user" || Boolean(audience.userUuid);
 
   const listQuery = usePlatformNotificationsList(listParams, listEnabled);
   const metaQuery = usePlatformNotificationsMeta(true);
