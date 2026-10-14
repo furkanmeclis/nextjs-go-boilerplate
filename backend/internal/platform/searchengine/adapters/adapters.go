@@ -150,7 +150,7 @@ func (a *RolesAdapter) documentFromRole(role db.Role) searchengine.Document {
 		Title:    role.Name,
 		Subtitle: subtitle,
 		Keywords: keywords,
-		Href:     "/platform/roles/" + role.Uuid.String(),
+		Href:     "/platform/settings/roles/" + role.Uuid.String(),
 		Icon:     "shield",
 	}
 }
