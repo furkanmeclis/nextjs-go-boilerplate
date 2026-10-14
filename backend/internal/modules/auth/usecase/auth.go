@@ -114,6 +114,7 @@ type AuthUseCase struct {
 	log           *slog.Logger
 	realtime      RealtimeHints
 	searchIndexer SearchIndexer
+	orgs          OrganizationsLister
 	// Optional registration / method policy (nil = allow password login, deny register).
 	authSettings AuthSettingsGate
 	accessPolicy AccessPolicyGate
@@ -148,6 +149,11 @@ type AccessPolicyGate interface {
 type SearchIndexer interface {
 	EnqueueUpsert(ctx context.Context, spec, id string)
 	EnqueueDelete(ctx context.Context, spec, id string)
+}
+
+// OrganizationsLister attaches tenant memberships to /auth/me when tenancy is wired.
+type OrganizationsLister interface {
+	ListForUser(ctx context.Context, userID int64) ([]model.MeOrganization, error)
 }
 
 // RealtimeHints carries non-secret Centrifugo metadata for /me.
@@ -407,6 +413,13 @@ func (u *AuthUseCase) Me(ctx context.Context, userUUID uuid.UUID, impersonatorUU
 		Links:       model.DefaultMeLinks(),
 		Channels:    model.MeChannels{User: "user:" + user.UUID.String()},
 		Realtime:    model.MeRealtime{Enabled: u.realtime.Enabled, WSURL: u.realtime.WSURL, UserChannel: "user:" + user.UUID.String()},
+	}
+	if u.orgs != nil {
+		orgs, err := u.orgs.ListForUser(ctx, user.ID)
+		if err != nil {
+			return model.Me{}, err
+		}
+		out.Organizations = orgs
 	}
 	if impersonatorUUID != nil {
 		impUser, err := u.repo.FindUserByUUID(ctx, *impersonatorUUID)

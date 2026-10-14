@@ -52,6 +52,11 @@ func (u *AuthUseCase) SetSearchIndexer(indexer SearchIndexer) {
 	u.searchIndexer = indexer
 }
 
+// SetOrganizationsLister attaches tenant memberships to /auth/me (optional).
+func (u *AuthUseCase) SetOrganizationsLister(lister OrganizationsLister) {
+	u.orgs = lister
+}
+
 // UpdateProfile patches the caller's name/surname/locale and returns refreshed Me.
 func (u *AuthUseCase) UpdateProfile(
 	ctx context.Context,
