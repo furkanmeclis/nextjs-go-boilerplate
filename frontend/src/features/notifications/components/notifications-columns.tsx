@@ -43,7 +43,9 @@ export function useNotificationsColumns(
                   const name = `${user.name} ${user.surname}`.trim();
                   return (
                     <div className="flex min-w-0 flex-col">
-                      <span className="truncate font-medium">{name || "—"}</span>
+                      <span className="truncate font-medium">
+                        {name || "—"}
+                      </span>
                       <span className="text-muted-foreground truncate text-xs">
                         {user.email}
                       </span>

@@ -93,7 +93,9 @@ function PublicFileContent({
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <p className="text-muted-foreground text-sm">{t("storage.share_loading")}</p>
+        <p className="text-muted-foreground text-sm">
+          {t("storage.share_loading")}
+        </p>
       </div>
     );
   }
@@ -115,11 +117,15 @@ function PublicFileContent({
       <header className="border-b px-4 py-4 sm:px-6">
         <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-muted-foreground text-sm">{t("storage.shared_file")}</p>
+            <p className="text-muted-foreground text-sm">
+              {t("storage.shared_file")}
+            </p>
             <h1 className="truncate text-lg font-semibold">{meta.name}</h1>
             <p className="text-muted-foreground text-xs">
-              {t(`storage.kind_${fileKindFromMime(meta.mime)}` as "storage.kind_unknown")} ·{" "}
-              {meta.mime}
+              {t(
+                `storage.kind_${fileKindFromMime(meta.mime)}` as "storage.kind_unknown",
+              )}{" "}
+              · {meta.mime}
             </p>
           </div>
           <Button type="button" asChild>

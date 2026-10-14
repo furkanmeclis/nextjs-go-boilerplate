@@ -156,11 +156,14 @@ export function AccountProfilePage({ shell }: { shell: AccountShell }) {
         </CardContent>
       </Card>
 
-      <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3 lg:items-start">
+      <div className="grid gap-4 lg:grid-cols-2 lg:items-start xl:grid-cols-3">
         <Card className="shadow-none">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Fingerprint className="text-muted-foreground size-5" aria-hidden />
+              <Fingerprint
+                className="text-muted-foreground size-5"
+                aria-hidden
+              />
               {t("auth.passkey.title")}
             </CardTitle>
             <CardHint>{t("auth.passkey.description")}</CardHint>
@@ -173,7 +176,10 @@ export function AccountProfilePage({ shell }: { shell: AccountShell }) {
         <Card className="shadow-none">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <ShieldCheck className="text-muted-foreground size-5" aria-hidden />
+              <ShieldCheck
+                className="text-muted-foreground size-5"
+                aria-hidden
+              />
               {t("auth.totp.title")}
             </CardTitle>
             <CardHint>{t("auth.totp.description")}</CardHint>

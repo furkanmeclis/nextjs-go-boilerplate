@@ -23,8 +23,7 @@ const eslintConfig = defineConfig([
       "no-restricted-syntax": [
         "error",
         {
-          selector:
-            "JSXAttribute[name.name='type'][value.value='date']",
+          selector: "JSXAttribute[name.name='type'][value.value='date']",
           message:
             'Use DatePicker from @/components/ui/date-picker (or AppDatePicker in forms) instead of native type="date".',
         },

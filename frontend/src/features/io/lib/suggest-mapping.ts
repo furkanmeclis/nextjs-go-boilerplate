@@ -13,7 +13,9 @@ export function normalizeHeader(value: string): string {
     .replace(/[^a-z0-9\u00C0-\u024F]+/gi, "");
 }
 
-export function apiMappingToUi(api: ApiColumnMapping | undefined): UiColumnMapping {
+export function apiMappingToUi(
+  api: ApiColumnMapping | undefined,
+): UiColumnMapping {
   const ui: UiColumnMapping = {};
   if (!api) return ui;
   for (const [header, fieldKey] of Object.entries(api)) {
@@ -58,7 +60,8 @@ function scoreMatch(
   const labelNorm = normalizeHeader(label);
   if (labelNorm) {
     if (headerNorm === labelNorm) return 95;
-    if (headerNorm.includes(labelNorm) || labelNorm.includes(headerNorm)) return 85;
+    if (headerNorm.includes(labelNorm) || labelNorm.includes(headerNorm))
+      return 85;
   }
   if (headerRaw.trim().toLowerCase() === label.trim().toLowerCase()) return 90;
 
@@ -86,7 +89,12 @@ export function suggestColumnMapping(
       ranked.push({
         header,
         fieldKey: field.key,
-        score: scoreMatch(headerNorm, header, field.key, labelFor(field.labelKey)),
+        score: scoreMatch(
+          headerNorm,
+          header,
+          field.key,
+          labelFor(field.labelKey),
+        ),
       });
     }
   }
@@ -94,7 +102,8 @@ export function suggestColumnMapping(
 
   for (const match of ranked) {
     if (match.score < 60) continue;
-    if (usedFields.has(match.fieldKey) || usedHeaders.has(match.header)) continue;
+    if (usedFields.has(match.fieldKey) || usedHeaders.has(match.header))
+      continue;
     ui[match.fieldKey] = match.header;
     usedFields.add(match.fieldKey);
     usedHeaders.add(match.header);
@@ -118,7 +127,8 @@ export function applyAutoDefaults(
     if (!mapping.locale && !next.locale) next.locale = "tr";
   }
   if (resource === "platform.roles") {
-    if (!mapping.permission_slugs && !next.permission_slugs) next.permission_slugs = "";
+    if (!mapping.permission_slugs && !next.permission_slugs)
+      next.permission_slugs = "";
   }
   return next;
 }

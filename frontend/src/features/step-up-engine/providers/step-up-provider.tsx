@@ -133,6 +133,8 @@ export function useStepUp() {
   return ctx;
 }
 
-export function invalidateStepUpStatus(queryClient: ReturnType<typeof useQueryClient>) {
+export function invalidateStepUpStatus(
+  queryClient: ReturnType<typeof useQueryClient>,
+) {
   return queryClient.invalidateQueries({ queryKey: STATUS_KEY });
 }

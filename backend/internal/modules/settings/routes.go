@@ -35,4 +35,11 @@ func RegisterRoutes(
 	mux.Handle("GET /v1/platform/settings/logo", middleware.Chain(
 		http.HandlerFunc(h.StreamLogo), authn,
 	))
+
+	mux.Handle("GET /v1/platform/system/info", middleware.Chain(
+		http.HandlerFunc(h.GetSystemInfo), authn, require(rbac.PermPlatformSettingsRead),
+	))
+	mux.Handle("POST /v1/platform/system/ping", middleware.Chain(
+		http.HandlerFunc(h.PingSystem), authn, require(rbac.PermPlatformSettingsRead),
+	))
 }

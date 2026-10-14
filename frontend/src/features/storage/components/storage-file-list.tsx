@@ -115,7 +115,9 @@ export function StorageFileList({
                     </button>
                   </td>
                   <td className="text-muted-foreground px-3 py-2">
-                    {t(`storage.kind_${item.file_kind}` as "storage.kind_unknown")}
+                    {t(
+                      `storage.kind_${item.file_kind}` as "storage.kind_unknown",
+                    )}
                   </td>
                   <td className="text-muted-foreground px-3 py-2">
                     {item.kind === "folder" ? "—" : formatBytes(item.size)}

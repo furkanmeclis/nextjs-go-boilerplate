@@ -9,7 +9,7 @@ Shipped as the first OAuth provider. Super admin configures a GitHub App; users 
 | Settings API | `backend/internal/modules/integrations/github` |
 | At-rest secrets | `backend/internal/platform/crypto` (`SecretBox`, AES-256-GCM) |
 | Admin UI | `frontend/src/features/integrations/github` |
-| Route | `/platform/integrations/github` |
+| Route | `/platform/settings/integrations?tab=github` |
 | Identities | `GET /v1/auth/identities`, `DELETE /v1/auth/identities/{provider}` |
 | Auth policy | `GET/PATCH /v1/platform/auth/settings` (`auth_settings`) |
 
@@ -36,7 +36,7 @@ Internal NextAuth adapter (not in OpenAPI): `/v1/internal/auth/oauth/{provider}`
 
 Google / Facebook / Apple share `backend/internal/modules/integrations/oauthprovider` + `oauth_provider_settings` (encrypt with `crypto.SecretBox`, mask on read, super-admin + `platform.integrations.<name>.*`).
 
-Admin UI: `frontend/src/features/integrations/oauth` + route under `/platform/integrations/{provider}`.
+Admin UI: `frontend/src/features/integrations/oauth` + tab on `/platform/settings/integrations` (`?tab={provider}`).
 
 Nav: `layout.section_auth_methods` group in `frontend/src/config/nav.ts`.
 

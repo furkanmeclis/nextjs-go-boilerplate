@@ -45,7 +45,8 @@ export function DeleteAccountDialog() {
 
   const errorMessage = (err: unknown) => {
     if (isApiError(err)) {
-      if (err.code === "INVALID_EMAIL_CODE") return t("auth.email_code.invalid");
+      if (err.code === "INVALID_EMAIL_CODE")
+        return t("auth.email_code.invalid");
       if (err.code === "RATE_LIMITED") return t("auth.login.rate_limited");
       return err.message || t("auth.delete_account.error");
     }

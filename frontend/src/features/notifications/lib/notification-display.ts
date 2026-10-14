@@ -7,7 +7,10 @@ const IO_RESOURCES = [
 
 const EXPORT_FORMATS = ["pdf", "xlsx", "csv", "json"] as const;
 
-type TranslateFn = (key: string, params?: Record<string, string | number>) => string;
+type TranslateFn = (
+  key: string,
+  params?: Record<string, string | number>,
+) => string;
 
 /** Replaces raw IO resource/format keys in stored notification text (legacy rows). */
 export function formatNotificationText(text: string, t: TranslateFn): string {
@@ -27,7 +30,10 @@ export function formatNotificationText(text: string, t: TranslateFn): string {
     const label = t(key);
     if (label === key) continue;
     result = result.replace(new RegExp(`\\(${format}\\)`, "gi"), `(${label})`);
-    result = result.replace(new RegExp(`\\(${format.toUpperCase()}\\)`, "g"), `(${label})`);
+    result = result.replace(
+      new RegExp(`\\(${format.toUpperCase()}\\)`, "g"),
+      `(${label})`,
+    );
   }
 
   return result;

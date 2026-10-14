@@ -9,5 +9,7 @@ export default async function ShareSlugPage({ params }: ShareSlugPageProps) {
   const streamUrl = `/api/v1/public/storage/${encodeURIComponent(slug)}`;
   const downloadUrl = `${streamUrl}?download=1`;
 
-  return <StoragePublicViewer streamUrl={streamUrl} downloadUrl={downloadUrl} />;
+  return (
+    <StoragePublicViewer streamUrl={streamUrl} downloadUrl={downloadUrl} />
+  );
 }

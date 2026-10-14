@@ -38,9 +38,7 @@ export function ResourceIOToolbar({
 
   const exportPerm = EXPORT_PERM[resource];
   if (capabilities?.export && exportPerm && can(exportPerm)) {
-    nodes.push(
-      <ExportMenu key="export" resource={resource} query={query} />,
-    );
+    nodes.push(<ExportMenu key="export" resource={resource} query={query} />);
   }
 
   const importPerm = IMPORT_PERM[resource];

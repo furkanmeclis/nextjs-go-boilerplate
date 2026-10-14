@@ -602,6 +602,176 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  /v1/platform/system/info:
+    get:
+      tags: [Platform]
+      operationId: getPlatformSystemInfo
+      summary: Read system runtime metrics, infrastructure health, and environment diagnostics
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: System runtime info and health diagnostics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnvelopeSystemInfo"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /v1/platform/system/ping:
+    post:
+      tags: [Platform]
+      operationId: pingPlatformSystem
+      summary: Trigger a live health and latency probe across all backing services
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Live probe results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnvelopeSystemInfo"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /v1/platform/settings:
+    get:
+      tags: [Platform]
+      operationId: getPlatformSettings
+      summary: Read app branding / letterhead settings (app_settings singleton)
+      description: Requires `platform.settings.read`.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: App settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnvelopeAppSettings"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    patch:
+      tags: [Platform]
+      operationId: patchPlatformSettings
+      summary: Partially update app branding / letterhead settings
+      description: Requires `platform.settings.write`. Omitted fields are left unchanged.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PatchAppSettingsRequest"
+      responses:
+        "200":
+          description: Updated app settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnvelopeAppSettings"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /v1/platform/settings/logo:
+    get:
+      tags: [Platform]
+      operationId: getPlatformSettingsLogo
+      summary: Stream the app logo image
+      description: Any authenticated user. Returns the raw image bytes.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Logo image
+          content:
+            image/png:
+              schema: { type: string, format: binary }
+            image/jpeg:
+              schema: { type: string, format: binary }
+            image/webp:
+              schema: { type: string, format: binary }
+            image/svg+xml:
+              schema: { type: string, format: binary }
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    put:
+      tags: [Platform]
+      operationId: putPlatformSettingsLogo
+      summary: Upload or replace the app logo
+      description: Requires `platform.settings.write`. Multipart form with a `logo` file field.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [logo]
+              properties:
+                logo: { type: string, format: binary }
+      responses:
+        "200":
+          description: Updated app settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnvelopeAppSettings"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    delete:
+      tags: [Platform]
+      operationId: deletePlatformSettingsLogo
+      summary: Remove the app logo
+      description: Requires `platform.settings.write`.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Updated app settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnvelopeAppSettings"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
   /v1/platform/auth/settings:
     get:
       tags: [Platform]
@@ -4080,6 +4250,143 @@ components:
       properties:
         success: { type: boolean, enum: [true] }
         data: { $ref: "#/components/schemas/GitHubIntegrationSettings" }
+        meta: { $ref: "#/components/schemas/ResponseMeta" }
+
+    SystemMemoryStats:
+      type: object
+      required: [alloc_bytes, total_alloc_bytes, sys_bytes, heap_alloc_bytes, heap_sys_bytes, heap_idle_bytes, heap_inuse_bytes, num_gc]
+      properties:
+        alloc_bytes: { type: integer, format: int64 }
+        total_alloc_bytes: { type: integer, format: int64 }
+        sys_bytes: { type: integer, format: int64 }
+        heap_alloc_bytes: { type: integer, format: int64 }
+        heap_sys_bytes: { type: integer, format: int64 }
+        heap_idle_bytes: { type: integer, format: int64 }
+        heap_inuse_bytes: { type: integer, format: int64 }
+        num_gc: { type: integer }
+
+    SystemRuntimeInfo:
+      type: object
+      required: [go_version, num_cpu, num_goroutine, compiler, arch, os, memory, uptime_seconds, server_time]
+      properties:
+        go_version: { type: string }
+        num_cpu: { type: integer }
+        num_goroutine: { type: integer }
+        compiler: { type: string }
+        arch: { type: string }
+        os: { type: string }
+        memory: { $ref: "#/components/schemas/SystemMemoryStats" }
+        uptime_seconds: { type: number }
+        server_time: { type: string, format: date-time }
+
+    ServiceHealthInfo:
+      type: object
+      required: [status, latency_ms]
+      properties:
+        status: { type: string, enum: [healthy, degraded, down, disabled] }
+        latency_ms: { type: number }
+        message: { type: string }
+
+    DatabasePoolStats:
+      type: object
+      required: [total_conns, idle_conns, acquired_conns, max_conns]
+      properties:
+        total_conns: { type: integer }
+        idle_conns: { type: integer }
+        acquired_conns: { type: integer }
+        max_conns: { type: integer }
+
+    DatabaseHealthInfo:
+      type: object
+      required: [status, latency_ms]
+      properties:
+        status: { type: string, enum: [healthy, degraded, down, disabled] }
+        latency_ms: { type: number }
+        message: { type: string }
+        pool: { $ref: "#/components/schemas/DatabasePoolStats" }
+
+    StorageHealthInfo:
+      type: object
+      required: [status, latency_ms, driver]
+      properties:
+        status: { type: string, enum: [healthy, degraded, down, disabled] }
+        latency_ms: { type: number }
+        message: { type: string }
+        driver: { type: string }
+
+    SystemServicesHealth:
+      type: object
+      required: [database, redis, storage, meilisearch]
+      properties:
+        database: { $ref: "#/components/schemas/DatabaseHealthInfo" }
+        redis: { $ref: "#/components/schemas/ServiceHealthInfo" }
+        storage: { $ref: "#/components/schemas/StorageHealthInfo" }
+        meilisearch: { $ref: "#/components/schemas/ServiceHealthInfo" }
+
+    SystemEnvironmentInfo:
+      type: object
+      required: [app_name, env, log_level, centrifugo_enabled, vapid_enabled, search_enabled]
+      properties:
+        app_name: { type: string }
+        env: { type: string }
+        log_level: { type: string }
+        centrifugo_enabled: { type: boolean }
+        vapid_enabled: { type: boolean }
+        search_enabled: { type: boolean }
+
+    SystemInfo:
+      type: object
+      required: [status, runtime, services, environment]
+      properties:
+        status: { type: string, enum: [healthy, degraded, down] }
+        runtime: { $ref: "#/components/schemas/SystemRuntimeInfo" }
+        services: { $ref: "#/components/schemas/SystemServicesHealth" }
+        environment: { $ref: "#/components/schemas/SystemEnvironmentInfo" }
+
+    EnvelopeSystemInfo:
+      type: object
+      required: [success, data, meta]
+      properties:
+        success: { type: boolean, enum: [true] }
+        data: { $ref: "#/components/schemas/SystemInfo" }
+        meta: { $ref: "#/components/schemas/ResponseMeta" }
+
+    AppSettings:
+      type: object
+      required: [company_name, tagline, primary_color, address, phone, email, website, footer_text, paper_size]
+      properties:
+        company_name: { type: string }
+        tagline: { type: string }
+        primary_color: { type: string }
+        address: { type: string }
+        phone: { type: string }
+        email: { type: string }
+        website: { type: string }
+        footer_text: { type: string }
+        paper_size: { type: string }
+        logo_url:
+          type: string
+          description: Same-origin API path to stream the logo; omitted when no logo is set.
+
+    PatchAppSettingsRequest:
+      type: object
+      properties:
+        company_name: { type: string }
+        tagline: { type: string }
+        primary_color: { type: string }
+        address: { type: string }
+        phone: { type: string }
+        email: { type: string }
+        website: { type: string }
+        footer_text: { type: string }
+        paper_size: { type: string }
+
+    EnvelopeAppSettings:
+      type: object
+      required: [success, data, meta]
+      properties:
+        success: { type: boolean, enum: [true] }
+        data: { $ref: "#/components/schemas/AppSettings" }
         meta: { $ref: "#/components/schemas/ResponseMeta" }
 
     AuthSettingsDefaultRole:

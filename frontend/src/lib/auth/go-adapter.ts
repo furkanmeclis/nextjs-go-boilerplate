@@ -35,7 +35,9 @@ function mapUser(user: AdapterUserPayload): AdapterUser {
   };
 }
 
-function mapAuthenticator(row: AdapterAuthenticatorPayload): AdapterAuthenticator {
+function mapAuthenticator(
+  row: AdapterAuthenticatorPayload,
+): AdapterAuthenticator {
   return {
     credentialID: row.credentialID,
     providerAccountId: row.providerAccountId,
@@ -135,7 +137,10 @@ export function goAdapter(options: GoAdapterOptions = {}): Adapter {
     async getUserByAccount({ providerAccountId, provider }) {
       if (OAUTH_PROVIDERS.has(provider)) {
         try {
-          const user = await adapterGetOAuthAccountUser(provider, providerAccountId);
+          const user = await adapterGetOAuthAccountUser(
+            provider,
+            providerAccountId,
+          );
           return mapUser(user);
         } catch (error) {
           if (isNotFound(error)) return null;
@@ -185,13 +190,19 @@ export function goAdapter(options: GoAdapterOptions = {}): Adapter {
     },
     async unlinkAccount(account) {
       if (OAUTH_PROVIDERS.has(account.provider)) {
-        await adapterUnlinkOAuthAccount(account.provider, account.providerAccountId);
+        await adapterUnlinkOAuthAccount(
+          account.provider,
+          account.providerAccountId,
+        );
       }
     },
     async getAccount(providerAccountId, provider) {
       if (OAUTH_PROVIDERS.has(provider)) {
         try {
-          const user = await adapterGetOAuthAccountUser(provider, providerAccountId);
+          const user = await adapterGetOAuthAccountUser(
+            provider,
+            providerAccountId,
+          );
           return {
             userId: user.id,
             provider,

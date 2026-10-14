@@ -72,8 +72,7 @@ export function useImportsColumns({
         accessorKey: "created_at",
         labelKey: "imports.columns.created_at",
         enableColumnFilter: false,
-        cell: ({ row }) =>
-          new Date(row.original.created_at).toLocaleString(),
+        cell: ({ row }) => new Date(row.original.created_at).toLocaleString(),
       }),
       createColumn<ImportJob>({
         id: "actions",

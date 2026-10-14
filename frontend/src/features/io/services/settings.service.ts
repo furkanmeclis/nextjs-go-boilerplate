@@ -2,9 +2,7 @@ import type { AppSettings } from "@/features/io/types";
 import { platformFormRequest } from "@/lib/api/platform-form-request";
 import { platformRequest } from "@/lib/api/platform-request";
 
-export type PatchSettingsRequest = Partial<
-  Omit<AppSettings, "logo_url">
->;
+export type PatchSettingsRequest = Partial<Omit<AppSettings, "logo_url">>;
 
 export const settingsService = {
   async get() {
@@ -28,9 +26,6 @@ export const settingsService = {
   },
 
   async deleteLogo() {
-    return platformRequest<AppSettings>(
-      "DELETE",
-      "/v1/platform/settings/logo",
-    );
+    return platformRequest<AppSettings>("DELETE", "/v1/platform/settings/logo");
   },
 };

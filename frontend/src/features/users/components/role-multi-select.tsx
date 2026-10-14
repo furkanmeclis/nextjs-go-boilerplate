@@ -54,9 +54,7 @@ export function RoleMultiSelect({
             <Checkbox
               id={`role-${role.uuid}`}
               checked={selected.has(role.uuid)}
-              onCheckedChange={(checked) =>
-                toggle(role.uuid, checked === true)
-              }
+              onCheckedChange={(checked) => toggle(role.uuid, checked === true)}
             />
             <Label
               htmlFor={`role-${role.uuid}`}
@@ -70,7 +68,9 @@ export function RoleMultiSelect({
           </div>
         ))}
         {!isLoading && (data?.items.length ?? 0) === 0 ? (
-          <p className="text-muted-foreground text-sm">{t("users.roles_empty")}</p>
+          <p className="text-muted-foreground text-sm">
+            {t("users.roles_empty")}
+          </p>
         ) : null}
       </div>
     </FormFieldShell>

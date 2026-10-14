@@ -3,7 +3,11 @@
 import { ChevronDown, Layers } from "lucide-react";
 import { useMemo } from "react";
 
-import type { BulkActionDef, BulkResource, SelectionScope } from "@/features/bulk-engine/types";
+import type {
+  BulkActionDef,
+  BulkResource,
+  SelectionScope,
+} from "@/features/bulk-engine/types";
 import { buildBulkTarget } from "@/features/bulk-engine/hooks/use-bulk-selection";
 import { useBulkMutation } from "@/features/bulk-engine/hooks/use-bulk-mutation";
 import { Button } from "@/components/ui/button";

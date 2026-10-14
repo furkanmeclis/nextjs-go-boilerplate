@@ -94,9 +94,7 @@ export function useRunPurgeRule() {
       void queryClient.invalidateQueries({ queryKey: logsKeys.rules() });
       void queryClient.invalidateQueries({ queryKey: logsKeys.lists() });
       void queryClient.invalidateQueries({ queryKey: logsKeys.stats() });
-      appToast.success(
-        t("logs.toast.rule_ran", { count: result.deleted }),
-      );
+      appToast.success(t("logs.toast.rule_ran", { count: result.deleted }));
     },
   });
 }

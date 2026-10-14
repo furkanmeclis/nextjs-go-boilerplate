@@ -16,7 +16,11 @@ export type ListJobsResult = {
 export const exportsService = {
   async request(
     path: string,
-    body: { format: ExportFormat; query?: Record<string, string>; locale?: string },
+    body: {
+      format: ExportFormat;
+      query?: Record<string, string>;
+      locale?: string;
+    },
   ) {
     return platformRequest<ExportJob>("POST", path, { body });
   },
@@ -39,7 +43,11 @@ export const exportsService = {
     const { blob, filename } = await this.fetchFile(job.uuid);
     const name =
       filename ??
-      exportDownloadFilename(job.resource, job.format, new Date(job.created_at));
+      exportDownloadFilename(
+        job.resource,
+        job.format,
+        new Date(job.created_at),
+      );
     triggerBrowserDownload(blob, name);
   },
 };

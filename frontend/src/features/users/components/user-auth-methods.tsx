@@ -26,14 +26,18 @@ function methodLabel(
   }
   if (method.kind === "passkey") {
     if (method.label?.trim()) {
-      return t("users.auth_methods.passkey_named", { name: method.label.trim() });
+      return t("users.auth_methods.passkey_named", {
+        name: method.label.trim(),
+      });
     }
     return t("users.auth_methods.passkey");
   }
   const provider = method.provider ?? "oauth";
   const key = `users.auth_methods.oauth.${provider}`;
   const label = t(key);
-  return label === key ? t("users.auth_methods.oauth.generic", { provider }) : label;
+  return label === key
+    ? t("users.auth_methods.oauth.generic", { provider })
+    : label;
 }
 
 function MethodIcon({ method }: { method: UserAuthMethod }) {
@@ -87,7 +91,9 @@ export function UserAuthMethodsIcons({
         const label = methodLabel(method, t);
         const linked = datetime(method.linked_at, undefined, locale);
         return (
-          <Tooltip key={`${method.kind}-${method.provider ?? method.label ?? index}-${method.linked_at}`}>
+          <Tooltip
+            key={`${method.kind}-${method.provider ?? method.label ?? index}-${method.linked_at}`}
+          >
             <TooltipTrigger asChild>
               <span
                 className="border-border bg-muted/40 text-muted-foreground inline-flex size-7 items-center justify-center rounded-md border"

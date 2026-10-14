@@ -25,7 +25,10 @@ import {
 } from "@/features/logs/hooks/use-log-mutations";
 import { logsKeys } from "@/features/logs/hooks/query-keys";
 import type { PurgeRuleFormValues } from "@/features/logs/schemas/purge-rule-form";
-import { logsService, type PurgeRule } from "@/features/logs/services/logs.service";
+import {
+  logsService,
+  type PurgeRule,
+} from "@/features/logs/services/logs.service";
 import { datetime } from "@/lib/utils";
 import { useDialogs } from "@/providers/dialog-provider";
 import { useLocale } from "@/providers/locale-provider";
@@ -124,8 +127,7 @@ export function PurgeRulesPanel() {
       createColumn<PurgeRule>({
         accessorKey: "interval_minutes",
         labelKey: "logs.rules.columns.schedule",
-        cell: ({ row }) =>
-          intervalLabel(t, row.original.interval_minutes),
+        cell: ({ row }) => intervalLabel(t, row.original.interval_minutes),
       }),
       createColumn<PurgeRule>({
         accessorKey: "last_run_at",

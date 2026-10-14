@@ -8,12 +8,9 @@ export const accessFormSchema = z
     totp_enabled: z.boolean(),
     password_login_totp_required: z.boolean(),
   })
-  .refine(
-    (v) => v.password_enabled || v.passkey_enabled || v.totp_enabled,
-    {
-      message: "At least one verification method must stay enabled",
-      path: ["password_enabled"],
-    },
-  );
+  .refine((v) => v.password_enabled || v.passkey_enabled || v.totp_enabled, {
+    message: "At least one verification method must stay enabled",
+    path: ["password_enabled"],
+  });
 
 export type AccessFormValues = z.infer<typeof accessFormSchema>;

@@ -135,8 +135,13 @@ function RoleFormFields({
         <Button type="button" variant="outline" onClick={onCancel}>
           {t("form.cancel")}
         </Button>
-        <Button type="submit" disabled={isSubmitting || form.formState.isSubmitting}>
-          {mode === "create" ? t("roles.actions.create") : t("roles.actions.save")}
+        <Button
+          type="submit"
+          disabled={isSubmitting || form.formState.isSubmitting}
+        >
+          {mode === "create"
+            ? t("roles.actions.create")
+            : t("roles.actions.save")}
         </Button>
       </FormActions>
     </FormLayout>

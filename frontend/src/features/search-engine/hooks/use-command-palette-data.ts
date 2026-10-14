@@ -41,9 +41,7 @@ export function useCommandPaletteData(variant: AppLayoutVariant) {
 
   const remoteSpecs = useMemo(() => {
     const items = specsQuery.data?.items ?? [];
-    return items.filter(
-      (spec) => !spec.permission || can(spec.permission),
-    );
+    return items.filter((spec) => !spec.permission || can(spec.permission));
   }, [can, specsQuery.data?.items]);
 
   const prefixMap = useMemo(() => {
@@ -136,12 +134,21 @@ export function useCommandPaletteData(variant: AppLayoutVariant) {
 
     const recent = recentQuery.data ?? [];
     if (!searchText && !effectiveSpec && recent.length > 0) {
-      push(recent.map((item) => ({ ...item, group: t("search.group_recent") })));
+      push(
+        recent.map((item) => ({ ...item, group: t("search.group_recent") })),
+      );
     }
     push(filteredPages);
     push(remoteItems);
     return groups;
-  }, [effectiveSpec, filteredPages, recentQuery.data, remoteItems, searchText, t]);
+  }, [
+    effectiveSpec,
+    filteredPages,
+    recentQuery.data,
+    remoteItems,
+    searchText,
+    t,
+  ]);
 
   if (!query && activeSpec !== undefined) {
     setActiveSpec(undefined);

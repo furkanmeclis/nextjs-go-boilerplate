@@ -92,9 +92,8 @@ export function LoginForm() {
   const [passkeyPending, setPasskeyPending] = useState(false);
   const [oauthPending, setOauthPending] = useState<OAuthId | null>(null);
   const [mfaStep, setMfaStep] = useState(false);
-  const [savedCredentials, setSavedCredentials] = useState<SavedCredentials | null>(
-    null,
-  );
+  const [savedCredentials, setSavedCredentials] =
+    useState<SavedCredentials | null>(null);
   const schema = useMemo(() => createLoginSchema(t), [t]);
   const mfaSchema = useMemo(() => createMfaSchema(t), [t]);
   const emailCodeEmailSchema = useMemo(
@@ -346,7 +345,10 @@ export function LoginForm() {
       }
       await signIn(provider, {
         redirect: true,
-        callbackUrl: resolveNext(searchParams.get("next"), routes.platform.home),
+        callbackUrl: resolveNext(
+          searchParams.get("next"),
+          routes.platform.home,
+        ),
       });
     } catch {
       setFormError(t("auth.oauth.sign_in_error"));
@@ -420,9 +422,15 @@ export function LoginForm() {
             />
 
             <Field className="flex flex-col gap-2 sm:flex-row">
-              <Button type="submit" disabled={authPending} className="sm:flex-1">
+              <Button
+                type="submit"
+                disabled={authPending}
+                className="sm:flex-1"
+              >
                 <ShieldCheck aria-hidden />
-                {pending ? t("auth.login.submitting") : t("auth.totp.verify_login")}
+                {pending
+                  ? t("auth.login.submitting")
+                  : t("auth.totp.verify_login")}
               </Button>
               <Button
                 type="button"
@@ -623,8 +631,7 @@ export function LoginForm() {
 
         {showPassword ? (
           <>
-            {(showPasskey ||
-              oauthButtons.some((button) => button.enabled)) && (
+            {(showPasskey || oauthButtons.some((button) => button.enabled)) && (
               <div className="flex items-center gap-3">
                 <Separator className="flex-1" />
                 <span className="text-muted-foreground text-xs uppercase">

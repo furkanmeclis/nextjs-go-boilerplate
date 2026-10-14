@@ -5,13 +5,21 @@
  * - Preview blobs from local File picks may use URL.createObjectURL; revoke after use.
  */
 
-export function assertServiceMediaURL(url: string | null | undefined): string | null {
+export function assertServiceMediaURL(
+  url: string | null | undefined,
+): string | null {
   if (!url) return null;
   const trimmed = url.trim();
   if (!trimmed) return null;
   // Allow relative API streams and absolute https URLs returned by the backend.
-  if (trimmed.startsWith("/") || trimmed.startsWith("https://") || trimmed.startsWith("http://")) {
+  if (
+    trimmed.startsWith("/") ||
+    trimmed.startsWith("https://") ||
+    trimmed.startsWith("http://")
+  ) {
     return trimmed;
   }
-  throw new Error("media: reject non-service URL (do not assemble S3 keys client-side)");
+  throw new Error(
+    "media: reject non-service URL (do not assemble S3 keys client-side)",
+  );
 }

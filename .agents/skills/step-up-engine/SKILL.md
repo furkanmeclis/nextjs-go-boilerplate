@@ -50,7 +50,7 @@ await doSensitiveThing();
 
 ## Admin
 
-Route: `/platform/access` — permissions `platform.access.read` / `platform.access.write`.
+Route: `/platform/settings/access` — permissions `platform.access.read` / `platform.access.write`.
 
 ## Shipped consumers
 

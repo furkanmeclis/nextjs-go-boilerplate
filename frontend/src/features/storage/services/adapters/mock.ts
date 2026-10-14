@@ -154,7 +154,11 @@ export function createMockStorageAdapter(): StorageService {
     async deleteFile(keys) {
       items = items.map((item) =>
         keys.includes(item.key)
-          ? { ...item, trash_uuid: item.key, trash_expires_at: new Date().toISOString() }
+          ? {
+              ...item,
+              trash_uuid: item.key,
+              trash_expires_at: new Date().toISOString(),
+            }
           : item,
       );
     },
@@ -229,4 +233,6 @@ export function createMockStorageAdapter(): StorageService {
   return svc;
 }
 
-export const mockStorageService = createStorageService(createMockStorageAdapter());
+export const mockStorageService = createStorageService(
+  createMockStorageAdapter(),
+);

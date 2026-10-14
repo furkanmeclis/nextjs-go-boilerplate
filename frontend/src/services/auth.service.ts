@@ -195,7 +195,9 @@ export const authService = {
   },
 
   async listIdentities() {
-    return unwrap<IdentityListResult>(await apiClient.GET("/v1/auth/identities"));
+    return unwrap<IdentityListResult>(
+      await apiClient.GET("/v1/auth/identities"),
+    );
   },
 
   async stopImpersonation() {

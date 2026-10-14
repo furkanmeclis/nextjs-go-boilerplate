@@ -66,9 +66,7 @@ export function CommandPalette({ variant }: { variant: AppLayoutVariant }) {
               <button
                 key={spec.id}
                 type="button"
-                onClick={() =>
-                  data.setActiveSpec(active ? undefined : spec.id)
-                }
+                onClick={() => data.setActiveSpec(active ? undefined : spec.id)}
                 className={cn(
                   "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
                   active
@@ -115,7 +113,9 @@ export function CommandPalette({ variant }: { variant: AppLayoutVariant }) {
                         {paletteItemIcon(item)}
                       </span>
                       <span className="flex min-w-0 flex-1 flex-col">
-                        <span className="truncate font-medium">{item.label}</span>
+                        <span className="truncate font-medium">
+                          {item.label}
+                        </span>
                         {item.description ? (
                           <span className="text-muted-foreground truncate text-xs">
                             {item.description}

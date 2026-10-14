@@ -1,4 +1,7 @@
-export { defineSearchCatalog, defineSearchSpec } from "@/features/search-engine/define";
+export {
+  defineSearchCatalog,
+  defineSearchSpec,
+} from "@/features/search-engine/define";
 export { CommandPalette } from "@/features/search-engine/components/command-palette";
 export { SearchTrigger } from "@/features/search-engine/components/search-trigger";
 export {

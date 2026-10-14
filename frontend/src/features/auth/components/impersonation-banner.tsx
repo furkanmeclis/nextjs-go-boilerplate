@@ -31,11 +31,16 @@ export function ImpersonationBanner() {
   };
 
   return (
-    <div className="bg-amber-500/15 border-amber-500/30 text-amber-950 dark:text-amber-100 mb-4 flex flex-col gap-3 rounded-lg border px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+    <div className="mb-4 flex flex-col gap-3 rounded-lg border border-amber-500/30 bg-amber-500/15 px-4 py-3 text-amber-950 sm:flex-row sm:items-center sm:justify-between dark:text-amber-100">
       <p className="text-sm">
         {t("users.impersonation.banner", { name: user.fullName })}
       </p>
-      <Button type="button" size="sm" variant="outline" onClick={() => void stop()}>
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        onClick={() => void stop()}
+      >
         <LogOut className="mr-2 size-4" />
         {t("users.impersonation.stop")}
       </Button>

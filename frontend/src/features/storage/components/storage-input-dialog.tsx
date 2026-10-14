@@ -90,13 +90,20 @@ function StorageInputForm({
         {mode === "share" ? (
           <div className="space-y-1">
             <Label>{t("storage.share")}</Label>
-            <Select value={role} onValueChange={(v) => setRole(v as typeof role)}>
+            <Select
+              value={role}
+              onValueChange={(v) => setRole(v as typeof role)}
+            >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="viewer">{t("storage.role_viewer")}</SelectItem>
-                <SelectItem value="editor">{t("storage.role_editor")}</SelectItem>
+                <SelectItem value="viewer">
+                  {t("storage.role_viewer")}
+                </SelectItem>
+                <SelectItem value="editor">
+                  {t("storage.role_editor")}
+                </SelectItem>
                 <SelectItem value="owner">{t("storage.role_owner")}</SelectItem>
               </SelectContent>
             </Select>
@@ -104,7 +111,11 @@ function StorageInputForm({
         ) : null}
       </div>
       <DialogFooter>
-        <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => onOpenChange(false)}
+        >
           {t("storage.cancel")}
         </Button>
         <Button

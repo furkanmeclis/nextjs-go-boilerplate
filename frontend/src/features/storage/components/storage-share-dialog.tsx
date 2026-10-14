@@ -46,7 +46,7 @@ function LinkResultCard({
   return (
     <div className="bg-muted/40 space-y-2 rounded-md border p-3 text-sm">
       <p className="font-medium">{label}</p>
-      <p className="break-all font-mono text-xs">{url}</p>
+      <p className="font-mono text-xs break-all">{url}</p>
       {expiresAt ? (
         <p className="text-muted-foreground text-xs">
           {t("storage.expires_at")}: {expiresAt}
@@ -94,7 +94,9 @@ function SignedShareForm({
 
   return (
     <div className="space-y-4">
-      <p className="text-muted-foreground text-sm">{t("storage.signed_description")}</p>
+      <p className="text-muted-foreground text-sm">
+        {t("storage.signed_description")}
+      </p>
       <div className="flex flex-wrap gap-2">
         {presets.map((preset) => (
           <Button
@@ -182,7 +184,9 @@ function PublicShareForm({
 
   return (
     <div className="space-y-4">
-      <p className="text-muted-foreground text-sm">{t("storage.public_description")}</p>
+      <p className="text-muted-foreground text-sm">
+        {t("storage.public_description")}
+      </p>
       <div className="space-y-1">
         <Label htmlFor="share-slug">{t("storage.custom_slug")}</Label>
         <Input
@@ -287,18 +291,27 @@ function ExistingLinksPanel({
   };
 
   if (linksQuery.isLoading) {
-    return <p className="text-muted-foreground text-sm">{t("storage.loading_links")}</p>;
+    return (
+      <p className="text-muted-foreground text-sm">
+        {t("storage.loading_links")}
+      </p>
+    );
   }
 
   const links = linksQuery.data ?? [];
   if (!links.length) {
-    return <p className="text-muted-foreground text-sm">{t("storage.no_links")}</p>;
+    return (
+      <p className="text-muted-foreground text-sm">{t("storage.no_links")}</p>
+    );
   }
 
   return (
     <div className="space-y-3">
       {links.map((link) => (
-        <div key={link.uuid} className="space-y-2 rounded-md border p-3 text-sm">
+        <div
+          key={link.uuid}
+          className="space-y-2 rounded-md border p-3 text-sm"
+        >
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant="outline">
               {link.kind === "signed"
@@ -314,13 +327,17 @@ function ExistingLinksPanel({
                     : "danger"
               }
             >
-              {t(`storage.link_status_${link.status}` as "storage.link_status_active")}
+              {t(
+                `storage.link_status_${link.status}` as "storage.link_status_active",
+              )}
             </Badge>
           </div>
           {link.url ? (
-            <p className="break-all font-mono text-xs">{displayUrl(link)}</p>
+            <p className="font-mono text-xs break-all">{displayUrl(link)}</p>
           ) : (
-            <p className="text-muted-foreground text-xs">{t("storage.signed_url_hidden")}</p>
+            <p className="text-muted-foreground text-xs">
+              {t("storage.signed_url_hidden")}
+            </p>
           )}
           <p className="text-muted-foreground text-xs">
             {t("storage.created_at")}:{" "}
@@ -390,13 +407,19 @@ export function StorageShareDialog({
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>{t("storage.share_dialog_title")}</DialogTitle>
-          <p className="text-muted-foreground truncate text-sm">{object.name}</p>
+          <p className="text-muted-foreground truncate text-sm">
+            {object.name}
+          </p>
         </DialogHeader>
         {open ? (
           <Tabs key={`${object.key}:${tab}`} defaultValue={tab}>
             <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="signed">{t("storage.tab_signed")}</TabsTrigger>
-              <TabsTrigger value="public">{t("storage.tab_public")}</TabsTrigger>
+              <TabsTrigger value="signed">
+                {t("storage.tab_signed")}
+              </TabsTrigger>
+              <TabsTrigger value="public">
+                {t("storage.tab_public")}
+              </TabsTrigger>
               <TabsTrigger value="links">{t("storage.tab_links")}</TabsTrigger>
             </TabsList>
             <TabsContent value="signed" className="mt-4">
@@ -418,7 +441,11 @@ export function StorageShareDialog({
               )}
             </TabsContent>
             <TabsContent value="links" className="mt-4">
-              <ExistingLinksPanel object={object} canWrite={canWrite} onQr={onQr} />
+              <ExistingLinksPanel
+                object={object}
+                canWrite={canWrite}
+                onQr={onQr}
+              />
             </TabsContent>
           </Tabs>
         ) : null}

@@ -76,10 +76,7 @@ function StatsCards() {
                 {item.value}
               </p>
             </div>
-            <StatusChip
-              label={t(`logs.levels.${item.key}`)}
-              tone={item.tone}
-            />
+            <StatusChip label={t(`logs.levels.${item.key}`)} tone={item.tone} />
           </CardContent>
         </Card>
       ))}
@@ -137,9 +134,21 @@ function LogsListPanel() {
         labelKey: "logs.columns.level",
         variant: "select",
         options: [
-          { value: "debug", label: t("logs.levels.debug"), labelKey: "logs.levels.debug" },
-          { value: "warn", label: t("logs.levels.warn"), labelKey: "logs.levels.warn" },
-          { value: "error", label: t("logs.levels.error"), labelKey: "logs.levels.error" },
+          {
+            value: "debug",
+            label: t("logs.levels.debug"),
+            labelKey: "logs.levels.debug",
+          },
+          {
+            value: "warn",
+            label: t("logs.levels.warn"),
+            labelKey: "logs.levels.warn",
+          },
+          {
+            value: "error",
+            label: t("logs.levels.error"),
+            labelKey: "logs.levels.error",
+          },
         ],
       },
       {

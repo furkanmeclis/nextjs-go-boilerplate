@@ -1,18 +1,8 @@
 export type StorageView =
-  | "all"
-  | "recent"
-  | "starred"
-  | "shared"
-  | "public"
-  | "trash";
+  "all" | "recent" | "starred" | "shared" | "public" | "trash";
 
 export type StorageAccess =
-  | "private"
-  | "public"
-  | "shared"
-  | "temporary"
-  | "expired"
-  | "revoked";
+  "private" | "public" | "shared" | "temporary" | "expired" | "revoked";
 
 export type StorageFileKind =
   | "folder"
@@ -207,7 +197,11 @@ export type StorageService = {
   signedSharePageUrl(tokenOrUrl: string): string;
   publicStreamUrl(slug: string, download?: boolean): string;
   signedStreamUrl(token: string, download?: boolean): string;
-  downloadFile(key: string, filename: string, versionId?: string): Promise<void>;
+  downloadFile(
+    key: string,
+    filename: string,
+    versionId?: string,
+  ): Promise<void>;
   getVersions(key: string): Promise<StorageVersion[]>;
   restoreVersion(input: {
     key: string;

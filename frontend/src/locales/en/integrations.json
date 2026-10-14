@@ -105,5 +105,11 @@
   "apple.form.private_key_status_removing": "Will be removed on save",
   "apple.form.private_key_remove": "Remove key",
   "apple.form.private_key_keep": "Keep key",
-  "apple.form.private_key_clear_selection": "Clear selection"
+  "apple.form.private_key_clear_selection": "Clear selection",
+
+  "description": "Configure external social login and OAuth identity providers.",
+  "providers.google": "Google",
+  "providers.github": "GitHub",
+  "providers.facebook": "Facebook",
+  "providers.apple": "Apple"
 }

@@ -1,13 +1,6 @@
 "use client";
 
-import {
-  Clock,
-  Globe,
-  HardDrive,
-  Share2,
-  Star,
-  Trash2,
-} from "lucide-react";
+import { Clock, Globe, HardDrive, Share2, Star, Trash2 } from "lucide-react";
 
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";

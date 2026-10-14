@@ -23,7 +23,10 @@ async function handle(request: Request, context: RouteContext) {
     }
     console.error("[api/v1]", (path ?? []).join("/"), err);
     Sentry.captureException(err, {
-      tags: { "http.route": "/api/v1/[...path]", "http.method": request.method },
+      tags: {
+        "http.route": "/api/v1/[...path]",
+        "http.method": request.method,
+      },
       fingerprint: ["bff-proxy", request.method],
     });
     return new Response(

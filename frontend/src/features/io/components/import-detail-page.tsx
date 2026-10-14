@@ -52,7 +52,9 @@ export function ImportDetailPage({ uuid }: ImportDetailPageProps) {
   const rollback = useAppMutation({
     mutationFn: () => importsService.rollback(uuid),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ioKeys.imports.detail(uuid) });
+      void queryClient.invalidateQueries({
+        queryKey: ioKeys.imports.detail(uuid),
+      });
       void queryClient.invalidateQueries({ queryKey: ioKeys.imports.lists() });
       appToast.success(t("imports.toast.rollback_success"));
     },
@@ -73,8 +75,7 @@ export function ImportDetailPage({ uuid }: ImportDetailPageProps) {
     : t("imports.detail.title");
 
   const canRollback =
-    job?.status === "applied" &&
-    rollbackWindowOpen(job.rollback_until, nowMs);
+    job?.status === "applied" && rollbackWindowOpen(job.rollback_until, nowMs);
 
   const uiMapping = apiMappingToUi(job?.mapping);
   const schema =
@@ -242,13 +243,15 @@ export function ImportDetailPage({ uuid }: ImportDetailPageProps) {
                   </div>
                 </div>
                 <div className="rounded-md border p-2 text-center">
-                  <div className="font-medium text-green-600">{preview.valid}</div>
+                  <div className="font-medium text-green-600">
+                    {preview.valid}
+                  </div>
                   <div className="text-muted-foreground text-xs">
                     {t("imports.preview_valid")}
                   </div>
                 </div>
                 <div className="rounded-md border p-2 text-center">
-                  <div className="font-medium text-destructive">
+                  <div className="text-destructive font-medium">
                     {preview.invalid}
                   </div>
                   <div className="text-muted-foreground text-xs">

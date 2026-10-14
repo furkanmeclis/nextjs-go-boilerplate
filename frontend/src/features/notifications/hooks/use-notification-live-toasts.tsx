@@ -11,7 +11,9 @@ import { useNotificationLiveStore } from "@/features/notifications/lib/notificat
 import { useRealtimeEvent } from "@/hooks/use-realtime";
 import { RealtimeEvents } from "@/lib/realtime/events";
 
-const LIVE_EVENT_TYPES = new Set<string>([RealtimeEvents.NotificationItemCreated]);
+const LIVE_EVENT_TYPES = new Set<string>([
+  RealtimeEvents.NotificationItemCreated,
+]);
 
 /**
  * Centrifugo live notifications land in the corner host.

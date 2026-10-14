@@ -28,10 +28,52 @@ const securityHeaders = [
     : []),
 ];
 
+/**
+ * Platform admin pages moved under the System Settings shell
+ * (`/platform/settings/*`). Old URLs (bookmarks, emailed links, stored
+ * notification action URLs) keep working via permanent (308) redirects.
+ */
+const settingsRedirects = [
+  { source: "/platform/roles", destination: "/platform/settings/roles" },
+  {
+    source: "/platform/roles/:path*",
+    destination: "/platform/settings/roles/:path*",
+  },
+  { source: "/platform/activity", destination: "/platform/settings/activity" },
+  { source: "/platform/logs", destination: "/platform/settings/logs" },
+  { source: "/platform/storage", destination: "/platform/settings/storage" },
+  { source: "/platform/access", destination: "/platform/settings/access" },
+  {
+    source: "/platform/auth/settings",
+    destination: "/platform/settings/auth",
+  },
+  {
+    source: "/platform/integrations",
+    destination: "/platform/settings/integrations",
+  },
+  {
+    source: "/platform/integrations/:provider(github|google|facebook|apple)",
+    destination: "/platform/settings/integrations?tab=:provider",
+  },
+  { source: "/platform/imports", destination: "/platform/settings/imports" },
+  {
+    source: "/platform/imports/:path*",
+    destination: "/platform/settings/imports/:path*",
+  },
+  { source: "/platform/exports", destination: "/platform/settings/exports" },
+  {
+    source: "/platform/exports/:path*",
+    destination: "/platform/settings/exports/:path*",
+  },
+].map((rule) => ({ ...rule, permanent: true }));
+
 const nextConfig: NextConfig = {
   output: "standalone",
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
+  },
+  async redirects() {
+    return settingsRedirects;
   },
 };
 

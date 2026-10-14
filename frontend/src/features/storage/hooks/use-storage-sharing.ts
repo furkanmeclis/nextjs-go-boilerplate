@@ -4,7 +4,10 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { storageKeys } from "@/features/storage/hooks/query-keys";
 import { storageService } from "@/features/storage/services/storage.service";
-import type { CreateStorageLinkInput, CreateStorageShareInput } from "@/features/storage/types";
+import type {
+  CreateStorageLinkInput,
+  CreateStorageShareInput,
+} from "@/features/storage/types";
 import { useAppMutation } from "@/lib/query/mutation";
 import { appToast } from "@/providers/toast-provider";
 import { useLocale } from "@/providers/locale-provider";
@@ -32,7 +35,9 @@ export function useCreatePublicLink() {
     mutationFn: (input: CreateStorageLinkInput) =>
       storageService.createPublicLink(input),
     onSuccess: (_data, input) => {
-      void queryClient.invalidateQueries({ queryKey: storageKeys.links(input.key) });
+      void queryClient.invalidateQueries({
+        queryKey: storageKeys.links(input.key),
+      });
       void queryClient.invalidateQueries({ queryKey: storageKeys.lists() });
       appToast.success(t("storage.toast.public_link"));
     },
@@ -46,7 +51,9 @@ export function useCreateSignedUrl() {
     mutationFn: (input: CreateStorageLinkInput) =>
       storageService.createSignedUrl(input),
     onSuccess: (_data, input) => {
-      void queryClient.invalidateQueries({ queryKey: storageKeys.links(input.key) });
+      void queryClient.invalidateQueries({
+        queryKey: storageKeys.links(input.key),
+      });
       appToast.success(t("storage.toast.signed_link"));
     },
   });
@@ -59,7 +66,9 @@ export function useRevokeLink() {
     mutationFn: (input: { uuid: string; key: string }) =>
       storageService.revokeLink(input.uuid),
     onSuccess: (_data, input) => {
-      void queryClient.invalidateQueries({ queryKey: storageKeys.links(input.key) });
+      void queryClient.invalidateQueries({
+        queryKey: storageKeys.links(input.key),
+      });
       void queryClient.invalidateQueries({ queryKey: storageKeys.lists() });
       appToast.success(t("storage.toast.link_revoked"));
     },
@@ -73,7 +82,9 @@ export function useShareFile() {
     mutationFn: (input: CreateStorageShareInput) =>
       storageService.shareFile(input),
     onSuccess: (_data, input) => {
-      void queryClient.invalidateQueries({ queryKey: storageKeys.shares(input.key) });
+      void queryClient.invalidateQueries({
+        queryKey: storageKeys.shares(input.key),
+      });
       appToast.success(t("storage.toast.shared"));
     },
   });
@@ -86,7 +97,9 @@ export function useUnshareFile() {
     mutationFn: (input: { uuid: string; key: string }) =>
       storageService.unshareFile(input.uuid),
     onSuccess: (_data, input) => {
-      void queryClient.invalidateQueries({ queryKey: storageKeys.shares(input.key) });
+      void queryClient.invalidateQueries({
+        queryKey: storageKeys.shares(input.key),
+      });
       appToast.success(t("storage.toast.unshared"));
     },
   });

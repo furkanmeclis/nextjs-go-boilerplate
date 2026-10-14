@@ -32,7 +32,12 @@ export function useStorageSpreadsheetPreview(
   const format = resolveSpreadsheetPreviewFormat(filename, mimeType);
 
   return useQuery({
-    queryKey: [...storageKeys.detail(key ?? ""), "spreadsheet-preview", format, versionId] as const,
+    queryKey: [
+      ...storageKeys.detail(key ?? ""),
+      "spreadsheet-preview",
+      format,
+      versionId,
+    ] as const,
     queryFn: async () => {
       if (!key || !format) {
         throw new Error("Spreadsheet preview is not supported for this file.");
@@ -58,7 +63,12 @@ export function usePublicSpreadsheetPreview(
   const format = resolveSpreadsheetPreviewFormat(filename, mimeType);
 
   return useQuery({
-    queryKey: [...storageKeys.all, "public-spreadsheet-preview", url, format] as const,
+    queryKey: [
+      ...storageKeys.all,
+      "public-spreadsheet-preview",
+      url,
+      format,
+    ] as const,
     queryFn: async () => {
       if (!url || !format) {
         throw new Error("Spreadsheet preview is not supported for this file.");

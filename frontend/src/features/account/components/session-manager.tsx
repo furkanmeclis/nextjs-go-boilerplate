@@ -1,7 +1,14 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { Calendar, Clock, Loader2, Monitor, Shield, Trash2 } from "lucide-react";
+import {
+  Calendar,
+  Clock,
+  Loader2,
+  Monitor,
+  Shield,
+  Trash2,
+} from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -138,7 +145,9 @@ export function SessionManager() {
             <Monitor className="text-muted-foreground size-6" aria-hidden />
           </div>
           <div className="space-y-1">
-            <p className="text-sm font-medium">{t("auth.sessions.empty_title")}</p>
+            <p className="text-sm font-medium">
+              {t("auth.sessions.empty_title")}
+            </p>
             <p className="text-muted-foreground text-sm">
               {t("auth.sessions.empty_body")}
             </p>
@@ -161,7 +170,9 @@ export function SessionManager() {
                   </p>
                   <div className="flex flex-wrap items-center gap-2">
                     {item.current ? (
-                      <Badge variant="success">{t("auth.sessions.current")}</Badge>
+                      <Badge variant="success">
+                        {t("auth.sessions.current")}
+                      </Badge>
                     ) : null}
                     {item.impersonated ? (
                       <Badge variant="outline">
@@ -226,7 +237,11 @@ export function SessionManager() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setPending(null)}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setPending(null)}
+            >
               {t("common.cancel")}
             </Button>
             <Button
@@ -237,7 +252,9 @@ export function SessionManager() {
                 if (pending) void revoke(pending.uuid);
               }}
             >
-              {revokingId ? t("auth.sessions.revoking") : t("auth.sessions.revoke")}
+              {revokingId
+                ? t("auth.sessions.revoking")
+                : t("auth.sessions.revoke")}
             </Button>
           </DialogFooter>
         </DialogContent>

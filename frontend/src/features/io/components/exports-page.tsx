@@ -59,7 +59,9 @@ export function ExportsPage() {
         columns={columns}
         data={listQuery.data?.items ?? []}
         getRowId={(row) => row.uuid}
-        onRowClick={(job) => router.push(routes.platform.exports.detail(job.uuid))}
+        onRowClick={(job) =>
+          router.push(routes.platform.exports.detail(job.uuid))
+        }
         isLoading={listQuery.isLoading}
         isError={listQuery.isError}
         onRetry={() => void listQuery.refetch()}

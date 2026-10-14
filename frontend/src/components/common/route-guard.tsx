@@ -100,7 +100,9 @@ export function RouteGuard({ children, mode }: RouteGuardProps) {
     return (
       <RoleMismatch
         expected="CMS"
-        home={isPlatformUser(user) ? routes.platform.home : routes.errors.forbidden}
+        home={
+          isPlatformUser(user) ? routes.platform.home : routes.errors.forbidden
+        }
       />
     );
   }

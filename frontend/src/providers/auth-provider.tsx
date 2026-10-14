@@ -86,7 +86,9 @@ function AuthContextBridge({ children }: { children: ReactNode }) {
     (async () => {
       if (status === "loading") return;
 
-      const authenticated = status === "authenticated" && !(session as { error?: string } | null)?.error;
+      const authenticated =
+        status === "authenticated" &&
+        !(session as { error?: string } | null)?.error;
       applySession(authenticated);
       if (authenticated) {
         await hydrateProfile();

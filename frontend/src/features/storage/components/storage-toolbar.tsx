@@ -20,7 +20,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -85,7 +89,12 @@ export function StorageToolbar({
         <Can permission={permissions.storage.write}>
           {view !== "trash" ? (
             <>
-              <Button type="button" size="sm" variant="outline" onClick={onNewFolder}>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={onNewFolder}
+              >
                 <FolderPlus /> {t("storage.new_folder")}
               </Button>
               <Button type="button" size="sm" onClick={onUpload}>
@@ -152,19 +161,29 @@ export function StorageToolbar({
             </Button>
           </PopoverTrigger>
           <PopoverContent align="end" className="w-72 space-y-3">
-            <Select value={kind || "all"} onValueChange={(v) => onKindChange(v === "all" ? "" : v)}>
+            <Select
+              value={kind || "all"}
+              onValueChange={(v) => onKindChange(v === "all" ? "" : v)}
+            >
               <SelectTrigger>
                 <SelectValue placeholder={t("storage.filter_type")} />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">{t("storage.filter_type")}</SelectItem>
-                {["image", "video", "audio", "pdf", "document", "spreadsheet", "archive", "code"].map(
-                  (item) => (
-                    <SelectItem key={item} value={item}>
-                      {t(`storage.kind_${item}`)}
-                    </SelectItem>
-                  ),
-                )}
+                {[
+                  "image",
+                  "video",
+                  "audio",
+                  "pdf",
+                  "document",
+                  "spreadsheet",
+                  "archive",
+                  "code",
+                ].map((item) => (
+                  <SelectItem key={item} value={item}>
+                    {t(`storage.kind_${item}`)}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
             <Select
@@ -175,7 +194,9 @@ export function StorageToolbar({
                 <SelectValue placeholder={t("storage.filter_access")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">{t("storage.filter_access")}</SelectItem>
+                <SelectItem value="all">
+                  {t("storage.filter_access")}
+                </SelectItem>
                 {["private", "public", "shared"].map((item) => (
                   <SelectItem key={item} value={item}>
                     {t(`storage.access_${item}`)}

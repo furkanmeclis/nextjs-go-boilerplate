@@ -110,9 +110,7 @@ export function useStorageUpload(prefix: string) {
   const clearDone = useCallback(() => {
     setJobs((current) =>
       current.filter(
-        (job) =>
-          job.status === "uploading" ||
-          job.status === "queued",
+        (job) => job.status === "uploading" || job.status === "queued",
       ),
     );
   }, []);
@@ -146,7 +144,10 @@ export function useStorageUpload(prefix: string) {
   }, [jobs]);
 
   const active = useMemo(
-    () => jobs.filter((job) => job.status === "uploading" || job.status === "queued"),
+    () =>
+      jobs.filter(
+        (job) => job.status === "uploading" || job.status === "queued",
+      ),
     [jobs],
   );
 

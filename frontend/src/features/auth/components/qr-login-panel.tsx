@@ -112,7 +112,8 @@ export function QRLoginPanel({
           setPhase((p) => (p === "ready" ? "scanned" : p));
           break;
         case "approved":
-          if (event.exchange_token) void exchange(session, event.exchange_token);
+          if (event.exchange_token)
+            void exchange(session, event.exchange_token);
           break;
         case "rejected":
           teardown();
@@ -166,7 +167,10 @@ export function QRLoginPanel({
                 type: "approved",
                 exchange_token: state.exchange_token,
               });
-            } else if (state.status === "scanned" || state.status === "rejected") {
+            } else if (
+              state.status === "scanned" ||
+              state.status === "rejected"
+            ) {
               handleEvent(session, { type: state.status });
             }
           })
@@ -277,7 +281,9 @@ export function QRLoginPanel({
         <li>{t("auth.qr.step_approve")}</li>
       </ol>
       <p className="text-muted-foreground text-center text-xs">
-        {phase === "signing_in" ? t("auth.qr.signing_in") : t("auth.qr.auto_refresh")}
+        {phase === "signing_in"
+          ? t("auth.qr.signing_in")
+          : t("auth.qr.auto_refresh")}
       </p>
     </div>
   );

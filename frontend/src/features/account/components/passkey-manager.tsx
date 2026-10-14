@@ -377,7 +377,9 @@ export function PasskeyManager() {
             <Fingerprint className="text-muted-foreground size-6" aria-hidden />
           </div>
           <div className="space-y-1">
-            <p className="text-sm font-medium">{t("auth.passkey.empty_title")}</p>
+            <p className="text-sm font-medium">
+              {t("auth.passkey.empty_title")}
+            </p>
             <p className="text-muted-foreground text-sm">
               {t("auth.passkey.empty_body")}
             </p>

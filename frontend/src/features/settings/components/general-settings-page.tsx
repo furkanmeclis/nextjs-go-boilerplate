@@ -4,33 +4,35 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { ErrorState } from "@/components/common/error-state";
 import { Loading } from "@/components/common/loading";
-import { EntityPage } from "@/components/entity";
 import { permissions } from "@/config/permissions";
-import { routes } from "@/config/routes";
 import { SettingsForm } from "@/features/io/components/settings-form";
 import { ioKeys } from "@/features/io/hooks/query-keys";
 import type { PatchSettingsRequest } from "@/features/io/services/settings.service";
 import { settingsService } from "@/features/io/services/settings.service";
+import { SettingsPageHeader } from "@/features/settings/components/settings-page-header";
 import { useAppMutation } from "@/lib/query/mutation";
 import { useLocale } from "@/providers/locale-provider";
 import { usePermission } from "@/providers/permission-provider";
 import { appToast } from "@/providers/toast-provider";
 
-export function SettingsPage() {
+/** Branding & letterhead (app_settings singleton) used by exports and public config. */
+export function GeneralSettingsPage() {
   const { t } = useLocale();
   const { can } = usePermission();
+  const canRead = can(permissions.settings.read);
   const canWrite = can(permissions.settings.write);
   const queryClient = useQueryClient();
 
   const settingsQuery = useQuery({
     queryKey: ioKeys.settings.all,
     queryFn: () => settingsService.get(),
+    enabled: canRead,
   });
 
   const save = useAppMutation({
     mutationFn: (body: PatchSettingsRequest) => settingsService.patch(body),
     onSuccess: (data) => {
-      void queryClient.setQueryData(ioKeys.settings.all, data);
+      queryClient.setQueryData(ioKeys.settings.all, data);
       appToast.success(t("settings.toast.saved"));
     },
     onError: () => {
@@ -41,7 +43,7 @@ export function SettingsPage() {
   const uploadLogo = useAppMutation({
     mutationFn: (file: File) => settingsService.uploadLogo(file),
     onSuccess: (data) => {
-      void queryClient.setQueryData(ioKeys.settings.all, data);
+      queryClient.setQueryData(ioKeys.settings.all, data);
       appToast.success(t("settings.toast.logo_saved"));
     },
   });
@@ -49,28 +51,27 @@ export function SettingsPage() {
   const removeLogo = useAppMutation({
     mutationFn: () => settingsService.deleteLogo(),
     onSuccess: (data) => {
-      void queryClient.setQueryData(ioKeys.settings.all, data);
+      queryClient.setQueryData(ioKeys.settings.all, data);
       appToast.success(t("settings.toast.logo_removed"));
     },
   });
 
+  if (!canRead) {
+    return (
+      <ErrorState
+        title={t("common.error_forbidden")}
+        description={t("settings.forbidden")}
+      />
+    );
+  }
+
   return (
-    <EntityPage
-      title={t("settings.title")}
-      description={t("settings.description")}
-      permission={permissions.settings.read}
-      forbiddenFallback={
-        <ErrorState
-          title={t("common.error_forbidden")}
-          description={t("settings.forbidden")}
-        />
-      }
-      breadcrumbs={[
-        { label: t("layout.breadcrumb_home"), href: routes.platform.home },
-        { label: t("layout.section_io"), href: routes.platform.settings.root },
-        { label: t("settings.title") },
-      ]}
-    >
+    <div className="space-y-6">
+      <SettingsPageHeader
+        title={t("settings.subnav.general_branding")}
+        description={t("settings.description")}
+      />
+
       {settingsQuery.isLoading ? (
         <Loading label={t("common.loading")} />
       ) : settingsQuery.isError ? (
@@ -95,6 +96,6 @@ export function SettingsPage() {
           onRemoveLogo={() => removeLogo.mutate()}
         />
       ) : null}
-    </EntityPage>
+    </div>
   );
 }

@@ -15,10 +15,11 @@ import (
 type Handler struct {
 	svc     *settingsusecase.Service
 	storage storage.Driver
+	sysSvc  *settingsusecase.SystemService
 }
 
-func New(svc *settingsusecase.Service, store storage.Driver) *Handler {
-	return &Handler{svc: svc, storage: store}
+func New(svc *settingsusecase.Service, store storage.Driver, sysSvc *settingsusecase.SystemService) *Handler {
+	return &Handler{svc: svc, storage: store, sysSvc: sysSvc}
 }
 
 func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
@@ -120,6 +121,25 @@ func (h *Handler) DeleteLogo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	response.JSON(w, r, http.StatusOK, s)
+}
+
+// GetSystemInfo returns runtime stats, dependency health and a non-secret
+// environment summary for the platform System Overview page.
+func (h *Handler) GetSystemInfo(w http.ResponseWriter, r *http.Request) {
+	if h.sysSvc == nil {
+		response.InternalErr(w, r, errors.New("system service unavailable"), "system diagnostics unavailable")
+		return
+	}
+	response.JSON(w, r, http.StatusOK, h.sysSvc.GetInfo(r.Context()))
+}
+
+// PingSystem re-runs the dependency health checks on demand.
+func (h *Handler) PingSystem(w http.ResponseWriter, r *http.Request) {
+	if h.sysSvc == nil {
+		response.InternalErr(w, r, errors.New("system service unavailable"), "system diagnostics unavailable")
+		return
+	}
+	response.JSON(w, r, http.StatusOK, h.sysSvc.GetInfo(r.Context()))
 }
 
 func decodeJSON(w http.ResponseWriter, r *http.Request, dst any) error {

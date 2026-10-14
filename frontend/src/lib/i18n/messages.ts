@@ -135,7 +135,8 @@ export function translate(
   const path = rest.join(".");
   const primary = catalogs[locale]?.[ns]?.[path];
   const fallback = catalogs[fallbackLocale]?.[ns]?.[path];
-  if (primary === undefined) recordMissingKey(locale, key, fallback !== undefined);
+  if (primary === undefined)
+    recordMissingKey(locale, key, fallback !== undefined);
   let text = primary ?? fallback ?? key;
 
   if (params) {
@@ -163,8 +164,13 @@ export function translatePlural(
  * crawler (or `window.__i18nMissing` in devtools) can list them. No-op in
  * production builds.
  */
-function recordMissingKey(locale: AppLocale, key: string, hasFallback: boolean) {
-  if (process.env.NODE_ENV === "production" || typeof window === "undefined") return;
+function recordMissingKey(
+  locale: AppLocale,
+  key: string,
+  hasFallback: boolean,
+) {
+  if (process.env.NODE_ENV === "production" || typeof window === "undefined")
+    return;
   const w = window as unknown as { __i18nMissing?: Record<string, string> };
   w.__i18nMissing ??= {};
   w.__i18nMissing[`${locale}:${key}`] = hasFallback ? "fallback" : "missing";

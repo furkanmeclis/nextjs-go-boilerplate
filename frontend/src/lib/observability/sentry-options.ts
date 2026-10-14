@@ -51,7 +51,8 @@ export function scrubValue(value: unknown, key = "", depth = 0): unknown {
   if (key && SENSITIVE_KEY.test(key)) return "[redacted]";
   if (typeof value === "string") return scrubString(value);
   if (value === null || typeof value !== "object" || depth > 6) return value;
-  if (Array.isArray(value)) return value.map((v) => scrubValue(v, "", depth + 1));
+  if (Array.isArray(value))
+    return value.map((v) => scrubValue(v, "", depth + 1));
   const out: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
     out[k] = scrubValue(v, k, depth + 1);
@@ -73,7 +74,8 @@ export function scrubEvent<T extends ErrorEvent>(event: T): T {
     if (req.headers) {
       const kept: Record<string, string> = {};
       for (const [k, v] of Object.entries(req.headers)) {
-        if (ALLOWED_HEADERS.has(k.toLowerCase())) kept[k] = scrubString(String(v));
+        if (ALLOWED_HEADERS.has(k.toLowerCase()))
+          kept[k] = scrubString(String(v));
       }
       req.headers = kept;
     }
@@ -106,13 +108,18 @@ export function beforeSend(event: ErrorEvent, _hint: EventHint): ErrorEvent {
 }
 
 /** Runtime config for server and edge (never inlined at build time). */
-export function serverSentryConfig(): { dsn: string; environment: string } | null {
+export function serverSentryConfig(): {
+  dsn: string;
+  environment: string;
+} | null {
   const dsn = process.env.SENTRY_DSN?.trim();
   if (!dsn) return null;
   return {
     dsn,
     environment:
-      process.env.SENTRY_ENVIRONMENT?.trim() || process.env.NODE_ENV || "production",
+      process.env.SENTRY_ENVIRONMENT?.trim() ||
+      process.env.NODE_ENV ||
+      "production",
   };
 }
 

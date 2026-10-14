@@ -14,9 +14,7 @@ export function useExportPreview(
   format: string,
   enabled: boolean,
 ) {
-  const spreadsheetFormat = isSpreadsheetExportFormat(format)
-    ? format
-    : null;
+  const spreadsheetFormat = isSpreadsheetExportFormat(format) ? format : null;
 
   return useQuery({
     queryKey: [...ioKeys.exports.detail(uuid), "preview", format] as const,

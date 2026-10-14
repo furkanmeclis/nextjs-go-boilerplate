@@ -58,10 +58,7 @@ function LevelsField({
         {LEVELS.map((level) => {
           const checked = value.includes(level);
           return (
-            <label
-              key={level}
-              className="flex items-center gap-2 text-sm"
-            >
+            <label key={level} className="flex items-center gap-2 text-sm">
               <Checkbox
                 checked={checked}
                 onCheckedChange={(next) => {
@@ -130,10 +127,7 @@ export function PurgeRuleFormDrawer({
         {(form) => (
           <div className="space-y-4">
             <AppInput name="name" label={t("logs.rules.fields.name")} />
-            <AppSwitch
-              name="enabled"
-              label={t("logs.rules.fields.enabled")}
-            />
+            <AppSwitch name="enabled" label={t("logs.rules.fields.enabled")} />
             <LevelsField
               value={form.watch("levels")}
               onChange={(next) =>

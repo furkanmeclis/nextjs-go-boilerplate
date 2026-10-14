@@ -26,11 +26,32 @@ export const routes = {
   platform: {
     root: "/platform",
     home: "/platform",
+    /**
+     * System Settings shell (`/platform/settings/*`). Platform admin pages
+     * live here behind one grouped sub-sidebar (`settingsNav`). The legacy
+     * top-level URLs redirect permanently via `next.config.ts`.
+     */
+    settings: {
+      root: "/platform/settings",
+      system: "/platform/settings/system",
+      environment: "/platform/settings/environment",
+      general: "/platform/settings/general",
+      maintenance: "/platform/settings/maintenance",
+      integrations: "/platform/settings/integrations",
+      roles: "/platform/settings/roles",
+      activity: "/platform/settings/activity",
+      logs: "/platform/settings/logs",
+      storage: "/platform/settings/storage",
+      access: "/platform/settings/access",
+      auth: "/platform/settings/auth",
+      imports: "/platform/settings/imports",
+      exports: "/platform/settings/exports",
+    },
     roles: {
-      root: "/platform/roles",
-      create: "/platform/roles/create",
-      detail: (uuid: string) => `/platform/roles/${uuid}`,
-      edit: (uuid: string) => `/platform/roles/${uuid}/edit`,
+      root: "/platform/settings/roles",
+      create: "/platform/settings/roles/create",
+      detail: (uuid: string) => `/platform/settings/roles/${uuid}`,
+      edit: (uuid: string) => `/platform/settings/roles/${uuid}/edit`,
     },
     users: {
       root: "/platform/users",
@@ -43,36 +64,34 @@ export const routes = {
       detail: (uuid: string) => `/platform/notifications/${uuid}`,
     },
     imports: {
-      root: "/platform/imports",
-      detail: (uuid: string) => `/platform/imports/${uuid}`,
+      root: "/platform/settings/imports",
+      detail: (uuid: string) => `/platform/settings/imports/${uuid}`,
     },
     exports: {
-      root: "/platform/exports",
-      detail: (uuid: string) => `/platform/exports/${uuid}`,
-    },
-    settings: {
-      root: "/platform/settings",
+      root: "/platform/settings/exports",
+      detail: (uuid: string) => `/platform/settings/exports/${uuid}`,
     },
     access: {
-      root: "/platform/access",
+      root: "/platform/settings/access",
     },
     authSettings: {
-      root: "/platform/auth/settings",
+      root: "/platform/settings/auth",
     },
     integrations: {
-      github: "/platform/integrations/github",
-      google: "/platform/integrations/google",
-      facebook: "/platform/integrations/facebook",
-      apple: "/platform/integrations/apple",
+      root: "/platform/settings/integrations",
+      github: "/platform/settings/integrations?tab=github",
+      google: "/platform/settings/integrations?tab=google",
+      facebook: "/platform/settings/integrations?tab=facebook",
+      apple: "/platform/settings/integrations?tab=apple",
     },
     activity: {
-      root: "/platform/activity",
+      root: "/platform/settings/activity",
     },
     logs: {
-      root: "/platform/logs",
+      root: "/platform/settings/logs",
     },
     storage: {
-      root: "/platform/storage",
+      root: "/platform/settings/storage",
     },
     profile: {
       root: "/platform/profile",

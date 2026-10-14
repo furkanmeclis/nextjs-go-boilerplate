@@ -9,7 +9,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { AsyncCombobox, type ComboboxOption } from "@/components/ui/async-combobox";
+import {
+  AsyncCombobox,
+  type ComboboxOption,
+} from "@/components/ui/async-combobox";
 import { permissions } from "@/config/permissions";
 import { userFullName } from "@/features/users/lib/user-display";
 import { usersService } from "@/features/users/services/users.service";
@@ -37,7 +40,8 @@ export function NotificationAudienceFilter({
   const { user } = useAuth();
   const { can } = usePermission();
   const canReadAll =
-    can(permissions.notifications.platformReadAll) || Boolean(user?.isSuperAdmin);
+    can(permissions.notifications.platformReadAll) ||
+    Boolean(user?.isSuperAdmin);
   const [optionCache, setOptionCache] = useState<ComboboxOption[]>([]);
 
   const loadOptions = useCallback(async (query: string) => {
@@ -47,13 +51,11 @@ export function NotificationAudienceFilter({
       q: query.trim() || undefined,
       status: "active",
     });
-    const options = result.items.map(
-      (user): ComboboxOption => ({
-        value: user.uuid,
-        label: `${userFullName(user)} · ${user.email}`,
-        description: user.uuid,
-      }),
-    );
+    const options = result.items.map((user): ComboboxOption => ({
+      value: user.uuid,
+      label: `${userFullName(user)} · ${user.email}`,
+      description: user.uuid,
+    }));
     setOptionCache((prev) => {
       const byValue = new Map(prev.map((opt) => [opt.value, opt]));
       for (const opt of options) byValue.set(opt.value, opt);
@@ -82,13 +84,18 @@ export function NotificationAudienceFilter({
           });
         }}
       >
-        <SelectTrigger className="w-[220px]" aria-label={t("notifications.audience.label")}>
+        <SelectTrigger
+          className="w-[220px]"
+          aria-label={t("notifications.audience.label")}
+        >
           <SelectValue placeholder={t("notifications.audience.label")} />
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="me">{t("notifications.audience.me")}</SelectItem>
           <SelectItem value="all">{t("notifications.audience.all")}</SelectItem>
-          <SelectItem value="user">{t("notifications.audience.user")}</SelectItem>
+          <SelectItem value="user">
+            {t("notifications.audience.user")}
+          </SelectItem>
         </SelectContent>
       </Select>
 
