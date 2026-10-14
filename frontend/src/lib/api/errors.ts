@@ -1,3 +1,6 @@
+import { i18nConfig, type AppLocale } from "@/config/i18n";
+import { translate } from "@/lib/i18n/messages";
+
 export type ApiErrorDetail = {
   field?: string;
   message?: string;
@@ -74,7 +77,7 @@ export class ApiError extends Error {
 export function parseApiError(status: number, data: unknown): ApiError {
   const body = data as Partial<ApiErrorBody> | null;
   const code = body?.error?.code ?? `HTTP_${status}`;
-  const message = body?.error?.message ?? defaultMessage(status);
+  const message = localizedMessage(code, status, body?.error?.message);
   return new ApiError({
     status,
     code,
@@ -85,21 +88,37 @@ export function parseApiError(status: number, data: unknown): ApiError {
   });
 }
 
-function defaultMessage(status: number) {
-  switch (status) {
-    case 401:
-      return "Oturum gerekli";
-    case 403:
-      return "Yetkisiz";
-    case 404:
-      return "Bulunamadı";
-    case 422:
-      return "Doğrulama hatası";
-    case 500:
-      return "Sunucu hatası";
-    default:
-      return "İstek başarısız";
+const TURKISH_CHARS = /[çğıöşüÇĞİÖŞÜ]/;
+
+function activeLocale(): AppLocale {
+  if (typeof document !== "undefined") {
+    const lang = document.documentElement.lang;
+    if (i18nConfig.supportedLocales.includes(lang as AppLocale))
+      return lang as AppLocale;
   }
+  return i18nConfig.defaultLocale;
+}
+
+/**
+ * Keeps the server message when it is already in the active language
+ * (some modules answer in Turkish); otherwise shows the localized text for
+ * the error code, falling back to the server message, then to an HTTP text.
+ */
+function localizedMessage(
+  code: string,
+  status: number,
+  serverMessage?: string,
+) {
+  const locale = activeLocale();
+  const server = serverMessage?.trim();
+  const serverIsTurkish = server ? TURKISH_CHARS.test(server) : false;
+  if (server && (locale === "tr") === serverIsTurkish) return server;
+  const key = `errors.codes.${code}`;
+  const byCode = translate(locale, key);
+  if (byCode !== key) return byCode;
+  if (server) return server;
+  const httpKey = `errors.http.${[401, 403, 404, 422, 500].includes(status) ? status : "default"}`;
+  return translate(locale, httpKey);
 }
 
 export type ErrorHandler = (error: ApiError) => void;
