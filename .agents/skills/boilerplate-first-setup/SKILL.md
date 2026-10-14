@@ -16,7 +16,7 @@ Human docs: `docs/DEVELOPMENT.md`. Canonical env is the **repo-root** `.env`.
 - `backend/` — Go API + worker (`:8080`, `/v1/...`)
 - `frontend/` — Next.js BFF (`/platform` + CMS `/`)
 - `compose.local.yml` — infra only (Postgres, Redis, MinIO, MailHog, Adminer, Centrifugo, Meilisearch)
-- `compose.prod.yml` — full stack + `dokploy-network`
+- `compose.prod.yml` — full stack on its own app network; frontend + centrifugo also join `dokploy-network`
 
 Do **not** keep a long-lived `frontend/.env.local` for API URLs. Do **not** treat `backend/.env` as canonical.
 
@@ -34,13 +34,13 @@ cp .env.example .env.server   # then replace every secret
 
 | Variable | Purpose |
 |----------|---------|
-| `NAME_PREFIX` | Container names (`${NAME_PREFIX}-postgres`, `-minio`, …) |
+| `NAME_PREFIX` | **Required in prod.** Container, volume and network names (`${NAME_PREFIX}-postgres`, `${NAME_PREFIX}-app`, …) |
 | `COMPOSE_PROJECT_NAME` | Compose project name |
 | `LOCAL_NETWORK_NAME` | Local bridge |
 | `APP_NETWORK_NAME` | Prod private bridge (default `${NAME_PREFIX}-app`) |
 | `POSTGRES_VOLUME_NAME` / `REDIS_VOLUME_NAME` / `MINIO_VOLUME_NAME` / `MEILI_VOLUME_NAME` | Named volumes so data does not collide |
 
-Never reuse short Docker DNS names `minio` / `centrifugo` alone on a shared Dokploy overlay — they are already qualified as `*.${APP_NETWORK_NAME}` in `compose.prod.yml`.
+In `compose.prod.yml` every internal host is qualified as `<service>.${APP_NETWORK_NAME}` (`postgres.myapp-app`, `backend.myapp-app`, …). Never use a bare service name: on the shared `dokploy-network` it can resolve to another stack's container.
 
 Change secrets in `.env` even for local if the machine is shared: `JWT_*`, `AUTH_SECRET`, `CENTRIFUGO_*`, `S3_SECRET_KEY`, `DB_PASSWORD`, `MEILI_MASTER_KEY`, `APP_ENCRYPTION_KEY`.
 
@@ -106,11 +106,11 @@ Browser must **never** assemble MinIO/S3 URLs from object keys. Use API-returned
 
 ## 7. Production / Dokploy
 
-1. `docker network create dokploy-network` (once)
-2. Fill `.env.server` — every `${VAR:?…}` is required
-3. `make prod-config` then `make prod-up`
+1. Fill `.env.server` with a unique `NAME_PREFIX` — every `${VAR:?…}` is required
+2. `make prod-config` then `make prod-up`
+3. Plain Docker host only: `docker network create dokploy-network` (once; Dokploy creates it itself)
 
-Dokploy-attached: **minio, centrifugo, backend, frontend**. Postgres / Redis / Meilisearch / worker stay on the private app network.
+Compose creates the app's own private network (`${NAME_PREFIX}-app`). Only **frontend** and **centrifugo** join `dokploy-network` (set their domains in Dokploy: service + container port). Backend, MinIO, Postgres, Redis, Meilisearch and the worker stay private.
 
 `SEARCH_*` / `MEILI_*` enable Cmd+K. `APP_ENCRYPTION_KEY` (32-byte raw or base64) encrypts GitHub App secrets. Generate: `openssl rand -base64 32`.
 

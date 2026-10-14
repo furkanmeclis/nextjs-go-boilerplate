@@ -1,4 +1,17 @@
-name: ${COMPOSE_PROJECT_NAME:-${NAME_PREFIX:-app}-prod}
+# Production stack (Dokploy compose or plain `docker compose`).
+#
+# Networks — every app gets its own:
+#   app             Private bridge network created by Compose, named
+#                   ${APP_NETWORK_NAME:-<NAME_PREFIX>-app}. All services join it.
+#   dokploy-network Shared reverse-proxy network (external; Dokploy creates it,
+#                   on a plain Docker host run once: docker network create dokploy-network).
+#                   Only the public services join it: frontend and centrifugo.
+#
+# NAME_PREFIX is required: it makes container, volume and network names unique
+# per app, so several boilerplate apps run side by side on one server.
+# Internal hosts are always qualified as <service>.<app network>: a bare name
+# like `backend` could resolve to another stack's container on dokploy-network.
+name: ${COMPOSE_PROJECT_NAME:-${NAME_PREFIX:?NAME_PREFIX is required}-prod}
 
 x-backend-image: &backend-image
   image: ${BACKEND_IMAGE:?BACKEND_IMAGE is required}
@@ -16,24 +29,23 @@ x-backend-environment: &backend-environment
   APP_NAME: ${APP_NAME:-api}
   APP_ENV: production
   APP_HTTP_ADDR: :8080
-  DB_HOST: ${NAME_PREFIX:-app}-postgres
+  DB_HOST: postgres.${APP_NETWORK_NAME:-${NAME_PREFIX:?NAME_PREFIX is required}-app}
   DB_PORT: "5432"
   DB_USER: ${DB_USER:?DB_USER is required}
   DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
   DB_NAME: ${DB_NAME:?DB_NAME is required}
   DB_SSLMODE: ${DB_SSLMODE:-disable}
-  REDIS_ADDR: ${NAME_PREFIX:-app}-redis:6379
+  REDIS_ADDR: redis.${APP_NETWORK_NAME:-${NAME_PREFIX:?NAME_PREFIX is required}-app}:6379
   REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
   STORAGE_DRIVER: ${STORAGE_DRIVER:-minio}
-  STORAGE_PUBLIC_BASE_URL: ${STORAGE_PUBLIC_BASE_URL:?STORAGE_PUBLIC_BASE_URL is required}
-  # Qualify with APP_NETWORK: short name `minio` collides on dokploy-network.
-  S3_ENDPOINT: http://minio.${APP_NETWORK_NAME:-${NAME_PREFIX:-app}-app}:9000
+  # MinIO is private: browsers get files through API endpoints, never a bucket URL.
+  S3_ENDPOINT: http://minio.${APP_NETWORK_NAME:-${NAME_PREFIX:?NAME_PREFIX is required}-app}:9000
   S3_ACCESS_KEY: ${S3_ACCESS_KEY:?S3_ACCESS_KEY is required}
   S3_SECRET_KEY: ${S3_SECRET_KEY:?S3_SECRET_KEY is required}
   S3_BUCKET: ${S3_BUCKET:?S3_BUCKET is required}
   S3_REGION: ${S3_REGION:-us-east-1}
   S3_USE_PATH_STYLE: "true"
-  CENTRIFUGO_API_URL: http://centrifugo.${APP_NETWORK_NAME:-${NAME_PREFIX:-app}-app}:8000
+  CENTRIFUGO_API_URL: http://centrifugo.${APP_NETWORK_NAME:-${NAME_PREFIX:?NAME_PREFIX is required}-app}:8000
   CENTRIFUGO_API_KEY: ${CENTRIFUGO_API_KEY:?CENTRIFUGO_API_KEY is required}
   CENTRIFUGO_TOKEN_HMAC_SECRET: ${CENTRIFUGO_TOKEN_HMAC_SECRET:?CENTRIFUGO_TOKEN_HMAC_SECRET is required}
   CENTRIFUGO_WS_URL: ${CENTRIFUGO_WS_URL:?CENTRIFUGO_WS_URL is required}
@@ -62,7 +74,7 @@ x-backend-environment: &backend-environment
   VAPID_SUBJECT: ${VAPID_SUBJECT:-mailto:noreply@example.com}
   SEARCH_ENABLED: ${SEARCH_ENABLED:-true}
   SEARCH_DRIVER: ${SEARCH_DRIVER:-meilisearch}
-  MEILI_HOST: http://${NAME_PREFIX:-app}-meilisearch:7700
+  MEILI_HOST: http://meilisearch.${APP_NETWORK_NAME:-${NAME_PREFIX:?NAME_PREFIX is required}-app}:7700
   MEILI_MASTER_KEY: ${MEILI_MASTER_KEY:?MEILI_MASTER_KEY is required}
   MEILI_INDEX_PREFIX: ${MEILI_INDEX_PREFIX:-app}
   LOG_LEVEL: ${LOG_LEVEL:-info}
@@ -89,7 +101,7 @@ x-backend-environment: &backend-environment
 services:
   postgres:
     image: postgres:18-alpine
-    container_name: ${NAME_PREFIX:-app}-postgres
+    container_name: ${NAME_PREFIX:?NAME_PREFIX is required}-postgres
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${DB_USER:?DB_USER is required}
@@ -107,7 +119,7 @@ services:
 
   redis:
     image: redis:8-alpine
-    container_name: ${NAME_PREFIX:-app}-redis
+    container_name: ${NAME_PREFIX:?NAME_PREFIX is required}-redis
     restart: unless-stopped
     command:
       - /bin/sh
@@ -127,7 +139,7 @@ services:
 
   minio:
     image: minio/minio:latest
-    container_name: ${NAME_PREFIX:-app}-minio
+    container_name: ${NAME_PREFIX:?NAME_PREFIX is required}-minio
     restart: unless-stopped
     command: server /data --console-address ":9001"
     environment:
@@ -140,13 +152,13 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+    # Private: never attach MinIO to dokploy-network or publish its ports.
     networks:
       - app
-      - dokploy-network
 
   minio-init:
     image: minio/mc:latest
-    container_name: ${NAME_PREFIX:-app}-minio-init
+    container_name: ${NAME_PREFIX:?NAME_PREFIX is required}-minio-init
     depends_on:
       minio:
         condition: service_healthy
@@ -155,20 +167,20 @@ services:
       - -c
       - |
         set -eu
-        mc alias set local http://minio:9000 "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD"
+        mc alias set local "http://minio.$$APP_NETWORK:9000" "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD"
         mc mb --ignore-existing "local/$$S3_BUCKET"
-        mc anonymous set download "local/$$S3_BUCKET"
     environment:
       MINIO_ROOT_USER: ${S3_ACCESS_KEY:?S3_ACCESS_KEY is required}
       MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:?S3_SECRET_KEY is required}
       S3_BUCKET: ${S3_BUCKET:?S3_BUCKET is required}
+      APP_NETWORK: ${APP_NETWORK_NAME:-${NAME_PREFIX:?NAME_PREFIX is required}-app}
     restart: "no"
     networks:
       - app
 
   meilisearch:
     image: getmeili/meilisearch:v1.11
-    container_name: ${NAME_PREFIX:-app}-meilisearch
+    container_name: ${NAME_PREFIX:?NAME_PREFIX is required}-meilisearch
     restart: unless-stopped
     environment:
       MEILI_ENV: production
@@ -187,7 +199,7 @@ services:
 
   centrifugo:
     image: centrifugo/centrifugo:v5
-    container_name: ${NAME_PREFIX:-app}-centrifugo
+    container_name: ${NAME_PREFIX:?NAME_PREFIX is required}-centrifugo
     restart: unless-stopped
     command: centrifugo -c config.json
     environment:
@@ -213,9 +225,9 @@ services:
 
   migrate:
     <<: *backend-image
-    container_name: ${NAME_PREFIX:-app}-migrate
+    container_name: ${NAME_PREFIX:?NAME_PREFIX is required}-migrate
     environment:
-      DATABASE_URL: postgres://${DB_USER:?DB_USER is required}:${DB_PASSWORD:?DB_PASSWORD is required}@${NAME_PREFIX:-app}-postgres:5432/${DB_NAME:?DB_NAME is required}?sslmode=${DB_SSLMODE:-disable}
+      DATABASE_URL: postgres://${DB_USER:?DB_USER is required}:${DB_PASSWORD:?DB_PASSWORD is required}@postgres.${APP_NETWORK_NAME:-${NAME_PREFIX:?NAME_PREFIX is required}-app}:5432/${DB_NAME:?DB_NAME is required}?sslmode=${DB_SSLMODE:-disable}
       APP_ROLE: migrate
       AUTO_MIGRATE: "false"
     depends_on:
@@ -227,7 +239,7 @@ services:
 
   backend:
     <<: *backend-image
-    container_name: ${NAME_PREFIX:-app}-backend
+    container_name: ${NAME_PREFIX:?NAME_PREFIX is required}-backend
     environment:
       <<: *backend-environment
       APP_ROLE: server
@@ -246,19 +258,24 @@ services:
     expose:
       - "8080"
     healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:8080/readyz"]
+      # /healthz, not /readyz: a Postgres/Redis blip must not mark the API
+      # unhealthy (unhealthy containers are dropped by the proxy).
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:8080/healthz"]
       interval: 10s
       timeout: 5s
       retries: 10
       start_period: 10s
+    stop_grace_period: 30s
     restart: unless-stopped
+    # App network only: the frontend proxies /api, so the API needs no public
+    # domain, and on dokploy-network its `backend` alias would answer other
+    # stacks' lookups.
     networks:
       - app
-      - dokploy-network
 
   worker:
     <<: *backend-image
-    container_name: ${NAME_PREFIX:-app}-worker
+    container_name: ${NAME_PREFIX:?NAME_PREFIX is required}-worker
     environment:
       <<: *backend-environment
       APP_ROLE: worker
@@ -274,15 +291,16 @@ services:
         condition: service_healthy
       meilisearch:
         condition: service_healthy
+    stop_grace_period: 35s
     restart: unless-stopped
     networks:
       - app
 
   frontend:
     <<: *frontend-image
-    container_name: ${NAME_PREFIX:-app}-frontend
+    container_name: ${NAME_PREFIX:?NAME_PREFIX is required}-frontend
     environment:
-      API_URL: http://backend:8080/v1
+      API_URL: http://backend.${APP_NETWORK_NAME:-${NAME_PREFIX:?NAME_PREFIX is required}-app}:8080/v1
       AUTH_SECRET: ${AUTH_SECRET:?AUTH_SECRET is required}
       AUTH_URL: ${AUTH_URL:?AUTH_URL is required}
       AUTH_TRUST_HOST: ${AUTH_TRUST_HOST:-true}
@@ -299,6 +317,8 @@ services:
     depends_on:
       backend:
         condition: service_healthy
+      worker:
+        condition: service_started
     expose:
       - "3000"
     healthcheck:
@@ -322,17 +342,18 @@ services:
 
 volumes:
   postgres_data:
-    name: ${POSTGRES_VOLUME_NAME:-${NAME_PREFIX:-app}-prod-postgres}
+    name: ${POSTGRES_VOLUME_NAME:-${NAME_PREFIX:?NAME_PREFIX is required}-prod-postgres}
   redis_data:
-    name: ${REDIS_VOLUME_NAME:-${NAME_PREFIX:-app}-prod-redis}
+    name: ${REDIS_VOLUME_NAME:-${NAME_PREFIX:?NAME_PREFIX is required}-prod-redis}
   minio_data:
-    name: ${MINIO_VOLUME_NAME:-${NAME_PREFIX:-app}-prod-minio}
+    name: ${MINIO_VOLUME_NAME:-${NAME_PREFIX:?NAME_PREFIX is required}-prod-minio}
   meili_data:
-    name: ${MEILI_VOLUME_NAME:-${NAME_PREFIX:-app}-prod-meilisearch}
+    name: ${MEILI_VOLUME_NAME:-${NAME_PREFIX:?NAME_PREFIX is required}-prod-meilisearch}
 
 networks:
+  # Created by Compose for this app only.
   app:
-    name: ${APP_NETWORK_NAME:-${NAME_PREFIX:-app}-app}
+    name: ${APP_NETWORK_NAME:-${NAME_PREFIX:?NAME_PREFIX is required}-app}
     driver: bridge
   dokploy-network:
     name: dokploy-network

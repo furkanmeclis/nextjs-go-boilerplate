@@ -17,13 +17,13 @@ Set these **before** sharing a Docker host with another stack:
 
 | Variable | Purpose |
 |----------|---------|
-| `NAME_PREFIX` | Container names (`${NAME_PREFIX}-postgres`, `-minio`, …) |
+| `NAME_PREFIX` | **Required in prod.** Container, volume and network names (`${NAME_PREFIX}-postgres`, `${NAME_PREFIX}-app`, …) |
 | `COMPOSE_PROJECT_NAME` | Compose project name |
 | `LOCAL_NETWORK_NAME` | Local bridge |
 | `APP_NETWORK_NAME` | Prod private bridge (default `${NAME_PREFIX}-app`) |
 | `*_VOLUME_NAME` | Named volumes so MinIO/Postgres do not collide |
 
-Never reuse the short Docker DNS names `minio` / `centrifugo` alone on a shared Dokploy overlay — they are already qualified as `*.${APP_NETWORK_NAME}` in `compose.prod.yml`.
+In `compose.prod.yml` every internal host is qualified as `<service>.${APP_NETWORK_NAME}` (`postgres.myapp-app`, `backend.myapp-app`, …). Never use a bare service name: on the shared `dokploy-network` it can resolve to another stack's container.
 
 Root `.env` is canonical. `backend/.env` is a fallback only. Do not keep a long-lived `frontend/.env.local` for API URLs; `API_URL` comes from the root env.
 
@@ -82,11 +82,11 @@ Optional frontend public vars (root `.env`): `NEXT_PUBLIC_BFF_BASE_URL`, `NEXT_P
 
 ## Production / Dokploy
 
-1. Create the external network once: `docker network create dokploy-network`
-2. `cp .env.example .env.server` and replace every secret (`${VAR:?…}` is required)
-3. `make prod-config` then `make prod-up`
+1. `cp .env.example .env.server`, set a unique `NAME_PREFIX` and replace every secret (`${VAR:?…}` is required)
+2. `make prod-config` then `make prod-up`
+3. Plain Docker host only (Dokploy creates it for you): `docker network create dokploy-network` once
 
-Dokploy-attached services: **minio, centrifugo, backend, frontend**. Postgres, Redis, Meilisearch, and the worker stay on the private app network.
+Networks: Compose creates a private bridge network per app (`${APP_NETWORK_NAME:-${NAME_PREFIX}-app}`) and every service joins it. Only **frontend** (`:3000`) and **centrifugo** (`:8000`) also join the shared `dokploy-network`, so the proxy can route their domains. The backend is reached through the frontend's `/api` proxy, and MinIO, Postgres, Redis, Meilisearch and the worker stay private (files reach browsers through API endpoints, never a bucket URL). No service publishes host ports.
 
 `APP_ENCRYPTION_KEY` (32-byte, raw or base64) encrypts GitHub App secrets at rest. Generate: `openssl rand -base64 32`. Replace the example key in production.
 
