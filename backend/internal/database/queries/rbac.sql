@@ -1,19 +1,20 @@
 -- name: GetRoleBySlug :one
 SELECT * FROM roles
-WHERE slug = $1;
+WHERE slug = $1 AND scope = 'platform';
 
 -- name: GetRoleByUUID :one
 SELECT * FROM roles
-WHERE uuid = $1;
+WHERE uuid = $1 AND scope = 'platform';
 
 -- name: GetRoleByID :one
 SELECT * FROM roles
-WHERE id = $1;
+WHERE id = $1 AND scope = 'platform';
 
 -- name: ListRolesFiltered :many
 SELECT *
 FROM roles
-WHERE (
+WHERE scope = 'platform'
+  AND (
     sqlc.narg(q)::text IS NULL
     OR name ILIKE '%' || sqlc.narg(q) || '%'
     OR slug ILIKE '%' || sqlc.narg(q) || '%'
@@ -24,7 +25,8 @@ LIMIT sqlc.arg(limit_count) OFFSET sqlc.arg(offset_count);
 -- name: CountRoles :one
 SELECT COUNT(*)::bigint
 FROM roles
-WHERE (
+WHERE scope = 'platform'
+  AND (
     sqlc.narg(q)::text IS NULL
     OR name ILIKE '%' || sqlc.narg(q) || '%'
     OR slug ILIKE '%' || sqlc.narg(q) || '%'
@@ -33,7 +35,8 @@ WHERE (
 -- name: ListRolesForExport :many
 SELECT *
 FROM roles
-WHERE (
+WHERE scope = 'platform'
+  AND (
     sqlc.narg(q)::text IS NULL
     OR name ILIKE '%' || sqlc.narg(q) || '%'
     OR slug ILIKE '%' || sqlc.narg(q) || '%'
@@ -43,7 +46,8 @@ ORDER BY is_system DESC, name ASC;
 -- name: ListRoleUUIDsForBulk :many
 SELECT uuid
 FROM roles
-WHERE (
+WHERE scope = 'platform'
+  AND (
     sqlc.narg(q)::text IS NULL
     OR name ILIKE '%' || sqlc.narg(q) || '%'
     OR slug ILIKE '%' || sqlc.narg(q) || '%'
@@ -60,12 +64,14 @@ UPDATE roles
 SET name = COALESCE(sqlc.narg(name), name),
     description = COALESCE(sqlc.narg(description), description)
 WHERE uuid = sqlc.arg(uuid)
+  AND scope = 'platform'
   AND is_system = false
 RETURNING *;
 
 -- name: DeleteRole :exec
 DELETE FROM roles
 WHERE uuid = $1
+  AND scope = 'platform'
   AND is_system = false;
 
 -- name: ListPermissionSlugsByRoleID :many
@@ -80,7 +86,7 @@ SELECT p.slug
 FROM permissions p
 INNER JOIN role_permissions rp ON rp.permission_id = p.id
 INNER JOIN roles r ON r.id = rp.role_id
-WHERE r.slug = $1
+WHERE r.slug = $1 AND r.scope = 'platform'
 ORDER BY p.slug;
 
 -- name: ListAllPermissionSlugs :many
@@ -124,5 +130,5 @@ SELECT p.slug
 FROM permissions p
 INNER JOIN role_permissions rp ON rp.permission_id = p.id
 INNER JOIN roles r ON r.id = rp.role_id
-WHERE r.uuid = $1
+WHERE r.uuid = $1 AND r.scope = 'platform'
 ORDER BY p.slug;

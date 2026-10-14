@@ -37,7 +37,7 @@ func (q *Queries) CountBulkJobsForActor(ctx context.Context, actorID int64) (int
 const createBulkJob = `-- name: CreateBulkJob :one
 INSERT INTO bulk_jobs (resource, action, actor_id, locale, status, target_json)
 VALUES ($1, $2, $3, $4, $5, $6)
-RETURNING id, uuid, resource, action, actor_id, locale, status, target_json, result_json, error, rollback_until, applied_at, created_at, updated_at
+RETURNING id, uuid, resource, action, actor_id, locale, status, target_json, result_json, error, rollback_until, applied_at, created_at, updated_at, organization_id
 `
 
 type CreateBulkJobParams struct {
@@ -74,12 +74,13 @@ func (q *Queries) CreateBulkJob(ctx context.Context, arg CreateBulkJobParams) (B
 		&i.AppliedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.OrganizationID,
 	)
 	return i, err
 }
 
 const getBulkJobByID = `-- name: GetBulkJobByID :one
-SELECT id, uuid, resource, action, actor_id, locale, status, target_json, result_json, error, rollback_until, applied_at, created_at, updated_at FROM bulk_jobs WHERE id = $1
+SELECT id, uuid, resource, action, actor_id, locale, status, target_json, result_json, error, rollback_until, applied_at, created_at, updated_at, organization_id FROM bulk_jobs WHERE id = $1
 `
 
 func (q *Queries) GetBulkJobByID(ctx context.Context, id int64) (BulkJob, error) {
@@ -100,12 +101,13 @@ func (q *Queries) GetBulkJobByID(ctx context.Context, id int64) (BulkJob, error)
 		&i.AppliedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.OrganizationID,
 	)
 	return i, err
 }
 
 const getBulkJobByUUID = `-- name: GetBulkJobByUUID :one
-SELECT id, uuid, resource, action, actor_id, locale, status, target_json, result_json, error, rollback_until, applied_at, created_at, updated_at FROM bulk_jobs WHERE uuid = $1
+SELECT id, uuid, resource, action, actor_id, locale, status, target_json, result_json, error, rollback_until, applied_at, created_at, updated_at, organization_id FROM bulk_jobs WHERE uuid = $1
 `
 
 func (q *Queries) GetBulkJobByUUID(ctx context.Context, argUuid uuid.UUID) (BulkJob, error) {
@@ -126,6 +128,7 @@ func (q *Queries) GetBulkJobByUUID(ctx context.Context, argUuid uuid.UUID) (Bulk
 		&i.AppliedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.OrganizationID,
 	)
 	return i, err
 }
@@ -167,7 +170,7 @@ func (q *Queries) InsertBulkChange(ctx context.Context, arg InsertBulkChangePara
 }
 
 const listAllBulkJobs = `-- name: ListAllBulkJobs :many
-SELECT id, uuid, resource, action, actor_id, locale, status, target_json, result_json, error, rollback_until, applied_at, created_at, updated_at FROM bulk_jobs
+SELECT id, uuid, resource, action, actor_id, locale, status, target_json, result_json, error, rollback_until, applied_at, created_at, updated_at, organization_id FROM bulk_jobs
 ORDER BY created_at DESC
 LIMIT $2 OFFSET $1
 `
@@ -201,6 +204,7 @@ func (q *Queries) ListAllBulkJobs(ctx context.Context, arg ListAllBulkJobsParams
 			&i.AppliedAt,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.OrganizationID,
 		); err != nil {
 			return nil, err
 		}
@@ -248,7 +252,7 @@ func (q *Queries) ListBulkChangesForJob(ctx context.Context, jobID int64) ([]Bul
 }
 
 const listBulkJobsForActor = `-- name: ListBulkJobsForActor :many
-SELECT id, uuid, resource, action, actor_id, locale, status, target_json, result_json, error, rollback_until, applied_at, created_at, updated_at FROM bulk_jobs
+SELECT id, uuid, resource, action, actor_id, locale, status, target_json, result_json, error, rollback_until, applied_at, created_at, updated_at, organization_id FROM bulk_jobs
 WHERE actor_id = $1
 ORDER BY created_at DESC
 LIMIT $3 OFFSET $2
@@ -284,6 +288,7 @@ func (q *Queries) ListBulkJobsForActor(ctx context.Context, arg ListBulkJobsForA
 			&i.AppliedAt,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.OrganizationID,
 		); err != nil {
 			return nil, err
 		}
@@ -302,7 +307,7 @@ SET status = 'completed',
     rollback_until = $3,
     result_json = $2
 WHERE id = $1
-RETURNING id, uuid, resource, action, actor_id, locale, status, target_json, result_json, error, rollback_until, applied_at, created_at, updated_at
+RETURNING id, uuid, resource, action, actor_id, locale, status, target_json, result_json, error, rollback_until, applied_at, created_at, updated_at, organization_id
 `
 
 type MarkBulkJobCompletedParams struct {
@@ -329,6 +334,7 @@ func (q *Queries) MarkBulkJobCompleted(ctx context.Context, arg MarkBulkJobCompl
 		&i.AppliedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.OrganizationID,
 	)
 	return i, err
 }
@@ -338,7 +344,7 @@ UPDATE bulk_jobs
 SET status = 'failed',
     error = $2
 WHERE id = $1
-RETURNING id, uuid, resource, action, actor_id, locale, status, target_json, result_json, error, rollback_until, applied_at, created_at, updated_at
+RETURNING id, uuid, resource, action, actor_id, locale, status, target_json, result_json, error, rollback_until, applied_at, created_at, updated_at, organization_id
 `
 
 type MarkBulkJobFailedParams struct {
@@ -364,6 +370,7 @@ func (q *Queries) MarkBulkJobFailed(ctx context.Context, arg MarkBulkJobFailedPa
 		&i.AppliedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.OrganizationID,
 	)
 	return i, err
 }
@@ -372,7 +379,7 @@ const markBulkJobProcessing = `-- name: MarkBulkJobProcessing :one
 UPDATE bulk_jobs
 SET status = 'processing'
 WHERE id = $1 AND status = 'queued'
-RETURNING id, uuid, resource, action, actor_id, locale, status, target_json, result_json, error, rollback_until, applied_at, created_at, updated_at
+RETURNING id, uuid, resource, action, actor_id, locale, status, target_json, result_json, error, rollback_until, applied_at, created_at, updated_at, organization_id
 `
 
 func (q *Queries) MarkBulkJobProcessing(ctx context.Context, id int64) (BulkJob, error) {
@@ -393,6 +400,7 @@ func (q *Queries) MarkBulkJobProcessing(ctx context.Context, id int64) (BulkJob,
 		&i.AppliedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.OrganizationID,
 	)
 	return i, err
 }
@@ -401,7 +409,7 @@ const markBulkJobRolledBack = `-- name: MarkBulkJobRolledBack :one
 UPDATE bulk_jobs
 SET status = $2
 WHERE id = $1 AND status = 'completed'
-RETURNING id, uuid, resource, action, actor_id, locale, status, target_json, result_json, error, rollback_until, applied_at, created_at, updated_at
+RETURNING id, uuid, resource, action, actor_id, locale, status, target_json, result_json, error, rollback_until, applied_at, created_at, updated_at, organization_id
 `
 
 type MarkBulkJobRolledBackParams struct {
@@ -427,6 +435,7 @@ func (q *Queries) MarkBulkJobRolledBack(ctx context.Context, arg MarkBulkJobRoll
 		&i.AppliedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.OrganizationID,
 	)
 	return i, err
 }
