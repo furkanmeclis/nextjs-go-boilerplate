@@ -1141,6 +1141,293 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /v1/platform/organizations/meta:
+    get:
+      tags: [Platform]
+      operationId: getPlatformOrganizationsMeta
+      summary: Platform organizations list metadata
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Resource meta
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnvelopeResourceMeta"
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /v1/platform/organizations:
+    get:
+      tags: [Platform]
+      operationId: getPlatformOrganizations
+      summary: List platform organizations
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
+        - $ref: "#/components/parameters/Q"
+        - $ref: "#/components/parameters/Sort"
+        - name: status
+          in: query
+          schema: { type: string, enum: [active, suspended] }
+      responses:
+        "200":
+          description: Organization page
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnvelopeOrganizationPage"
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    post:
+      tags: [Platform]
+      operationId: postPlatformOrganization
+      summary: Create organization
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateOrganizationRequest"
+      responses:
+        "201":
+          description: Created organization
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnvelopeOrganization"
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /v1/platform/organizations/{uuid}:
+    get:
+      tags: [Platform]
+      operationId: getPlatformOrganization
+      summary: Get organization
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ResourceUUID"
+      responses:
+        "200":
+          description: Organization
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnvelopeOrganization"
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    patch:
+      tags: [Platform]
+      operationId: patchPlatformOrganization
+      summary: Patch organization
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ResourceUUID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PatchOrganizationRequest"
+      responses:
+        "200":
+          description: Organization
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnvelopeOrganization"
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    delete:
+      tags: [Platform]
+      operationId: deletePlatformOrganization
+      summary: Soft-delete organization
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ResourceUUID"
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnvelopeStatus"
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /v1/platform/organizations/{uuid}/status:
+    post:
+      tags: [Platform]
+      operationId: postPlatformOrganizationStatus
+      summary: Set organization status
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ResourceUUID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SetOrganizationStatusRequest"
+      responses:
+        "200":
+          description: Organization
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnvelopeOrganization"
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /v1/platform/organizations/{uuid}/access:
+    post:
+      tags: [Platform]
+      operationId: postPlatformOrganizationAccess
+      summary: Set organization access window
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ResourceUUID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SetOrganizationAccessRequest"
+      responses:
+        "200":
+          description: Organization
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnvelopeOrganization"
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /v1/platform/organizations/{uuid}/members:
+    get:
+      tags: [Platform]
+      operationId: getPlatformOrganizationMembers
+      summary: List organization members
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ResourceUUID"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
+        - $ref: "#/components/parameters/Q"
+        - $ref: "#/components/parameters/Sort"
+      responses:
+        "200":
+          description: Organization member page
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnvelopeOrganizationMemberPage"
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    post:
+      tags: [Platform]
+      operationId: postPlatformOrganizationMember
+      summary: Add organization member
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ResourceUUID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddOrganizationMemberRequest"
+      responses:
+        "201":
+          description: Organization member
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnvelopeOrganizationMember"
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /v1/platform/organizations/{uuid}/members/{userUuid}:
+    patch:
+      tags: [Platform]
+      operationId: patchPlatformOrganizationMember
+      summary: Change organization member role
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ResourceUUID"
+        - $ref: "#/components/parameters/UserUUID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChangeOrganizationMemberRoleRequest"
+      responses:
+        "200":
+          description: Organization member
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnvelopeOrganizationMember"
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+    delete:
+      tags: [Platform]
+      operationId: deletePlatformOrganizationMember
+      summary: Remove organization member
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ResourceUUID"
+        - $ref: "#/components/parameters/UserUUID"
+      responses:
+        "200":
+          description: Removed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnvelopeStatus"
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
   /v1/platform/users:
     get:
       tags: [Platform]
@@ -2660,6 +2947,14 @@ components:
       schema:
         type: string
         format: uuid
+    UserUUID:
+      name: userUuid
+      in: path
+      required: true
+      description: User UUID
+      schema:
+        type: string
+        format: uuid
     Limit:
       name: limit
       in: query
@@ -2976,6 +3271,29 @@ components:
           type: string
           examples: ["user:uuid"]
 
+    MeOrganizationRole:
+      type: object
+      required: [key, name]
+      properties:
+        key: { type: string, examples: [owner, admin, member] }
+        name: { type: string }
+
+    MeOrganization:
+      type: object
+      required: [uuid, slug, name, status, role, permissions]
+      properties:
+        uuid: { type: string, format: uuid }
+        slug: { type: string }
+        name: { type: string }
+        logo_url: { type: string }
+        status: { type: string, enum: [active, suspended] }
+        access_ends_at: { type: [string, "null"], format: date-time }
+        role:
+          $ref: "#/components/schemas/MeOrganizationRole"
+        permissions:
+          type: array
+          items: { type: string }
+
     Me:
       type: object
       required: [user, roles, permissions, links, channels, realtime]
@@ -2990,6 +3308,10 @@ components:
           type: array
           items:
             type: string
+        organizations:
+          type: array
+          items:
+            $ref: "#/components/schemas/MeOrganization"
         links:
           $ref: "#/components/schemas/MeLinks"
         channels:
@@ -3164,6 +3486,122 @@ components:
       required: [password]
       properties:
         password: { type: string, format: password }
+
+    Organization:
+      type: object
+      required: [uuid, slug, name, status, access_starts_at, created_at, updated_at]
+      properties:
+        uuid: { type: string, format: uuid }
+        slug: { type: string }
+        name: { type: string }
+        logo_url: { type: string }
+        status: { type: string, enum: [active, suspended] }
+        access_starts_at: { type: string, format: date-time }
+        access_ends_at: { type: [string, "null"], format: date-time }
+        settings:
+          type: object
+          additionalProperties: true
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    CreateOrganizationRequest:
+      type: object
+      required: [name]
+      additionalProperties: false
+      properties:
+        name: { type: string }
+        slug: { type: string }
+
+    PatchOrganizationRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        name: { type: string }
+        slug: { type: string }
+        settings:
+          type: object
+          additionalProperties: true
+
+    SetOrganizationStatusRequest:
+      type: object
+      required: [status]
+      additionalProperties: false
+      properties:
+        status: { type: string, enum: [active, suspended] }
+
+    SetOrganizationAccessRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        access_starts_at: { type: [string, "null"], format: date-time }
+        access_ends_at: { type: [string, "null"], format: date-time }
+
+    OrganizationMemberUser:
+      type: object
+      required: [uuid, email, name, surname, status]
+      properties:
+        uuid: { type: string, format: uuid }
+        email: { type: string, format: email }
+        name: { type: string }
+        surname: { type: string }
+        status: { type: string }
+
+    OrganizationRoleSummary:
+      type: object
+      required: [key, name]
+      properties:
+        key: { type: string, examples: [owner, admin, member] }
+        name: { type: string }
+
+    OrganizationMember:
+      type: object
+      required: [user, role, created_at, updated_at]
+      properties:
+        user:
+          $ref: "#/components/schemas/OrganizationMemberUser"
+        role:
+          $ref: "#/components/schemas/OrganizationRoleSummary"
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    AddOrganizationMemberRequest:
+      type: object
+      required: [user_uuid, role_key]
+      additionalProperties: false
+      properties:
+        user_uuid: { type: string, format: uuid }
+        role_key: { type: string, examples: [member] }
+
+    ChangeOrganizationMemberRoleRequest:
+      type: object
+      required: [role_key]
+      additionalProperties: false
+      properties:
+        role_key: { type: string, examples: [admin] }
+
+    OrganizationPage:
+      type: object
+      required: [items, total, limit, offset]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Organization"
+        total: { type: integer, format: int64 }
+        limit: { type: integer }
+        offset: { type: integer }
+
+    OrganizationMemberPage:
+      type: object
+      required: [items, total, limit, offset]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrganizationMember"
+        total: { type: integer, format: int64 }
+        limit: { type: integer }
+        offset: { type: integer }
 
     RoleSummary:
       type: object
@@ -3815,6 +4253,38 @@ components:
       properties:
         success: { type: boolean, enum: [true] }
         data: { $ref: "#/components/schemas/Me" }
+        meta: { $ref: "#/components/schemas/ResponseMeta" }
+
+    EnvelopeOrganization:
+      type: object
+      required: [success, data, meta]
+      properties:
+        success: { type: boolean, enum: [true] }
+        data: { $ref: "#/components/schemas/Organization" }
+        meta: { $ref: "#/components/schemas/ResponseMeta" }
+
+    EnvelopeOrganizationPage:
+      type: object
+      required: [success, data, meta]
+      properties:
+        success: { type: boolean, enum: [true] }
+        data: { $ref: "#/components/schemas/OrganizationPage" }
+        meta: { $ref: "#/components/schemas/ResponseMeta" }
+
+    EnvelopeOrganizationMember:
+      type: object
+      required: [success, data, meta]
+      properties:
+        success: { type: boolean, enum: [true] }
+        data: { $ref: "#/components/schemas/OrganizationMember" }
+        meta: { $ref: "#/components/schemas/ResponseMeta" }
+
+    EnvelopeOrganizationMemberPage:
+      type: object
+      required: [success, data, meta]
+      properties:
+        success: { type: boolean, enum: [true] }
+        data: { $ref: "#/components/schemas/OrganizationMemberPage" }
         meta: { $ref: "#/components/schemas/ResponseMeta" }
 
     EnvelopeImpersonationResult:
