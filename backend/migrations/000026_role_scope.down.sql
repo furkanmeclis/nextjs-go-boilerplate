@@ -1,3 +1,7 @@
+-- Data-loss note: tenant roles (templates and org-specific) are deleted so
+-- the global slug uniqueness can be restored.
+DELETE FROM roles WHERE scope = 'tenant';
+
 DROP INDEX IF EXISTS uq_roles_tenant_org_slug;
 DROP INDEX IF EXISTS uq_roles_tenant_template_slug;
 DROP INDEX IF EXISTS uq_roles_platform_slug;

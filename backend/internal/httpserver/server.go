@@ -49,6 +49,10 @@ import (
 	notifhandler "github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/modules/notifications/handler"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/modules/notifications/providers"
 	notifusecase "github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/modules/notifications/usecase"
+	organizationsmodule "github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/modules/organizations"
+	orghandler "github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/modules/organizations/handler"
+	orgrepository "github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/modules/organizations/repository"
+	orgusecase "github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/modules/organizations/usecase"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/modules/qrlogin"
 	searchmodule "github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/modules/search"
 	searchhandler "github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/modules/search/handler"
@@ -59,6 +63,7 @@ import (
 	storagemodule "github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/modules/storage"
 	storagehandler "github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/modules/storage/handler"
 	storageusecase "github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/modules/storage/usecase"
+	tenantmodule "github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/modules/tenant"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/activity"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/appleauth"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/bulkengine"
@@ -70,6 +75,8 @@ import (
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/jwt"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/mail"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/oidc"
+	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/orgctx"
+	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/orgctx/orgcache"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/outbox"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/ratelimit"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/searchengine"
@@ -243,6 +250,19 @@ func New(cfg config.Config, log *slog.Logger, deps Deps) (*Server, error) {
 	h.SetRateLimiter(ratelimit.New(deps.Redis, cfg.App.Env))
 	loader := identity.Loader{UC: uc}
 	authmodule.RegisterRoutes(mux, h, tokens, loader, stepUpSvc)
+
+	// Organizations (tenant core). Platform management is always mounted;
+	// the /v1/tenant/* shell only with TENANCY_ENABLED.
+	orgSvc := orgusecase.New(orgrepository.NewPostgres(deps.DB, deps.Queries), nil)
+	uc.SetOrganizationsLister(orgSvc)
+	organizationsmodule.RegisterRoutes(mux, orghandler.New(orgSvc, activityRec), tokens, loader)
+	var tenantResolver orgctx.Resolver
+	if cfg.Tenancy.Enabled {
+		orgCache := orgcache.New(orgSvc, deps.Redis, cfg.Tenancy.CacheTTL, cfg.App.Env)
+		orgSvc.SetInvalidator(orgCache)
+		tenantResolver = orgCache
+	}
+	tenantmodule.RegisterRoutes(mux, tokens, loader, tenantResolver)
 	realtime.RegisterRoutes(mux, realtime.NewHandler(rtIssuer, uc), tokens, loader)
 
 	qrGeo, err := qrlogin.NewLocator(cfg.Auth.QRGeoIPDB, cfg.Auth.QRTrustGeoHeaders)

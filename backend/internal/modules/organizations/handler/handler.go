@@ -49,15 +49,18 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	var in struct {
-		Name string `json:"name"`
-		Slug string `json:"slug"`
+		Name          string    `json:"name"`
+		Slug          string    `json:"slug"`
+		OwnerUserUUID uuid.UUID `json:"owner_user_uuid"`
 	}
 	if err := decodeJSON(w, r, &in); err != nil {
 		return
 	}
+	// Owner defaults to the caller; platform admins usually pass the
+	// customer's account so they do not become a member themselves.
 	p := authctx.MustPrincipal(r.Context())
 	org, err := h.svc.CreateOrganization(r.Context(), orgmodel.CreateOrganizationInput{
-		Name: in.Name, Slug: in.Slug, OwnerUserID: p.UserInternal,
+		Name: in.Name, Slug: in.Slug, OwnerUserUUID: in.OwnerUserUUID, OwnerUserID: p.UserInternal,
 	})
 	if err != nil {
 		writeError(w, r, err)

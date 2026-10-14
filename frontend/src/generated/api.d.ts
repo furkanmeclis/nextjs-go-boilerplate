@@ -1796,10 +1796,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/tenant/context": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Current organization scope
+         * @description Resolves the organization named by `X-Organization` and the caller's
+         *     membership in it, and returns what tenant routes see: the organization,
+         *     the caller's tenant role and its `tenant.*` permissions in this
+         *     organization only. Mounted only when `TENANCY_ENABLED=true`.
+         *
+         *     Errors: missing header → `400 ORGANIZATION_REQUIRED`; unknown
+         *     organization or no membership → `403 NO_TENANT_MEMBERSHIP` (same
+         *     answer for both; `super_admin` is not exempt); suspended →
+         *     `403 ORGANIZATION_SUSPENDED`; outside the access window →
+         *     `403 ORGANIZATION_ACCESS_EXPIRED`.
+         */
+        get: operations["getTenantContext"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        TenantOrganization: {
+            /** Format: uuid */
+            uuid: string;
+            /** @example acme */
+            slug: string;
+            /** @example Acme */
+            name: string;
+            /** @enum {string} */
+            status: "active" | "suspended";
+            /**
+             * Format: date-time
+             * @description End of the access window; `null` = no end
+             */
+            access_ends_at: string | null;
+        };
+        TenantContext: {
+            organization: components["schemas"]["TenantOrganization"];
+            /**
+             * @description Caller's tenant role key in this organization (`owner`, `admin`, `member` or a custom key)
+             * @example owner
+             */
+            role: string;
+            /** @description `tenant.*` permission slugs granted in this organization only */
+            permissions: string[];
+        };
+        EnvelopeTenantContext: {
+            /** @enum {boolean} */
+            success: true;
+            data: components["schemas"]["TenantContext"];
+            meta: components["schemas"]["ResponseMeta"];
+        };
         SearchSpec: {
             /** @example users */
             id: string;
@@ -1922,6 +1982,10 @@ export interface components {
              * @example OAUTH_LINK_CHOICE_REQUIRED
              * @example INVALID_LINK_TICKET
              * @example OAUTH_PROVIDER_DISABLED
+             * @example ORGANIZATION_REQUIRED
+             * @example NO_TENANT_MEMBERSHIP
+             * @example ORGANIZATION_SUSPENDED
+             * @example ORGANIZATION_ACCESS_EXPIRED
              */
             code: string;
             message: string;
@@ -2143,6 +2207,11 @@ export interface components {
         CreateOrganizationRequest: {
             name: string;
             slug?: string;
+            /**
+             * Format: uuid
+             * @description Owner account; defaults to the caller.
+             */
+            owner_user_uuid?: string;
         };
         PatchOrganizationRequest: {
             name?: string;
@@ -3032,8 +3101,35 @@ export interface components {
                 "application/json": components["schemas"]["Error"];
             };
         };
+        /** @description `ORGANIZATION_REQUIRED`: the `X-Organization` header is missing or empty */
+        OrganizationRequired: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["Error"];
+            };
+        };
+        /**
+         * @description `NO_TENANT_MEMBERSHIP` (unknown organization or not a member),
+         *     `ORGANIZATION_SUSPENDED`, `ORGANIZATION_ACCESS_EXPIRED`, or `FORBIDDEN`
+         *     (tenant permission missing in this organization)
+         */
+        TenantForbidden: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["Error"];
+            };
+        };
     };
     parameters: {
+        /**
+         * @description Organization of a `/v1/tenant/*` request: its slug (preferred, readable
+         *     in logs) or uuid. The BFF forwards it on `/api/v1/tenant/*` only.
+         */
+        XOrganization: string;
         /** @description QR sign-in session id (from the QR URL) */
         QRSessionID: string;
         /** @description Resource UUID */
@@ -5905,6 +6001,36 @@ export interface operations {
             };
             401: components["responses"]["Unauthenticated"];
             404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    getTenantContext: {
+        parameters: {
+            query?: never;
+            header: {
+                /**
+                 * @description Organization of a `/v1/tenant/*` request: its slug (preferred, readable
+                 *     in logs) or uuid. The BFF forwards it on `/api/v1/tenant/*` only.
+                 */
+                "X-Organization": components["parameters"]["XOrganization"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Organization scope */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnvelopeTenantContext"];
+                };
+            };
+            400: components["responses"]["OrganizationRequired"];
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["TenantForbidden"];
             500: components["responses"]["InternalError"];
         };
     };

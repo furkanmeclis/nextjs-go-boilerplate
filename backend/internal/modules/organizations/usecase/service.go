@@ -68,10 +68,18 @@ func (s *Service) SetInvalidator(inv orgctx.Invalidator) {
 
 func (s *Service) CreateOrganization(ctx context.Context, in orgmodel.CreateOrganizationInput) (orgmodel.Organization, error) {
 	name := strings.TrimSpace(in.Name)
-	if name == "" || in.OwnerUserID <= 0 {
+	if name == "" || (in.OwnerUserID <= 0 && in.OwnerUserUUID == uuid.Nil) {
 		return orgmodel.Organization{}, fmt.Errorf("%w: name and owner user are required", ErrInvalidRequest)
 	}
-	owner, err := s.repo.GetUserByID(ctx, in.OwnerUserID)
+	var (
+		owner db.User
+		err   error
+	)
+	if in.OwnerUserUUID != uuid.Nil {
+		owner, err = s.repo.GetUserByUUID(ctx, in.OwnerUserUUID)
+	} else {
+		owner, err = s.repo.GetUserByID(ctx, in.OwnerUserID)
+	}
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
 			return orgmodel.Organization{}, ErrUserNotFound

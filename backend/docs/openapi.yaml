@@ -3611,6 +3611,10 @@ components:
       properties:
         name: { type: string }
         slug: { type: string }
+        owner_user_uuid:
+          type: string
+          format: uuid
+          description: Owner account; defaults to the caller.
 
     PatchOrganizationRequest:
       type: object

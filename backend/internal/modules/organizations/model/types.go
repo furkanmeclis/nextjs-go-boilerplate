@@ -58,9 +58,11 @@ type Membership struct {
 }
 
 type CreateOrganizationInput struct {
-	Name        string
-	Slug        string
-	OwnerUserID int64
+	Name string
+	Slug string
+	// OwnerUserUUID selects the owner; when zero, OwnerUserID is used.
+	OwnerUserUUID uuid.UUID
+	OwnerUserID   int64
 }
 
 type PatchOrganizationInput struct {

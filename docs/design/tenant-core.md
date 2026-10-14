@@ -1,6 +1,6 @@
 # Tenant core — design study
 
-Status: **proposal** (nothing implemented yet). Reference implementation: `otopoly-go` (forked from this boilerplate, added organizations on top). This document keeps what worked there, fixes what hurt, and makes it reusable for every app cloned from the boilerplate.
+Status: **phase 1 implemented** (backend: schema, organizations module, per-request org context, cache; see §11). Later phases are proposals. Reference implementation: `otopoly-go` (forked from this boilerplate, added organizations on top). This document keeps what worked there, fixes what hurt, and makes it reusable for every app cloned from the boilerplate.
 
 ## 1. Goal
 
@@ -77,7 +77,7 @@ Existing leftovers get wired or deleted in the same work: `EnqueueInput.TenantID
 
 - Platform permissions stay global (`user_roles` → `platform.*`). Nothing changes for `/platform`.
 - Tenant permissions come only from `organization_members.role_id` for the **current** organization. A user who is owner in A and member in B has owner rights in A and member rights in B.
-- `super_admin` bypasses tenant permission checks but still needs an explicit membership or uses impersonation; an audit row is written either way.
+- `super_admin` gets no tenant bypass: tenant access needs a membership (or impersonating a member). Platform admins manage organizations through `/v1/platform/organizations`.
 - Slug convention: `tenant.<resource>.<action>`. Same triad rule as today (migration + `internal/platform/rbac` + `frontend/src/config/permissions.ts`).
 - `/v1/auth/me` returns `organizations[]: {uuid, slug, name, logo_url, status, access_ends_at, role: {key, name}, permissions: string[]}`; the frontend `usePermission()` reads the current org's list inside the tenant shell. Permissions are **not** put in the JWT (cookie size).
 
