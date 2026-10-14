@@ -67,13 +67,13 @@ func TestDeactivateRevokesAppleTokensWithDBKey(t *testing.T) {
 
 	e := newFlowEnv(t)
 	e.uc.SetNativeOAuth(NativeOAuthConfig{
-		Verifier: e.verify, Apple: resolver, Clients: fakeClients{id: "com.otopoly.web"},
-		AppleClientIDs: []string{"com.otopoly.app"},
+		Verifier: e.verify, Apple: resolver, Clients: fakeClients{id: "com.example.web"},
+		AppleClientIDs: []string{"com.example.app"},
 	})
 	u := e.user(t, "ada@example.com")
 	nativeRT, _ := e.uc.box.Encrypt("native-rt")
 	webRT, _ := e.uc.box.Encrypt("web-rt")
-	cid := "com.otopoly.app"
+	cid := "com.example.app"
 	e.repo.accounts = append(e.repo.accounts,
 		model.OAuthAccountRecord{ID: 1, UserID: u.ID, UserUUID: u.UUID, Provider: "apple", ProviderAccountID: "a1", RefreshTokenEnc: &nativeRT, ClientID: &cid},
 		model.OAuthAccountRecord{ID: 2, UserID: u.ID, UserUUID: u.UUID, Provider: "apple", ProviderAccountID: "a2", RefreshTokenEnc: &webRT},
@@ -82,7 +82,7 @@ func TestDeactivateRevokesAppleTokensWithDBKey(t *testing.T) {
 	if err := e.uc.DeactivateAccount(context.Background(), u.UUID, "", true); err != nil {
 		t.Fatalf("deactivate: %v", err)
 	}
-	if revoked["native-rt"] != "com.otopoly.app" || revoked["web-rt"] != "com.otopoly.web" {
+	if revoked["native-rt"] != "com.example.app" || revoked["web-rt"] != "com.example.web" {
 		t.Fatalf("tokens not revoked with DB key: %v", revoked)
 	}
 	if !e.repo.cleared[1] || !e.repo.cleared[2] {

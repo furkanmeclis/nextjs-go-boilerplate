@@ -45,7 +45,6 @@ type SentryConfig struct {
 	TracesSampleRate float64
 }
 
-
 // AuthConfig holds NextAuth adapter integration settings.
 type AuthConfig struct {
 	AdapterSecret string

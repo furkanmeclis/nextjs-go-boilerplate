@@ -69,7 +69,7 @@ x-backend-environment: &backend-environment
   LOG_FORMAT: ${LOG_FORMAT:-json}
   # --- Mobile app (all optional; empty = feature off / defaults) ---
   AUTH_REVIEW_ACCOUNTS: ${AUTH_REVIEW_ACCOUNTS:-}
-  AUTH_APPLE_NATIVE_CLIENT_IDS: ${AUTH_APPLE_NATIVE_CLIENT_IDS:-com.otopoly.app}
+  AUTH_APPLE_NATIVE_CLIENT_IDS: ${AUTH_APPLE_NATIVE_CLIENT_IDS:-}
   AUTH_GOOGLE_NATIVE_CLIENT_IDS: ${AUTH_GOOGLE_NATIVE_CLIENT_IDS:-}
   # Sign in with Apple key fallback. Prefer uploading the .p8 in Platform →
   # Integrations → Apple (stored encrypted in the DB, wins over these).
@@ -292,11 +292,6 @@ services:
       NEXT_PUBLIC_CENTRIFUGO_URL: ${NEXT_PUBLIC_CENTRIFUGO_URL:-}
       NEXT_PUBLIC_DEFAULT_LOCALE: ${NEXT_PUBLIC_DEFAULT_LOCALE:-tr}
       NEXT_PUBLIC_FALLBACK_LOCALE: ${NEXT_PUBLIC_FALLBACK_LOCALE:-en}
-      # Universal Links / App Links (/.well-known/*); read at request time, optional.
-      APPLE_TEAM_ID: ${APPLE_TEAM_ID:-}
-      IOS_BUNDLE_ID: ${IOS_BUNDLE_ID:-com.otopoly.app}
-      ANDROID_PACKAGE_NAME: ${ANDROID_PACKAGE_NAME:-com.otopoly.app}
-      ANDROID_SHA256_CERT_FINGERPRINTS: ${ANDROID_SHA256_CERT_FINGERPRINTS:-}
       # Error tracking, read at runtime by the Next.js server/edge and served
       # to the browser by /api/client-env (no build arg). Empty = off.
       SENTRY_DSN: ${FRONTEND_SENTRY_DSN:-}

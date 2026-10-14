@@ -6,6 +6,8 @@ export const brand = {
   name: "App",
   productName: "Boilerplate",
   tagline: "Platform & CMS console",
+  /** Custom URL scheme of the companion mobile app (QR sign-in fallback). */
+  mobileScheme: "app",
   colors: {
     /** slate-900 — shadcn slate primary */
     primary: "#0F172A",

@@ -87,7 +87,7 @@ func TestResolverPrefersDBOverEnv(t *testing.T) {
 	if got := r.Source(ctx); got != SourceDB {
 		t.Fatalf("source = %q, want db", got)
 	}
-	secret, _, err := r.GenerateClientSecretTTL(ctx, "com.otopoly.web", time.Hour)
+	secret, _, err := r.GenerateClientSecretTTL(ctx, "com.example.web", time.Hour)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -105,7 +105,7 @@ func TestResolverPrefersDBOverEnv(t *testing.T) {
 	if got := r.Source(ctx); got != SourceEnv {
 		t.Fatalf("after ttl source = %q, want env", got)
 	}
-	secret, _, err = r.GenerateClientSecretTTL(ctx, "com.otopoly.web", time.Hour)
+	secret, _, err = r.GenerateClientSecretTTL(ctx, "com.example.web", time.Hour)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -165,7 +165,7 @@ func TestResolverRevokeUsesDBKey(t *testing.T) {
 		t.Fatal(err)
 	}
 	r.SetBaseURL(srv.URL)
-	if err := r.Revoke(context.Background(), "com.otopoly.app", "", "rt-db"); err != nil {
+	if err := r.Revoke(context.Background(), "com.example.app", "", "rt-db"); err != nil {
 		t.Fatalf("revoke: %v", err)
 	}
 	if revoked != "rt-db" {

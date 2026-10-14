@@ -180,14 +180,14 @@ func TestAppleEnableRequiresKeyOrSecret(t *testing.T) {
 	svc, _ := newSvc(t, appleauth.Config{})
 	_, pemText := newKey(t)
 
-	if _, err := svc.Patch(ctx, "apple", PatchInput{ClientID: str("com.otopoly.web"), LoginEnabled: boolp(true)}); !errors.Is(err, ErrInvalidRequest) {
+	if _, err := svc.Patch(ctx, "apple", PatchInput{ClientID: str("com.example.web"), LoginEnabled: boolp(true)}); !errors.Is(err, ErrInvalidRequest) {
 		t.Fatalf("apple without key/secret: %v", err)
 	}
 	if _, err := svc.Patch(ctx, "google", PatchInput{ClientID: str("g"), LoginEnabled: boolp(true)}); !errors.Is(err, ErrInvalidRequest) {
 		t.Fatalf("google without secret: %v", err)
 	}
 	if _, err := svc.Patch(ctx, "apple", PatchInput{
-		ClientID: str("com.otopoly.web"), LoginEnabled: boolp(true),
+		ClientID: str("com.example.web"), LoginEnabled: boolp(true),
 		TeamID: str("ABCDE12345"), KeyID: str("KEY1234567"), PrivateKey: str(pemText),
 	}); err != nil {
 		t.Fatalf("apple with key, no secret: %v", err)
@@ -207,7 +207,7 @@ func TestAdapterConfigGeneratesAppleSecret(t *testing.T) {
 	svc, _ := newSvc(t, appleauth.Config{TeamID: "ENVTEAM001", KeyID: "ENVKEY0001", PrivateKey: envPEM})
 	dbKey, dbPEM := newKey(t)
 	if _, err := svc.Patch(ctx, "apple", PatchInput{
-		ClientID: str("com.otopoly.web"), ClientSecret: str("stale-pasted-jwt"), LoginEnabled: boolp(true),
+		ClientID: str("com.example.web"), ClientSecret: str("stale-pasted-jwt"), LoginEnabled: boolp(true),
 		TeamID: str("ABCDE12345"), KeyID: str("KEY1234567"), PrivateKey: str(dbPEM),
 	}); err != nil {
 		t.Fatal(err)
@@ -217,7 +217,7 @@ func TestAdapterConfigGeneratesAppleSecret(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !cfg.Enabled || cfg.ClientID != "com.otopoly.web" || cfg.ClientSecret == "stale-pasted-jwt" || cfg.ClientSecretExpiresAt == nil {
+	if !cfg.Enabled || cfg.ClientID != "com.example.web" || cfg.ClientSecret == "stale-pasted-jwt" || cfg.ClientSecretExpiresAt == nil {
 		t.Fatalf("unexpected config: %+v", cfg)
 	}
 	if _, err := jwt.Parse(cfg.ClientSecret, func(*jwt.Token) (any, error) { return &envKey.PublicKey, nil }); err == nil {
@@ -235,7 +235,7 @@ func TestAdapterConfigGeneratesAppleSecret(t *testing.T) {
 	if iss, _ := claims.GetIssuer(); iss != "ABCDE12345" {
 		t.Fatalf("iss = %q", iss)
 	}
-	if sub, _ := claims.GetSubject(); sub != "com.otopoly.web" {
+	if sub, _ := claims.GetSubject(); sub != "com.example.web" {
 		t.Fatalf("sub = %q", sub)
 	}
 	if aud, _ := claims.GetAudience(); len(aud) != 1 || aud[0] != "https://appleid.apple.com" {
@@ -258,7 +258,7 @@ func TestAdapterConfigFallsBackToPastedSecret(t *testing.T) {
 	ctx := context.Background()
 	svc, _ := newSvc(t, appleauth.Config{})
 	if _, err := svc.Patch(ctx, "apple", PatchInput{
-		ClientID: str("com.otopoly.web"), ClientSecret: str("pasted-jwt"), LoginEnabled: boolp(true),
+		ClientID: str("com.example.web"), ClientSecret: str("pasted-jwt"), LoginEnabled: boolp(true),
 	}); err != nil {
 		t.Fatal(err)
 	}

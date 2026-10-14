@@ -60,7 +60,7 @@ func (ti *testIssuer) sign(t *testing.T, claims jwt.MapClaims) string {
 func baseClaims(now time.Time) jwt.MapClaims {
 	return jwt.MapClaims{
 		"iss":              "https://appleid.apple.com",
-		"aud":              "com.otopoly.app",
+		"aud":              "com.example.app",
 		"sub":              "001234.abc",
 		"email":            "X@privaterelay.appleid.com",
 		"email_verified":   "true",
@@ -76,7 +76,7 @@ func TestVerifyApple(t *testing.T) {
 	now := time.Now()
 	v := New(map[string]ProviderConfig{ProviderApple: {Issuers: []string{"https://appleid.apple.com"}, JWKSURL: ti.srv.URL}}, nil)
 	ctx := context.Background()
-	aud := []string{"com.otopoly.app"}
+	aud := []string{"com.example.app"}
 
 	claims, err := v.Verify(ctx, ProviderApple, ti.sign(t, baseClaims(now)), aud, "raw-nonce")
 	if err != nil {

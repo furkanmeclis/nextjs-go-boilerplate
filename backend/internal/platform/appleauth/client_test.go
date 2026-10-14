@@ -37,7 +37,7 @@ func TestNotConfigured(t *testing.T) {
 	if c.Configured() {
 		t.Fatal("expected unconfigured")
 	}
-	if _, err := c.GenerateClientSecret("com.otopoly.app"); !errors.Is(err, ErrNotConfigured) {
+	if _, err := c.GenerateClientSecret("com.example.app"); !errors.Is(err, ErrNotConfigured) {
 		t.Fatalf("got %v", err)
 	}
 }
@@ -71,11 +71,11 @@ func TestExchangeAndRevoke(t *testing.T) {
 		t.Fatal(err)
 	}
 	c.SetBaseURL(srv.URL)
-	rt, err := c.ExchangeCode(context.Background(), "com.otopoly.app", "code")
+	rt, err := c.ExchangeCode(context.Background(), "com.example.app", "code")
 	if err != nil || rt != "rt-1" {
 		t.Fatalf("exchange: %q %v", rt, err)
 	}
-	if err := c.Revoke(context.Background(), "com.otopoly.app", "", rt); err != nil {
+	if err := c.Revoke(context.Background(), "com.example.app", "", rt); err != nil {
 		t.Fatalf("revoke: %v", err)
 	}
 	if revoked != "rt-1" {

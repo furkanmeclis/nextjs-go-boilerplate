@@ -1668,7 +1668,7 @@ paths:
       description: |
         For mobile apps using the platform SDKs. The `id_token` signature is
         verified against the provider JWKS (cached), plus `iss`, `exp`, `aud`
-        (Apple: `AUTH_APPLE_NATIVE_CLIENT_IDS`, default `com.otopoly.app`;
+        (Apple: `AUTH_APPLE_NATIVE_CLIENT_IDS`;
         Google: `AUTH_GOOGLE_NATIVE_CLIENT_IDS` plus the web client id from
         OAuth settings) and `nonce` when sent (raw nonce, or its hex SHA-256
         in the token).
@@ -1892,7 +1892,6 @@ paths:
         `deactivated_at`, every refresh session is revoked, stored Apple
         refresh tokens are revoked via Apple `/auth/revoke` (best effort), and
         every sign-in path returns `403 ACCOUNT_DEACTIVATED` afterwards.
-        Organizations the user owns are kept as-is (other members keep access).
 
         Confirm with either a recent step-up grant (`/v1/auth/step-up/*`,
         send `{}`) or `code` from `/v1/auth/account/deactivate/request`.

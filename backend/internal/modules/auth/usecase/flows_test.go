@@ -244,7 +244,7 @@ func newFlowEnv(t *testing.T) *flowEnv {
 	apple := &fakeApple{}
 	uc.SetNativeOAuth(NativeOAuthConfig{
 		Verifier: v, Apple: apple, Clients: fakeClients{id: "web.apps.googleusercontent.com"},
-		AppleClientIDs: []string{"com.otopoly.app"}, GoogleClientIDs: []string{"ios.apps.googleusercontent.com"},
+		AppleClientIDs: []string{"com.example.app"}, GoogleClientIDs: []string{"ios.apps.googleusercontent.com"},
 	})
 	return &flowEnv{repo: repo, uc: uc, notif: notif, verify: v, apple: apple}
 }
@@ -446,7 +446,7 @@ func TestDeactivateAccountBlocksLogins(t *testing.T) {
 	e := newFlowEnv(t)
 	u := e.user(t, "ada@example.com")
 	enc, _ := e.uc.box.Encrypt("stored-apple-rt")
-	cid := "com.otopoly.app"
+	cid := "com.example.app"
 	e.repo.accounts = append(e.repo.accounts, model.OAuthAccountRecord{
 		ID: 1, UserID: u.ID, UserUUID: u.UUID, Provider: "apple", ProviderAccountID: "apple-sub",
 		RefreshTokenEnc: &enc, ClientID: &cid,
@@ -492,7 +492,7 @@ func TestDeactivateAccountBlocksLogins(t *testing.T) {
 	if _, err := e.uc.VerifyLoginCode(ctx, "ada@example.com", loginCode, "", model.SessionMeta{}); !errors.Is(err, ErrAccountDeactivated) {
 		t.Fatalf("email code login: %v", err)
 	}
-	e.verify.claims = oidc.Claims{Subject: "apple-sub", Email: "ada@example.com", EmailVerified: true, Audience: "com.otopoly.app"}
+	e.verify.claims = oidc.Claims{Subject: "apple-sub", Email: "ada@example.com", EmailVerified: true, Audience: "com.example.app"}
 	if _, err := e.uc.NativeOAuthLogin(ctx, NativeOAuthInput{Provider: "apple", IDToken: "t"}, model.SessionMeta{}); !errors.Is(err, ErrAccountDeactivated) {
 		t.Fatalf("native oauth: %v", err)
 	}
@@ -580,7 +580,7 @@ func TestNativeAppleRelayLinkExistingAccount(t *testing.T) {
 	ctx := context.Background()
 	e.verify.claims = oidc.Claims{
 		Subject: "apple-9", Email: "abc@privaterelay.appleid.com", EmailVerified: true,
-		IsPrivateEmail: true, Audience: "com.otopoly.app",
+		IsPrivateEmail: true, Audience: "com.example.app",
 	}
 	_, err := e.uc.NativeOAuthLogin(ctx, NativeOAuthInput{
 		Provider: "apple", IDToken: "t", GivenName: "Ada", AuthorizationCode: "code",
@@ -619,7 +619,7 @@ func TestNativeAppleRelayLinkExistingAccount(t *testing.T) {
 func TestNativeAppleRelayCreateAccount(t *testing.T) {
 	e := newFlowEnv(t)
 	ctx := context.Background()
-	e.verify.claims = oidc.Claims{Subject: "apple-7", Email: "zz@privaterelay.appleid.com", EmailVerified: true, Audience: "com.otopoly.app"}
+	e.verify.claims = oidc.Claims{Subject: "apple-7", Email: "zz@privaterelay.appleid.com", EmailVerified: true, Audience: "com.example.app"}
 	_, err := e.uc.NativeOAuthLogin(ctx, NativeOAuthInput{Provider: "apple", IDToken: "t", GivenName: "Zed"}, model.SessionMeta{})
 	var choice *LinkChoiceRequiredError
 	if !errors.As(err, &choice) || !choice.RegisterAllowed {
@@ -644,7 +644,7 @@ func TestNativeAppleRelayCreateAccount(t *testing.T) {
 
 func TestLinkTicketExpires(t *testing.T) {
 	e := newFlowEnv(t)
-	e.verify.claims = oidc.Claims{Subject: "apple-5", Email: "q@privaterelay.appleid.com", EmailVerified: true, Audience: "com.otopoly.app"}
+	e.verify.claims = oidc.Claims{Subject: "apple-5", Email: "q@privaterelay.appleid.com", EmailVerified: true, Audience: "com.example.app"}
 	_, err := e.uc.NativeOAuthLogin(context.Background(), NativeOAuthInput{Provider: "apple", IDToken: "t"}, model.SessionMeta{})
 	var choice *LinkChoiceRequiredError
 	if !errors.As(err, &choice) {
@@ -668,7 +668,7 @@ func TestLinkNativeIdentity(t *testing.T) {
 	e := newFlowEnv(t)
 	ctx := context.Background()
 	u := e.user(t, "ada@example.com")
-	e.verify.claims = oidc.Claims{Subject: "a-1", Audience: "com.otopoly.app"}
+	e.verify.claims = oidc.Claims{Subject: "a-1", Audience: "com.example.app"}
 	in := NativeLinkInput{Provider: "apple", IDToken: "t", AuthorizationCode: "code"}
 	got, err := e.uc.LinkNativeIdentity(ctx, u.UUID, in)
 	if err != nil || got.Provider != "apple" {
@@ -687,7 +687,7 @@ func TestLinkNativeIdentity(t *testing.T) {
 		t.Fatalf("other user: %v", err)
 	}
 	// Different Apple identity for a user that already has one -> conflict.
-	e.verify.claims = oidc.Claims{Subject: "a-2", Audience: "com.otopoly.app"}
+	e.verify.claims = oidc.Claims{Subject: "a-2", Audience: "com.example.app"}
 	if _, err := e.uc.LinkNativeIdentity(ctx, u.UUID, in); !errors.Is(err, ErrConflict) {
 		t.Fatalf("second apple identity: %v", err)
 	}

@@ -8,6 +8,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Fingerprint, Mail, QrCode, ShieldCheck } from "lucide-react";
 import { useMemo, useState, type ReactNode } from "react";
 
+import { brand } from "@/config/brand";
 import { AppleIcon } from "@/components/icons/apple-icon";
 import { FacebookIcon } from "@/components/icons/facebook-icon";
 import { GitHubIcon } from "@/components/icons/github-icon";
@@ -442,7 +443,7 @@ export function LoginForm() {
     return (
       <AuthCard
         title={t("auth.qr.title")}
-        description={t("auth.qr.description")}
+        description={t("auth.qr.description", { app: brand.name })}
       >
         <div className="space-y-4">
           {displayError ? (

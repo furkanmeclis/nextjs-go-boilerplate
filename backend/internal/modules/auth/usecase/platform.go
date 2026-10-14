@@ -463,7 +463,7 @@ func (u *AuthUseCase) CanSubscribeChannel(
 		return uid == userUUID, nil
 	}
 	// conversation:{uuid} used to be granted to any signed-in user without an
-	// ownership check (cross-tenant eavesdropping once anything publishes
+	// ownership check (eavesdropping on other users once anything publishes
 	// there). Nothing publishes to it today, so fail closed; a future
 	// publisher must add an ownership check here.
 	return false, nil

@@ -6,6 +6,7 @@ import { signIn } from "next-auth/react";
 import QRCode from "qrcode";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { brand } from "@/config/brand";
 import { Button } from "@/components/ui/button";
 import { realtimeConfig } from "@/config/realtime";
 import {
@@ -271,7 +272,7 @@ export function QRLoginPanel({
         ) : null}
       </div>
       <ol className="text-muted-foreground list-decimal space-y-1 pl-5 text-sm">
-        <li>{t("auth.qr.step_open")}</li>
+        <li>{t("auth.qr.step_open", { app: brand.name })}</li>
         <li>{t("auth.qr.step_scan")}</li>
         <li>{t("auth.qr.step_approve")}</li>
       </ol>

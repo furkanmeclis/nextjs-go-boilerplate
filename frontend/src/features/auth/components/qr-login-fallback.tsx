@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Smartphone } from "lucide-react";
 
+import { brand } from "@/config/brand";
 import { Button } from "@/components/ui/button";
 import { routes } from "@/config/routes";
 import { useLocale } from "@/providers/locale-provider";
@@ -14,7 +15,7 @@ const SESSION_ID = /^[A-Za-z0-9_-]{43}$/;
 
 /**
  * Landing page for `/login/qr/{id}` when the QR was opened in a browser
- * instead of the Otopoly app (app not installed, or universal links off).
+ * instead of the mobile app (app not installed, or universal links off).
  */
 export function QRLoginFallback({ sessionId }: { sessionId: string }) {
   const { t } = useLocale();
@@ -23,20 +24,20 @@ export function QRLoginFallback({ sessionId }: { sessionId: string }) {
   return (
     <AuthShell>
       <AuthCard
-        title={t("auth.qr.fallback_title")}
-        description={t("auth.qr.fallback_description")}
+        title={t("auth.qr.fallback_title", { app: brand.name })}
+        description={t("auth.qr.fallback_description", { app: brand.name })}
       >
         <div className="flex flex-col items-center gap-4 text-center">
           <Smartphone className="text-muted-foreground size-10" aria-hidden />
           <ol className="text-muted-foreground list-decimal space-y-1 pl-5 text-left text-sm">
-            <li>{t("auth.qr.step_open")}</li>
+            <li>{t("auth.qr.step_open", { app: brand.name })}</li>
             <li>{t("auth.qr.step_scan")}</li>
             <li>{t("auth.qr.step_approve")}</li>
           </ol>
           {valid ? (
             <Button asChild className="w-full">
-              <a href={`otopoly://login/qr/${sessionId}`}>
-                {t("auth.qr.open_in_app")}
+              <a href={`${brand.mobileScheme}://login/qr/${sessionId}`}>
+                {t("auth.qr.open_in_app", { app: brand.name })}
               </a>
             </Button>
           ) : null}
