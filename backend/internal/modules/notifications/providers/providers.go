@@ -2,6 +2,7 @@ package providers
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/database/db"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/modules/notifications/model"
@@ -86,6 +87,12 @@ func (p RealtimeProvider) Deliver(ctx context.Context, n db.Notification, userUU
 	}
 	if n.TemplateCode.Valid && n.TemplateCode.String != "" {
 		notification["template_code"] = n.TemplateCode.String
+	}
+	if len(n.Payload) > 0 {
+		var extra map[string]any
+		if err := json.Unmarshal(n.Payload, &extra); err == nil && len(extra) > 0 {
+			notification["payload"] = extra
+		}
 	}
 	payload := map[string]any{
 		"type":         "notification.created",
