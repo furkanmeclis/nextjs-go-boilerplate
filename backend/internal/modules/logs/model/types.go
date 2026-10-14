@@ -65,12 +65,12 @@ type ListFilter struct {
 
 // PurgeInput deletes matching logs (or an explicit uuid set).
 type PurgeInput struct {
-	UUIDs   []uuid.UUID `json:"uuids"`
-	DryRun  bool        `json:"dry_run"`
-	Levels  []string    `json:"levels"`
-	Source  string      `json:"source"`
-	Q       string      `json:"q"`
-	OlderThanHours *int32 `json:"older_than_hours"`
+	UUIDs          []uuid.UUID `json:"uuids"`
+	DryRun         bool        `json:"dry_run"`
+	Levels         []string    `json:"levels"`
+	Source         string      `json:"source"`
+	Q              string      `json:"q"`
+	OlderThanHours *int32      `json:"older_than_hours"`
 }
 
 // PurgeResult reports how many rows matched / were deleted.

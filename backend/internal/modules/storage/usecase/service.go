@@ -22,13 +22,13 @@ import (
 )
 
 const (
-	maxListScan     = 5000
-	maxUploadBytes  = 512 << 20
-	trashRetention  = 30 * 24 * time.Hour
-	folderMIME      = "application/x-directory"
-	uploadURLPath   = "/v1/platform/storage/uploads"
-	publicPathFmt   = "/v1/public/storage/%s"
-	signedPathFmt   = "/v1/public/storage/s/%s"
+	maxListScan    = 5000
+	maxUploadBytes = 512 << 20
+	trashRetention = 30 * 24 * time.Hour
+	folderMIME     = "application/x-directory"
+	uploadURLPath  = "/v1/platform/storage/uploads"
+	publicPathFmt  = "/v1/public/storage/%s"
+	signedPathFmt  = "/v1/public/storage/s/%s"
 )
 
 // Service implements platform object-storage browsing.

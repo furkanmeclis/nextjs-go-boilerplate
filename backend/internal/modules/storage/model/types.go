@@ -90,14 +90,14 @@ type UploadSession struct {
 }
 
 type Version struct {
-	VersionID    string `json:"version_id"`
-	Label        string `json:"label"`
-	Size         int64  `json:"size"`
-	ETag         string `json:"etag,omitempty"`
-	IsLatest     bool   `json:"is_latest"`
-	Status       string `json:"status"`
-	CreatedAt    string `json:"created_at"`
-	CreatedBy    string `json:"created_by,omitempty"`
+	VersionID string `json:"version_id"`
+	Label     string `json:"label"`
+	Size      int64  `json:"size"`
+	ETag      string `json:"etag,omitempty"`
+	IsLatest  bool   `json:"is_latest"`
+	Status    string `json:"status"`
+	CreatedAt string `json:"created_at"`
+	CreatedBy string `json:"created_by,omitempty"`
 }
 
 type RestoreVersionInput struct {

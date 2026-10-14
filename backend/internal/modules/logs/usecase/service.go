@@ -71,12 +71,12 @@ func (s *Service) WriteLog(ctx context.Context, entry logging.Entry) error {
 		created = time.Now().UTC()
 	}
 	return s.q.InsertAppLog(ctx, db.InsertAppLogParams{
-		Level:      entry.Level,
-		Message:    entry.Message,
-		Source:     entry.Source,
-		Attrs:      attrs,
-		RequestID:  textNarg(emptyToNil(entry.RequestID)),
-		CreatedAt:  timestamptz(created),
+		Level:     entry.Level,
+		Message:   entry.Message,
+		Source:    entry.Source,
+		Attrs:     attrs,
+		RequestID: textNarg(emptyToNil(entry.RequestID)),
+		CreatedAt: timestamptz(created),
 	})
 }
 

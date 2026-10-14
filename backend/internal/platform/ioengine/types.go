@@ -77,9 +77,9 @@ type RowResult struct {
 
 // PreviewSummary aggregates a dry-run.
 type PreviewSummary struct {
-	Total   int         `json:"total"`
-	Valid   int         `json:"valid"`
-	Invalid int         `json:"invalid"`
+	Total   int          `json:"total"`
+	Valid   int          `json:"valid"`
+	Invalid int          `json:"invalid"`
 	Rows    []RowPreview `json:"rows"`
 	Errors  []RowError   `json:"errors"`
 }
@@ -97,17 +97,17 @@ type RowError struct {
 
 // Letterhead branding for PDF/XLSX headers.
 type Letterhead struct {
-	CompanyName   string
-	Tagline       string
-	PrimaryColor  string
-	Address       string
-	Phone         string
-	Email         string
-	Website       string
-	FooterText    string
-	PaperSize     string
-	LogoBytes     []byte
-	LogoMIME      string
+	CompanyName  string
+	Tagline      string
+	PrimaryColor string
+	Address      string
+	Phone        string
+	Email        string
+	Website      string
+	FooterText   string
+	PaperSize    string
+	LogoBytes    []byte
+	LogoMIME     string
 }
 
 // ResourceAdapter connects ioengine to a list resource.

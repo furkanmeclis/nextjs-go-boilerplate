@@ -16,6 +16,7 @@ import (
 	"github.com/go-webauthn/webauthn/webauthn"
 	"github.com/google/uuid"
 )
+
 type WebAuthnConfig struct {
 	RPID          string
 	RPDisplayName string

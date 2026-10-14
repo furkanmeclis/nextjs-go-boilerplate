@@ -131,11 +131,11 @@ func (s *Service) listStarred(ctx context.Context, actor model.Actor) ([]model.O
 	if err != nil {
 		return nil, err
 	}
-		keys := make([]string, 0, len(rows))
-		for _, row := range rows {
-			keys = append(keys, row.ObjectKey)
-		}
-		return s.headKeys(ctx, actor, keys)
+	keys := make([]string, 0, len(rows))
+	for _, row := range rows {
+		keys = append(keys, row.ObjectKey)
+	}
+	return s.headKeys(ctx, actor, keys)
 }
 
 func (s *Service) listShared(ctx context.Context, actor model.Actor) ([]model.Object, error) {

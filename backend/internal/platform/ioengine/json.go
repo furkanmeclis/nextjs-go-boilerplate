@@ -9,11 +9,11 @@ import (
 )
 
 type jsonExportDocument struct {
-	Resource   string           `json:"resource"`
-	Locale     string           `json:"locale"`
-	ExportedAt string           `json:"exported_at"`
+	Resource   string             `json:"resource"`
+	Locale     string             `json:"locale"`
+	ExportedAt string             `json:"exported_at"`
 	Columns    []jsonExportColumn `json:"columns"`
-	Rows       []map[string]any `json:"rows"`
+	Rows       []map[string]any   `json:"rows"`
 }
 
 type jsonExportColumn struct {

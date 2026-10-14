@@ -53,13 +53,13 @@ func (r *Recorder) Record(ctx context.Context, actorID *int64, action, resource 
 		}
 	}
 	_, err = r.q.InsertActivityEvent(ctx, db.InsertActivityEventParams{
-		ActorUserID: pgtypeInt8(actorID),
-		Action:      action,
-		Resource:    resource,
+		ActorUserID:  pgtypeInt8(actorID),
+		Action:       action,
+		Resource:     resource,
 		ResourceUuid: ru,
-		Payload:     body,
-		IpAddress:   ip,
-		UserAgent:   ua,
+		Payload:      body,
+		IpAddress:    ip,
+		UserAgent:    ua,
 	})
 	if err != nil {
 		r.log.Warn("activity_record_failed", "action", action, "error", err)

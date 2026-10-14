@@ -44,11 +44,11 @@ func (h *Handler) PatchSettings(w http.ResponseWriter, r *http.Request) {
 	if h.activity != nil {
 		uid := actorInternalID(r)
 		h.activity.Record(r.Context(), uid, "access.settings.updated", "platform.access", nil, map[string]any{
-			"ttl_hours":                     policy.TTLHours,
-			"password_enabled":              policy.PasswordEnabled,
-			"passkey_enabled":               policy.PasskeyEnabled,
-			"totp_enabled":                  policy.TOTPEnabled,
-			"password_login_totp_required":  policy.PasswordLoginTOTPRequired,
+			"ttl_hours":                    policy.TTLHours,
+			"password_enabled":             policy.PasswordEnabled,
+			"passkey_enabled":              policy.PasskeyEnabled,
+			"totp_enabled":                 policy.TOTPEnabled,
+			"password_login_totp_required": policy.PasswordLoginTOTPRequired,
 		}, r)
 	}
 	response.JSON(w, r, http.StatusOK, policy)

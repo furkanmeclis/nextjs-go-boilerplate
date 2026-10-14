@@ -59,16 +59,16 @@ type Filter struct {
 
 // ResourceMeta is the table-metadata contract for a primary list resource.
 type ResourceMeta struct {
-	Resource         string       `json:"resource"`
-	DefaultSort      string       `json:"default_sort"`
-	DefaultFields    []string     `json:"default_fields"`
-	Capabilities     Capabilities `json:"capabilities"`
-	SearchableFields []string     `json:"searchable_fields"`
-	SortableFields   []string     `json:"sortable_fields"`
-	FilterableFields []string     `json:"filterable_fields"`
-	Columns          []Column     `json:"columns"`
-	Filters          []Filter     `json:"filters"`
-	Includes         []string     `json:"includes"`
+	Resource         string                     `json:"resource"`
+	DefaultSort      string                     `json:"default_sort"`
+	DefaultFields    []string                   `json:"default_fields"`
+	Capabilities     Capabilities               `json:"capabilities"`
+	SearchableFields []string                   `json:"searchable_fields"`
+	SortableFields   []string                   `json:"sortable_fields"`
+	FilterableFields []string                   `json:"filterable_fields"`
+	Columns          []Column                   `json:"columns"`
+	Filters          []Filter                   `json:"filters"`
+	Includes         []string                   `json:"includes"`
 	BulkActions      []bulkengine.BulkActionDef `json:"bulk_actions"`
 }
 
