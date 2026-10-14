@@ -1183,8 +1183,7 @@ export interface paths {
         put?: never;
         /**
          * Approve a QR sign-in (mobile)
-         * @description Signs the waiting browser tab in as the caller, scoped to the caller's
-         *     active organization (the token's `oid`, re-validated at exchange).
+         * @description Signs the waiting browser tab in as the caller.
          *     Publishes `{type: "approved", exchange_token}` to the tab's channel;
          *     the exchange window is 60 s. Exactly one approve / reject succeeds.
          *
@@ -1265,7 +1264,6 @@ export interface paths {
          *
          *     Errors: `400 QR_LOGIN_INVALID` (wrong secret / token, not approved yet),
          *     `404 QR_SESSION_NOT_FOUND`, `403 ACCOUNT_DEACTIVATED`,
-         *     `403 NO_TENANT_MEMBERSHIP`, `403 ORGANIZATION_ACCESS_EXPIRED`,
          *     `429 RATE_LIMITED`.
          */
         post: operations["postAuthQRExchange"];
@@ -2248,7 +2246,7 @@ export interface components {
             session_id: string;
             /**
              * Format: uri
-             * @example https://otopoly.app/login/qr/Zm9v...
+             * @example https://app.example.com/login/qr/Zm9v...
              */
             qr_url: string;
             /** @description Keep in the tab only */
