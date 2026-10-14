@@ -35,5 +35,9 @@
   "http.404": "Not found",
   "http.422": "Validation error",
   "http.500": "Server error",
-  "http.default": "Request failed"
+  "http.default": "Request failed",
+  "sign_in": "Sign in",
+  "back_to_login": "Back to sign in",
+  "continue": "Continue",
+  "area_requires": "This area requires {{area}} access."
 }

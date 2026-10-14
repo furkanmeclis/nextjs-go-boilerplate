@@ -35,5 +35,9 @@
   "http.404": "Bulunamadı",
   "http.422": "Doğrulama hatası",
   "http.500": "Sunucu hatası",
-  "http.default": "İstek başarısız"
+  "http.default": "İstek başarısız",
+  "sign_in": "Giriş yap",
+  "back_to_login": "Girişe dön",
+  "continue": "Devam et",
+  "area_requires": "Bu alan yalnızca {{area}} erişimi gerektirir."
 }

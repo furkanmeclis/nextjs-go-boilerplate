@@ -46,10 +46,10 @@ function RoleMismatch({ expected, home }: { expected: string; home: string }) {
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
           <p className="text-muted-foreground text-sm">
-            Bu alan yalnızca <strong>{expected}</strong> erişimi gerektirir.
+            {t("errors.area_requires", { area: expected })}
           </p>
           <Button asChild>
-            <Link href={home}>Devam et</Link>
+            <Link href={home}>{t("errors.continue")}</Link>
           </Button>
         </CardContent>
       </Card>
