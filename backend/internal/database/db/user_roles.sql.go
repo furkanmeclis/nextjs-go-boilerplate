@@ -17,6 +17,7 @@ INSERT INTO user_roles (user_id, role_id)
 SELECT $1, r.id
 FROM roles r
 WHERE r.slug = $2
+  AND r.scope = 'platform'
 ON CONFLICT DO NOTHING
 `
 
@@ -51,6 +52,7 @@ SELECT ur.user_id, r.uuid, r.name, r.slug, r.description, r.is_system
 FROM user_roles ur
 INNER JOIN roles r ON r.id = ur.role_id
 WHERE ur.user_id = ANY ($1::bigint[])
+  AND r.scope = 'platform'
 ORDER BY ur.user_id, r.slug
 `
 
@@ -95,6 +97,7 @@ SELECT r.slug
 FROM roles r
 INNER JOIN user_roles ur ON ur.role_id = r.id
 WHERE ur.user_id = $1
+  AND r.scope = 'platform'
 ORDER BY r.slug
 `
 
@@ -119,10 +122,11 @@ func (q *Queries) ListUserRoleSlugs(ctx context.Context, userID int64) ([]string
 }
 
 const listUserRolesByUserID = `-- name: ListUserRolesByUserID :many
-SELECT r.id, r.uuid, r.name, r.slug, r.description, r.is_system, r.created_at, r.updated_at
+SELECT r.id, r.uuid, r.name, r.slug, r.description, r.is_system, r.created_at, r.updated_at, r.scope, r.organization_id
 FROM roles r
 INNER JOIN user_roles ur ON ur.role_id = r.id
 WHERE ur.user_id = $1
+  AND r.scope = 'platform'
 ORDER BY r.slug
 `
 
@@ -144,6 +148,8 @@ func (q *Queries) ListUserRolesByUserID(ctx context.Context, userID int64) ([]Ro
 			&i.IsSystem,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Scope,
+			&i.OrganizationID,
 		); err != nil {
 			return nil, err
 		}
@@ -156,11 +162,12 @@ func (q *Queries) ListUserRolesByUserID(ctx context.Context, userID int64) ([]Ro
 }
 
 const listUserRolesByUserUUID = `-- name: ListUserRolesByUserUUID :many
-SELECT r.id, r.uuid, r.name, r.slug, r.description, r.is_system, r.created_at, r.updated_at
+SELECT r.id, r.uuid, r.name, r.slug, r.description, r.is_system, r.created_at, r.updated_at, r.scope, r.organization_id
 FROM roles r
 INNER JOIN user_roles ur ON ur.role_id = r.id
 INNER JOIN users u ON u.id = ur.user_id
 WHERE u.uuid = $1 AND u.deleted_at IS NULL
+  AND r.scope = 'platform'
 ORDER BY r.slug
 `
 
@@ -182,6 +189,8 @@ func (q *Queries) ListUserRolesByUserUUID(ctx context.Context, argUuid uuid.UUID
 			&i.IsSystem,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Scope,
+			&i.OrganizationID,
 		); err != nil {
 			return nil, err
 		}
@@ -199,6 +208,7 @@ USING roles r
 WHERE ur.user_id = $1
   AND ur.role_id = r.id
   AND r.slug = $2
+  AND r.scope = 'platform'
 `
 
 type RemoveUserRoleBySlugParams struct {
@@ -226,7 +236,7 @@ SELECT EXISTS (
     SELECT 1
     FROM user_roles ur
     INNER JOIN roles r ON r.id = ur.role_id
-    WHERE ur.user_id = $1 AND r.slug = $2
+    WHERE ur.user_id = $1 AND r.slug = $2 AND r.scope = 'platform'
 )::boolean AS has_role
 `
 

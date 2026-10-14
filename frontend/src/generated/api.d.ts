@@ -668,6 +668,130 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/platform/organizations/meta": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Platform organizations list metadata */
+        get: operations["getPlatformOrganizationsMeta"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/platform/organizations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List platform organizations */
+        get: operations["getPlatformOrganizations"];
+        put?: never;
+        /** Create organization */
+        post: operations["postPlatformOrganization"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/platform/organizations/{uuid}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get organization */
+        get: operations["getPlatformOrganization"];
+        put?: never;
+        post?: never;
+        /** Soft-delete organization */
+        delete: operations["deletePlatformOrganization"];
+        options?: never;
+        head?: never;
+        /** Patch organization */
+        patch: operations["patchPlatformOrganization"];
+        trace?: never;
+    };
+    "/v1/platform/organizations/{uuid}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Set organization status */
+        post: operations["postPlatformOrganizationStatus"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/platform/organizations/{uuid}/access": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Set organization access window */
+        post: operations["postPlatformOrganizationAccess"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/platform/organizations/{uuid}/members": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List organization members */
+        get: operations["getPlatformOrganizationMembers"];
+        put?: never;
+        /** Add organization member */
+        post: operations["postPlatformOrganizationMember"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/platform/organizations/{uuid}/members/{userUuid}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove organization member */
+        delete: operations["deletePlatformOrganizationMember"];
+        options?: never;
+        head?: never;
+        /** Change organization member role */
+        patch: operations["patchPlatformOrganizationMember"];
+        trace?: never;
+    };
     "/v1/platform/users": {
         parameters: {
             query?: never;
@@ -1866,10 +1990,33 @@ export interface components {
             /** @example user:uuid */
             user_channel: string;
         };
+        MeOrganizationRole: {
+            /**
+             * @example owner
+             * @example admin
+             * @example member
+             */
+            key: string;
+            name: string;
+        };
+        MeOrganization: {
+            /** Format: uuid */
+            uuid: string;
+            slug: string;
+            name: string;
+            logo_url?: string;
+            /** @enum {string} */
+            status: "active" | "suspended";
+            /** Format: date-time */
+            access_ends_at?: string | null;
+            role: components["schemas"]["MeOrganizationRole"];
+            permissions: string[];
+        };
         Me: {
             user: components["schemas"]["PublicUser"];
             roles: string[];
             permissions: string[];
+            organizations?: components["schemas"]["MeOrganization"][];
             links: components["schemas"]["MeLinks"];
             channels: components["schemas"]["MeChannels"];
             realtime: components["schemas"]["MeRealtime"];
@@ -1972,6 +2119,97 @@ export interface components {
         SetPlatformUserPasswordRequest: {
             /** Format: password */
             password: string;
+        };
+        Organization: {
+            /** Format: uuid */
+            uuid: string;
+            slug: string;
+            name: string;
+            logo_url?: string;
+            /** @enum {string} */
+            status: "active" | "suspended";
+            /** Format: date-time */
+            access_starts_at: string;
+            /** Format: date-time */
+            access_ends_at?: string | null;
+            settings?: {
+                [key: string]: unknown;
+            };
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        CreateOrganizationRequest: {
+            name: string;
+            slug?: string;
+        };
+        PatchOrganizationRequest: {
+            name?: string;
+            slug?: string;
+            settings?: {
+                [key: string]: unknown;
+            };
+        };
+        SetOrganizationStatusRequest: {
+            /** @enum {string} */
+            status: "active" | "suspended";
+        };
+        SetOrganizationAccessRequest: {
+            /** Format: date-time */
+            access_starts_at?: string | null;
+            /** Format: date-time */
+            access_ends_at?: string | null;
+        };
+        OrganizationMemberUser: {
+            /** Format: uuid */
+            uuid: string;
+            /** Format: email */
+            email: string;
+            name: string;
+            surname: string;
+            status: string;
+        };
+        OrganizationRoleSummary: {
+            /**
+             * @example owner
+             * @example admin
+             * @example member
+             */
+            key: string;
+            name: string;
+        };
+        OrganizationMember: {
+            user: components["schemas"]["OrganizationMemberUser"];
+            role: components["schemas"]["OrganizationRoleSummary"];
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        AddOrganizationMemberRequest: {
+            /** Format: uuid */
+            user_uuid: string;
+            /** @example member */
+            role_key: string;
+        };
+        ChangeOrganizationMemberRoleRequest: {
+            /** @example admin */
+            role_key: string;
+        };
+        OrganizationPage: {
+            items: components["schemas"]["Organization"][];
+            /** Format: int64 */
+            total: number;
+            limit: number;
+            offset: number;
+        };
+        OrganizationMemberPage: {
+            items: components["schemas"]["OrganizationMember"][];
+            /** Format: int64 */
+            total: number;
+            limit: number;
+            offset: number;
         };
         RoleSummary: {
             /** Format: uuid */
@@ -2427,6 +2665,30 @@ export interface components {
             data: components["schemas"]["Me"];
             meta: components["schemas"]["ResponseMeta"];
         };
+        EnvelopeOrganization: {
+            /** @enum {boolean} */
+            success: true;
+            data: components["schemas"]["Organization"];
+            meta: components["schemas"]["ResponseMeta"];
+        };
+        EnvelopeOrganizationPage: {
+            /** @enum {boolean} */
+            success: true;
+            data: components["schemas"]["OrganizationPage"];
+            meta: components["schemas"]["ResponseMeta"];
+        };
+        EnvelopeOrganizationMember: {
+            /** @enum {boolean} */
+            success: true;
+            data: components["schemas"]["OrganizationMember"];
+            meta: components["schemas"]["ResponseMeta"];
+        };
+        EnvelopeOrganizationMemberPage: {
+            /** @enum {boolean} */
+            success: true;
+            data: components["schemas"]["OrganizationMemberPage"];
+            meta: components["schemas"]["ResponseMeta"];
+        };
         EnvelopeImpersonationResult: {
             /** @enum {boolean} */
             success: true;
@@ -2776,6 +3038,8 @@ export interface components {
         QRSessionID: string;
         /** @description Resource UUID */
         ResourceUUID: string;
+        /** @description User UUID */
+        UserUUID: string;
         Limit: number;
         Offset: number;
         Q: string;
@@ -3914,6 +4178,363 @@ export interface operations {
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+        };
+    };
+    getPlatformOrganizationsMeta: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Resource meta */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnvelopeResourceMeta"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    getPlatformOrganizations: {
+        parameters: {
+            query?: {
+                limit?: components["parameters"]["Limit"];
+                offset?: components["parameters"]["Offset"];
+                q?: components["parameters"]["Q"];
+                /** @description Comma-separated fields; prefix `-` for descending */
+                sort?: components["parameters"]["Sort"];
+                status?: "active" | "suspended";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Organization page */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnvelopeOrganizationPage"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    postPlatformOrganization: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateOrganizationRequest"];
+            };
+        };
+        responses: {
+            /** @description Created organization */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnvelopeOrganization"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    getPlatformOrganization: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Resource UUID */
+                uuid: components["parameters"]["ResourceUUID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Organization */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnvelopeOrganization"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    deletePlatformOrganization: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Resource UUID */
+                uuid: components["parameters"]["ResourceUUID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnvelopeStatus"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    patchPlatformOrganization: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Resource UUID */
+                uuid: components["parameters"]["ResourceUUID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PatchOrganizationRequest"];
+            };
+        };
+        responses: {
+            /** @description Organization */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnvelopeOrganization"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    postPlatformOrganizationStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Resource UUID */
+                uuid: components["parameters"]["ResourceUUID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetOrganizationStatusRequest"];
+            };
+        };
+        responses: {
+            /** @description Organization */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnvelopeOrganization"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    postPlatformOrganizationAccess: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Resource UUID */
+                uuid: components["parameters"]["ResourceUUID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetOrganizationAccessRequest"];
+            };
+        };
+        responses: {
+            /** @description Organization */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnvelopeOrganization"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getPlatformOrganizationMembers: {
+        parameters: {
+            query?: {
+                limit?: components["parameters"]["Limit"];
+                offset?: components["parameters"]["Offset"];
+                q?: components["parameters"]["Q"];
+                /** @description Comma-separated fields; prefix `-` for descending */
+                sort?: components["parameters"]["Sort"];
+            };
+            header?: never;
+            path: {
+                /** @description Resource UUID */
+                uuid: components["parameters"]["ResourceUUID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Organization member page */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnvelopeOrganizationMemberPage"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    postPlatformOrganizationMember: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Resource UUID */
+                uuid: components["parameters"]["ResourceUUID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddOrganizationMemberRequest"];
+            };
+        };
+        responses: {
+            /** @description Organization member */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnvelopeOrganizationMember"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    deletePlatformOrganizationMember: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Resource UUID */
+                uuid: components["parameters"]["ResourceUUID"];
+                /** @description User UUID */
+                userUuid: components["parameters"]["UserUUID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnvelopeStatus"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    patchPlatformOrganizationMember: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Resource UUID */
+                uuid: components["parameters"]["ResourceUUID"];
+                /** @description User UUID */
+                userUuid: components["parameters"]["UserUUID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangeOrganizationMemberRoleRequest"];
+            };
+        };
+        responses: {
+            /** @description Organization member */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnvelopeOrganizationMember"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
         };
     };
     getPlatformUsers: {

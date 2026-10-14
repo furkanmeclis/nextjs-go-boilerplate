@@ -32,7 +32,8 @@ func (q *Queries) CountPermissions(ctx context.Context, q_ pgtype.Text) (int64, 
 const countRoles = `-- name: CountRoles :one
 SELECT COUNT(*)::bigint
 FROM roles
-WHERE (
+WHERE scope = 'platform'
+  AND (
     $1::text IS NULL
     OR name ILIKE '%' || $1 || '%'
     OR slug ILIKE '%' || $1 || '%'
@@ -49,7 +50,7 @@ func (q *Queries) CountRoles(ctx context.Context, q_ pgtype.Text) (int64, error)
 const createRole = `-- name: CreateRole :one
 INSERT INTO roles (name, slug, description, is_system)
 VALUES ($1, $2, $3, false)
-RETURNING id, uuid, name, slug, description, is_system, created_at, updated_at
+RETURNING id, uuid, name, slug, description, is_system, created_at, updated_at, scope, organization_id
 `
 
 type CreateRoleParams struct {
@@ -70,6 +71,8 @@ func (q *Queries) CreateRole(ctx context.Context, arg CreateRoleParams) (Role, e
 		&i.IsSystem,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Scope,
+		&i.OrganizationID,
 	)
 	return i, err
 }
@@ -77,6 +80,7 @@ func (q *Queries) CreateRole(ctx context.Context, arg CreateRoleParams) (Role, e
 const deleteRole = `-- name: DeleteRole :exec
 DELETE FROM roles
 WHERE uuid = $1
+  AND scope = 'platform'
   AND is_system = false
 `
 
@@ -104,8 +108,8 @@ func (q *Queries) GetPermissionBySlug(ctx context.Context, slug string) (Permiss
 }
 
 const getRoleByID = `-- name: GetRoleByID :one
-SELECT id, uuid, name, slug, description, is_system, created_at, updated_at FROM roles
-WHERE id = $1
+SELECT id, uuid, name, slug, description, is_system, created_at, updated_at, scope, organization_id FROM roles
+WHERE id = $1 AND scope = 'platform'
 `
 
 func (q *Queries) GetRoleByID(ctx context.Context, id int64) (Role, error) {
@@ -120,13 +124,15 @@ func (q *Queries) GetRoleByID(ctx context.Context, id int64) (Role, error) {
 		&i.IsSystem,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Scope,
+		&i.OrganizationID,
 	)
 	return i, err
 }
 
 const getRoleBySlug = `-- name: GetRoleBySlug :one
-SELECT id, uuid, name, slug, description, is_system, created_at, updated_at FROM roles
-WHERE slug = $1
+SELECT id, uuid, name, slug, description, is_system, created_at, updated_at, scope, organization_id FROM roles
+WHERE slug = $1 AND scope = 'platform'
 `
 
 func (q *Queries) GetRoleBySlug(ctx context.Context, slug string) (Role, error) {
@@ -141,13 +147,15 @@ func (q *Queries) GetRoleBySlug(ctx context.Context, slug string) (Role, error) 
 		&i.IsSystem,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Scope,
+		&i.OrganizationID,
 	)
 	return i, err
 }
 
 const getRoleByUUID = `-- name: GetRoleByUUID :one
-SELECT id, uuid, name, slug, description, is_system, created_at, updated_at FROM roles
-WHERE uuid = $1
+SELECT id, uuid, name, slug, description, is_system, created_at, updated_at, scope, organization_id FROM roles
+WHERE uuid = $1 AND scope = 'platform'
 `
 
 func (q *Queries) GetRoleByUUID(ctx context.Context, argUuid uuid.UUID) (Role, error) {
@@ -162,6 +170,8 @@ func (q *Queries) GetRoleByUUID(ctx context.Context, argUuid uuid.UUID) (Role, e
 		&i.IsSystem,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Scope,
+		&i.OrganizationID,
 	)
 	return i, err
 }
@@ -239,7 +249,7 @@ SELECT p.slug
 FROM permissions p
 INNER JOIN role_permissions rp ON rp.permission_id = p.id
 INNER JOIN roles r ON r.id = rp.role_id
-WHERE r.slug = $1
+WHERE r.slug = $1 AND r.scope = 'platform'
 ORDER BY p.slug
 `
 
@@ -312,7 +322,7 @@ SELECT p.slug
 FROM permissions p
 INNER JOIN role_permissions rp ON rp.permission_id = p.id
 INNER JOIN roles r ON r.id = rp.role_id
-WHERE r.uuid = $1
+WHERE r.uuid = $1 AND r.scope = 'platform'
 ORDER BY p.slug
 `
 
@@ -339,7 +349,8 @@ func (q *Queries) ListRolePermissionSlugsByRoleUUID(ctx context.Context, argUuid
 const listRoleUUIDsForBulk = `-- name: ListRoleUUIDsForBulk :many
 SELECT uuid
 FROM roles
-WHERE (
+WHERE scope = 'platform'
+  AND (
     $1::text IS NULL
     OR name ILIKE '%' || $1 || '%'
     OR slug ILIKE '%' || $1 || '%'
@@ -368,9 +379,10 @@ func (q *Queries) ListRoleUUIDsForBulk(ctx context.Context, q_ pgtype.Text) ([]u
 }
 
 const listRolesFiltered = `-- name: ListRolesFiltered :many
-SELECT id, uuid, name, slug, description, is_system, created_at, updated_at
+SELECT id, uuid, name, slug, description, is_system, created_at, updated_at, scope, organization_id
 FROM roles
-WHERE (
+WHERE scope = 'platform'
+  AND (
     $1::text IS NULL
     OR name ILIKE '%' || $1 || '%'
     OR slug ILIKE '%' || $1 || '%'
@@ -403,6 +415,8 @@ func (q *Queries) ListRolesFiltered(ctx context.Context, arg ListRolesFilteredPa
 			&i.IsSystem,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Scope,
+			&i.OrganizationID,
 		); err != nil {
 			return nil, err
 		}
@@ -415,9 +429,10 @@ func (q *Queries) ListRolesFiltered(ctx context.Context, arg ListRolesFilteredPa
 }
 
 const listRolesForExport = `-- name: ListRolesForExport :many
-SELECT id, uuid, name, slug, description, is_system, created_at, updated_at
+SELECT id, uuid, name, slug, description, is_system, created_at, updated_at, scope, organization_id
 FROM roles
-WHERE (
+WHERE scope = 'platform'
+  AND (
     $1::text IS NULL
     OR name ILIKE '%' || $1 || '%'
     OR slug ILIKE '%' || $1 || '%'
@@ -443,6 +458,8 @@ func (q *Queries) ListRolesForExport(ctx context.Context, q_ pgtype.Text) ([]Rol
 			&i.IsSystem,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Scope,
+			&i.OrganizationID,
 		); err != nil {
 			return nil, err
 		}
@@ -469,8 +486,9 @@ UPDATE roles
 SET name = COALESCE($1, name),
     description = COALESCE($2, description)
 WHERE uuid = $3
+  AND scope = 'platform'
   AND is_system = false
-RETURNING id, uuid, name, slug, description, is_system, created_at, updated_at
+RETURNING id, uuid, name, slug, description, is_system, created_at, updated_at, scope, organization_id
 `
 
 type UpdateRoleParams struct {
@@ -491,6 +509,8 @@ func (q *Queries) UpdateRole(ctx context.Context, arg UpdateRoleParams) (Role, e
 		&i.IsSystem,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Scope,
+		&i.OrganizationID,
 	)
 	return i, err
 }

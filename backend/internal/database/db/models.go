@@ -12,16 +12,17 @@ import (
 )
 
 type ActivityEvent struct {
-	ID           int64              `json:"id"`
-	Uuid         uuid.UUID          `json:"uuid"`
-	ActorUserID  pgtype.Int8        `json:"actor_user_id"`
-	Action       string             `json:"action"`
-	Resource     string             `json:"resource"`
-	ResourceUuid pgtype.UUID        `json:"resource_uuid"`
-	Payload      []byte             `json:"payload"`
-	IpAddress    *netip.Addr        `json:"ip_address"`
-	UserAgent    pgtype.Text        `json:"user_agent"`
-	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	ID             int64              `json:"id"`
+	Uuid           uuid.UUID          `json:"uuid"`
+	ActorUserID    pgtype.Int8        `json:"actor_user_id"`
+	Action         string             `json:"action"`
+	Resource       string             `json:"resource"`
+	ResourceUuid   pgtype.UUID        `json:"resource_uuid"`
+	Payload        []byte             `json:"payload"`
+	IpAddress      *netip.Addr        `json:"ip_address"`
+	UserAgent      pgtype.Text        `json:"user_agent"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	OrganizationID pgtype.Int8        `json:"organization_id"`
 }
 
 type AppLog struct {
@@ -74,37 +75,39 @@ type BulkChange struct {
 }
 
 type BulkJob struct {
-	ID            int64              `json:"id"`
-	Uuid          uuid.UUID          `json:"uuid"`
-	Resource      string             `json:"resource"`
-	Action        string             `json:"action"`
-	ActorID       int64              `json:"actor_id"`
-	Locale        string             `json:"locale"`
-	Status        string             `json:"status"`
-	TargetJson    []byte             `json:"target_json"`
-	ResultJson    []byte             `json:"result_json"`
-	Error         pgtype.Text        `json:"error"`
-	RollbackUntil pgtype.Timestamptz `json:"rollback_until"`
-	AppliedAt     pgtype.Timestamptz `json:"applied_at"`
-	CreatedAt     pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
+	ID             int64              `json:"id"`
+	Uuid           uuid.UUID          `json:"uuid"`
+	Resource       string             `json:"resource"`
+	Action         string             `json:"action"`
+	ActorID        int64              `json:"actor_id"`
+	Locale         string             `json:"locale"`
+	Status         string             `json:"status"`
+	TargetJson     []byte             `json:"target_json"`
+	ResultJson     []byte             `json:"result_json"`
+	Error          pgtype.Text        `json:"error"`
+	RollbackUntil  pgtype.Timestamptz `json:"rollback_until"`
+	AppliedAt      pgtype.Timestamptz `json:"applied_at"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
+	OrganizationID pgtype.Int8        `json:"organization_id"`
 }
 
 type ExportJob struct {
-	ID        int64              `json:"id"`
-	Uuid      uuid.UUID          `json:"uuid"`
-	Resource  string             `json:"resource"`
-	ActorID   int64              `json:"actor_id"`
-	Format    string             `json:"format"`
-	QueryJson []byte             `json:"query_json"`
-	Locale    string             `json:"locale"`
-	Status    string             `json:"status"`
-	FileKey   pgtype.Text        `json:"file_key"`
-	RowCount  int32              `json:"row_count"`
-	Error     pgtype.Text        `json:"error"`
-	ExpiresAt pgtype.Timestamptz `json:"expires_at"`
-	CreatedAt pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+	ID             int64              `json:"id"`
+	Uuid           uuid.UUID          `json:"uuid"`
+	Resource       string             `json:"resource"`
+	ActorID        int64              `json:"actor_id"`
+	Format         string             `json:"format"`
+	QueryJson      []byte             `json:"query_json"`
+	Locale         string             `json:"locale"`
+	Status         string             `json:"status"`
+	FileKey        pgtype.Text        `json:"file_key"`
+	RowCount       int32              `json:"row_count"`
+	Error          pgtype.Text        `json:"error"`
+	ExpiresAt      pgtype.Timestamptz `json:"expires_at"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
+	OrganizationID pgtype.Int8        `json:"organization_id"`
 }
 
 type GithubAppSetting struct {
@@ -131,22 +134,23 @@ type ImportChange struct {
 }
 
 type ImportJob struct {
-	ID            int64              `json:"id"`
-	Uuid          uuid.UUID          `json:"uuid"`
-	Resource      string             `json:"resource"`
-	ActorID       int64              `json:"actor_id"`
-	Format        string             `json:"format"`
-	Locale        string             `json:"locale"`
-	Status        string             `json:"status"`
-	FileKey       pgtype.Text        `json:"file_key"`
-	MappingJson   []byte             `json:"mapping_json"`
-	DefaultsJson  []byte             `json:"defaults_json"`
-	PreviewJson   []byte             `json:"preview_json"`
-	Error         pgtype.Text        `json:"error"`
-	RollbackUntil pgtype.Timestamptz `json:"rollback_until"`
-	AppliedAt     pgtype.Timestamptz `json:"applied_at"`
-	CreatedAt     pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
+	ID             int64              `json:"id"`
+	Uuid           uuid.UUID          `json:"uuid"`
+	Resource       string             `json:"resource"`
+	ActorID        int64              `json:"actor_id"`
+	Format         string             `json:"format"`
+	Locale         string             `json:"locale"`
+	Status         string             `json:"status"`
+	FileKey        pgtype.Text        `json:"file_key"`
+	MappingJson    []byte             `json:"mapping_json"`
+	DefaultsJson   []byte             `json:"defaults_json"`
+	PreviewJson    []byte             `json:"preview_json"`
+	Error          pgtype.Text        `json:"error"`
+	RollbackUntil  pgtype.Timestamptz `json:"rollback_until"`
+	AppliedAt      pgtype.Timestamptz `json:"applied_at"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
+	OrganizationID pgtype.Int8        `json:"organization_id"`
 }
 
 type LogPurgeRule struct {
@@ -195,6 +199,7 @@ type Notification struct {
 	ProviderReference pgtype.Text        `json:"provider_reference"`
 	CreatedAt         pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt         pgtype.Timestamptz `json:"updated_at"`
+	OrganizationID    pgtype.Int8        `json:"organization_id"`
 }
 
 type NotificationHistory struct {
@@ -260,6 +265,44 @@ type OauthProviderSetting struct {
 	AppleTeamID        string             `json:"apple_team_id"`
 	AppleKeyID         string             `json:"apple_key_id"`
 	ApplePrivateKeyEnc pgtype.Text        `json:"apple_private_key_enc"`
+}
+
+type Organization struct {
+	ID             int64              `json:"id"`
+	Uuid           uuid.UUID          `json:"uuid"`
+	Slug           string             `json:"slug"`
+	Name           string             `json:"name"`
+	LogoObjectKey  pgtype.Text        `json:"logo_object_key"`
+	Status         string             `json:"status"`
+	AccessStartsAt pgtype.Timestamptz `json:"access_starts_at"`
+	AccessEndsAt   pgtype.Timestamptz `json:"access_ends_at"`
+	Settings       []byte             `json:"settings"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
+	DeletedAt      pgtype.Timestamptz `json:"deleted_at"`
+}
+
+type OrganizationInvitation struct {
+	ID             int64              `json:"id"`
+	Uuid           uuid.UUID          `json:"uuid"`
+	OrganizationID int64              `json:"organization_id"`
+	Email          string             `json:"email"`
+	RoleID         int64              `json:"role_id"`
+	TokenHash      string             `json:"token_hash"`
+	ExpiresAt      pgtype.Timestamptz `json:"expires_at"`
+	AcceptedAt     pgtype.Timestamptz `json:"accepted_at"`
+	RevokedAt      pgtype.Timestamptz `json:"revoked_at"`
+	InvitedBy      pgtype.Int8        `json:"invited_by"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+}
+
+type OrganizationMember struct {
+	ID             int64              `json:"id"`
+	OrganizationID int64              `json:"organization_id"`
+	UserID         int64              `json:"user_id"`
+	RoleID         int64              `json:"role_id"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
 }
 
 type OtpCode struct {
@@ -350,14 +393,16 @@ type RefreshToken struct {
 }
 
 type Role struct {
-	ID          int64              `json:"id"`
-	Uuid        uuid.UUID          `json:"uuid"`
-	Name        string             `json:"name"`
-	Slug        string             `json:"slug"`
-	Description pgtype.Text        `json:"description"`
-	IsSystem    bool               `json:"is_system"`
-	CreatedAt   pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+	ID             int64              `json:"id"`
+	Uuid           uuid.UUID          `json:"uuid"`
+	Name           string             `json:"name"`
+	Slug           string             `json:"slug"`
+	Description    pgtype.Text        `json:"description"`
+	IsSystem       bool               `json:"is_system"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
+	Scope          string             `json:"scope"`
+	OrganizationID pgtype.Int8        `json:"organization_id"`
 }
 
 type RolePermission struct {

@@ -88,11 +88,30 @@ type MeImpersonation struct {
 	User PublicUser `json:"user"`
 }
 
+// MeOrganizationRole is the caller's tenant role in one organization.
+type MeOrganizationRole struct {
+	Key  string `json:"key"`
+	Name string `json:"name"`
+}
+
+// MeOrganization is one organization membership returned by /auth/me.
+type MeOrganization struct {
+	UUID         uuid.UUID          `json:"uuid"`
+	Slug         string             `json:"slug"`
+	Name         string             `json:"name"`
+	LogoURL      *string            `json:"logo_url,omitempty"`
+	Status       string             `json:"status"`
+	AccessEndsAt *time.Time         `json:"access_ends_at,omitempty"`
+	Role         MeOrganizationRole `json:"role"`
+	Permissions  []string           `json:"permissions"`
+}
+
 // Me is the session hydration payload.
 type Me struct {
 	User          PublicUser       `json:"user"`
 	Roles         []string         `json:"roles"`
 	Permissions   []string         `json:"permissions"`
+	Organizations []MeOrganization `json:"organizations,omitempty"`
 	Links         MeLinks          `json:"links"`
 	Channels      MeChannels       `json:"channels"`
 	Realtime      MeRealtime       `json:"realtime"`

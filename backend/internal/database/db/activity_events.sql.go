@@ -46,7 +46,7 @@ func (q *Queries) CountActivityEvents(ctx context.Context, arg CountActivityEven
 const insertActivityEvent = `-- name: InsertActivityEvent :one
 INSERT INTO activity_events (actor_user_id, action, resource, resource_uuid, payload, ip_address, user_agent)
 VALUES ($1, $2, $3, $4, $5, $6, $7)
-RETURNING id, uuid, actor_user_id, action, resource, resource_uuid, payload, ip_address, user_agent, created_at
+RETURNING id, uuid, actor_user_id, action, resource, resource_uuid, payload, ip_address, user_agent, created_at, organization_id
 `
 
 type InsertActivityEventParams struct {
@@ -81,12 +81,13 @@ func (q *Queries) InsertActivityEvent(ctx context.Context, arg InsertActivityEve
 		&i.IpAddress,
 		&i.UserAgent,
 		&i.CreatedAt,
+		&i.OrganizationID,
 	)
 	return i, err
 }
 
 const listActivityEvents = `-- name: ListActivityEvents :many
-SELECT id, uuid, actor_user_id, action, resource, resource_uuid, payload, ip_address, user_agent, created_at FROM activity_events
+SELECT id, uuid, actor_user_id, action, resource, resource_uuid, payload, ip_address, user_agent, created_at, organization_id FROM activity_events
 WHERE ($1::bigint IS NULL OR actor_user_id = $1)
   AND ($2::text IS NULL OR resource = $2)
   AND ($3::text IS NULL OR action = $3)
@@ -135,6 +136,7 @@ func (q *Queries) ListActivityEvents(ctx context.Context, arg ListActivityEvents
 			&i.IpAddress,
 			&i.UserAgent,
 			&i.CreatedAt,
+			&i.OrganizationID,
 		); err != nil {
 			return nil, err
 		}

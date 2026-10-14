@@ -10,6 +10,8 @@ export const Permission = {
   PlatformRolesWrite: "platform.roles.write",
   PlatformRolesExport: "platform.roles.export",
   PlatformRolesImport: "platform.roles.import",
+  PlatformOrganizationsRead: "platform.organizations.read",
+  PlatformOrganizationsWrite: "platform.organizations.write",
   PlatformNotificationsRead: "platform.notifications.read",
   PlatformNotificationsReadAll: "platform.notifications.read_all",
   PlatformNotificationsExport: "platform.notifications.export",
@@ -44,6 +46,13 @@ export const Permission = {
 
   NotificationsRead: "notifications.read",
   NotificationsManage: "notifications.manage",
+
+  TenantSettingsRead: "tenant.settings.read",
+  TenantSettingsWrite: "tenant.settings.write",
+  TenantMembersRead: "tenant.members.read",
+  TenantMembersWrite: "tenant.members.write",
+  TenantRolesRead: "tenant.roles.read",
+  TenantRolesWrite: "tenant.roles.write",
 } as const;
 
 export type PermissionSlug = (typeof Permission)[keyof typeof Permission];
@@ -74,6 +83,10 @@ export const permissions = {
     export: Permission.PlatformRolesExport,
     import: Permission.PlatformRolesImport,
     bulkDelete: Permission.PlatformRolesBulkDelete,
+  },
+  organizations: {
+    read: Permission.PlatformOrganizationsRead,
+    write: Permission.PlatformOrganizationsWrite,
   },
   notifications: {
     read: Permission.NotificationsRead,
@@ -134,5 +147,19 @@ export const permissions = {
   },
   auth: {
     session: Permission.AuthSession,
+  },
+  tenant: {
+    settings: {
+      read: Permission.TenantSettingsRead,
+      write: Permission.TenantSettingsWrite,
+    },
+    members: {
+      read: Permission.TenantMembersRead,
+      write: Permission.TenantMembersWrite,
+    },
+    roles: {
+      read: Permission.TenantRolesRead,
+      write: Permission.TenantRolesWrite,
+    },
   },
 } as const;

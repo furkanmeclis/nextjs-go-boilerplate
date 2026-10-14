@@ -20,6 +20,8 @@ const (
 	PermPlatformRolesExport               = "platform.roles.export"
 	PermPlatformRolesImport               = "platform.roles.import"
 	PermPlatformRolesBulkDelete           = "platform.roles.bulk.delete"
+	PermPlatformOrganizationsRead         = "platform.organizations.read"
+	PermPlatformOrganizationsWrite        = "platform.organizations.write"
 	PermPlatformBulkRead                  = "platform.bulk.read"
 	PermPlatformNotificationsRead         = "platform.notifications.read"
 	PermPlatformNotificationsReadAll      = "platform.notifications.read_all"
@@ -48,6 +50,12 @@ const (
 	PermAuthSession                       = "auth.session"
 	PermNotificationsRead                 = "notifications.read"
 	PermNotificationsManage               = "notifications.manage"
+	PermTenantSettingsRead                = "tenant.settings.read"
+	PermTenantSettingsWrite               = "tenant.settings.write"
+	PermTenantMembersRead                 = "tenant.members.read"
+	PermTenantMembersWrite                = "tenant.members.write"
+	PermTenantRolesRead                   = "tenant.roles.read"
+	PermTenantRolesWrite                  = "tenant.roles.write"
 )
 
 // IsSystemRole reports whether slug is a protected system role.
