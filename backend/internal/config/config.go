@@ -31,6 +31,19 @@ type Config struct {
 	Expo       ExpoConfig
 	Search     SearchConfig
 	Sentry     SentryConfig
+	Tenancy    TenancyConfig
+}
+
+// TenancyConfig controls organizations (the multi-tenant shell). See
+// docs/design/tenant-core.md.
+type TenancyConfig struct {
+	// Enabled mounts the /v1/tenant routes. Off = single-scope app.
+	Enabled bool
+	// SelfServe lets signed-in users create organizations themselves.
+	SelfServe bool
+	// CacheTTL is how long a resolved organization + membership stays in
+	// Redis. Changes invalidate it immediately; the TTL only bounds memory.
+	CacheTTL time.Duration
 }
 
 // SentryConfig configures error reporting to a Sentry-protocol endpoint.
@@ -316,6 +329,11 @@ func Load() (Config, error) {
 			Environment:      getEnv("SENTRY_ENVIRONMENT", getEnv("APP_ENV", "development")),
 			Release:          getEnv("SENTRY_RELEASE", ""),
 			TracesSampleRate: clampRate(getFloat("SENTRY_TRACES_SAMPLE_RATE", 0)),
+		},
+		Tenancy: TenancyConfig{
+			Enabled:   getBool("TENANCY_ENABLED", false),
+			SelfServe: getBool("TENANCY_SELF_SERVE", false),
+			CacheTTL:  getDuration("TENANCY_CACHE_TTL", 60*time.Second),
 		},
 	}
 

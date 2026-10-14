@@ -189,6 +189,28 @@ Last super admin cannot be demoted via role removal or disable.
 
 New permission slugs are added via migrations/seeds only (no permission CRUD API).
 
+## Tenancy (phase 1)
+
+Behind `TENANCY_ENABLED` (default `false`). Design: [`docs/design/tenant-core.md`](../../docs/design/tenant-core.md).
+
+**Organization per request.** Nothing about the organization lives in the access token. Tenant routes (`/v1/tenant/*`) read the `X-Organization` header (slug, or uuid) on every request; the BFF forwards that header on `/api/v1/tenant/*` only. Two tabs on two organizations are independent and switching never rotates tokens.
+
+**Chain.** `Authenticate` → `RequireOrganization(resolver)` → `RequireTenantPermission("tenant.x.y")` → handler. `RequireOrganization` resolves the organization and the caller's membership (`orgctx.Resolver`) and stores an `orgctx.Scope` (`orgctx.From` / `orgctx.Must`); handlers pass `scope.ID` to repositories.
+
+| Case | Response |
+|------|----------|
+| Header missing or empty | `400 ORGANIZATION_REQUIRED` |
+| Unknown organization, or not a member | `403 NO_TENANT_MEMBERSHIP` (same answer for both: no organization enumeration) |
+| Organization suspended | `403 ORGANIZATION_SUSPENDED` |
+| Outside the access window (`access_starts_at` / `access_ends_at`) | `403 ORGANIZATION_ACCESS_EXPIRED` |
+| Tenant permission missing in this organization | `403 FORBIDDEN` |
+
+**Per-organization permissions.** Platform permissions (`platform.*`, global roles) are unchanged. Tenant permissions (`tenant.*`) come only from the membership role in the **current** organization: an owner of A who is a member of B has member rights in B. `super_admin` is not exempt: it needs a membership (or impersonation) like everyone else, and `RequireTenantPermission` has no super-admin bypass. Tenant slugs follow the same triad rule (migration + `internal/platform/rbac` + `frontend/src/config/permissions.ts`).
+
+**Caching.** `orgcache.CachedResolver` wraps the resolver with Redis (TTL `TENANCY_CACHE_TTL`, default `60s`; nil Redis = no cache; Redis errors fall back to the database). Entries are keyed by (organization id, version, user, ref) and only successful resolutions are cached. Every change that affects resolution (status, access window, membership, role, role permissions, slug) must call `orgctx.Invalidate(ctx, inv, orgID)` after commit: it bumps the organization's version counter, so old entries are never read again and revocation is effectively immediate. A cached entry whose `access_ends_at` has passed is rejected without waiting for the TTL.
+
+Probe: `GET /v1/tenant/context` returns `{organization, role, permissions}` of the resolved scope.
+
 ## CLI
 
 `make create-super-admin` upserts the user and assigns the `super_admin` role.

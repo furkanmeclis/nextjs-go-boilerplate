@@ -116,7 +116,8 @@ async function persistTokensFromEnvelope(envelope: Envelope | null) {
   const refresh = envelope?.data?.refresh_token;
   if (!access || !refresh) return false;
 
-  const sessionPayload = envelope?.data?.session as SessionSwitchData | undefined;
+  const sessionPayload = envelope?.data?.session as
+    SessionSwitchData | undefined;
   const existing = await getApiTokens();
   const userId = sessionPayload?.user_uuid ?? existing.userId;
   if (!userId) return false;
@@ -215,7 +216,7 @@ function passthroughHeaders(
 ): Headers {
   const out = new Headers();
   const allow = [
-	"content-type",
+    "content-type",
     "content-disposition",
     "cache-control",
     "location",
@@ -414,6 +415,13 @@ function isQRSessionCreatePath(path: string, method: string) {
   return method.toUpperCase() === "POST" && path === "auth/qr/sessions";
 }
 
+/** Organization (tenant) of a /v1/tenant/* request: slug or uuid. */
+const ORGANIZATION_HEADER = "X-Organization";
+
+function isTenantPath(segments: string[]) {
+  return segments[0] === "tenant";
+}
+
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 
 /**
@@ -475,6 +483,12 @@ export async function proxyToUpstream(
       const value = request.headers.get(name);
       if (value) headers.set(name, value);
     }
+  }
+  // Only tenant routes read the organization header; it is never forwarded
+  // elsewhere.
+  if (isTenantPath(pathSegments)) {
+    const organization = request.headers.get(ORGANIZATION_HEADER)?.trim();
+    if (organization) headers.set(ORGANIZATION_HEADER, organization);
   }
 
   if (accessToken && !isAuthPublicTokenPath(path)) {
