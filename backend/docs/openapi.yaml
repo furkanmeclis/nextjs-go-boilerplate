@@ -46,6 +46,8 @@ tags:
     description: Command-palette search (Meilisearch-backed record lookup)
   - name: Platform
     description: Super-admin platform tenant/user catalog
+  - name: Tenant
+    description: Organization-scoped routes (`X-Organization` header; `TENANCY_ENABLED`)
   - name: Realtime
     description: Centrifugo connection and subscription tokens
   - name: Notifications
@@ -2638,6 +2640,42 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  /v1/tenant/context:
+    get:
+      tags: [Tenant]
+      operationId: getTenantContext
+      summary: Current organization scope
+      description: |
+        Resolves the organization named by `X-Organization` and the caller's
+        membership in it, and returns what tenant routes see: the organization,
+        the caller's tenant role and its `tenant.*` permissions in this
+        organization only. Mounted only when `TENANCY_ENABLED=true`.
+
+        Errors: missing header → `400 ORGANIZATION_REQUIRED`; unknown
+        organization or no membership → `403 NO_TENANT_MEMBERSHIP` (same
+        answer for both; `super_admin` is not exempt); suspended →
+        `403 ORGANIZATION_SUSPENDED`; outside the access window →
+        `403 ORGANIZATION_ACCESS_EXPIRED`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/XOrganization"
+      responses:
+        "200":
+          description: Organization scope
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnvelopeTenantContext"
+        "400":
+          $ref: "#/components/responses/OrganizationRequired"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/TenantForbidden"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
 components:
   securitySchemes:
     bearerAuth:
@@ -2646,6 +2684,14 @@ components:
       bearerFormat: JWT
 
   parameters:
+    XOrganization:
+      name: X-Organization
+      in: header
+      required: true
+      description: |
+        Organization of a `/v1/tenant/*` request: its slug (preferred, readable
+        in logs) or uuid. The BFF forwards it on `/api/v1/tenant/*` only.
+      schema: { type: string, maxLength: 64, example: acme }
     QRSessionID:
       name: id
       in: path
@@ -2722,8 +2768,58 @@ components:
         application/json:
           schema:
             $ref: "#/components/schemas/Error"
+    OrganizationRequired:
+      description: "`ORGANIZATION_REQUIRED`: the `X-Organization` header is missing or empty"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    TenantForbidden:
+      description: |
+        `NO_TENANT_MEMBERSHIP` (unknown organization or not a member),
+        `ORGANIZATION_SUSPENDED`, `ORGANIZATION_ACCESS_EXPIRED`, or `FORBIDDEN`
+        (tenant permission missing in this organization)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
 
   schemas:
+
+    TenantOrganization:
+      type: object
+      required: [uuid, slug, name, status, access_ends_at]
+      properties:
+        uuid: { type: string, format: uuid }
+        slug: { type: string, example: acme }
+        name: { type: string, example: Acme }
+        status: { type: string, enum: [active, suspended] }
+        access_ends_at:
+          type: [string, "null"]
+          format: date-time
+          description: End of the access window; `null` = no end
+
+    TenantContext:
+      type: object
+      required: [organization, role, permissions]
+      properties:
+        organization: { $ref: "#/components/schemas/TenantOrganization" }
+        role:
+          type: string
+          description: Caller's tenant role key in this organization (`owner`, `admin`, `member` or a custom key)
+          example: owner
+        permissions:
+          type: array
+          description: "`tenant.*` permission slugs granted in this organization only"
+          items: { type: string }
+
+    EnvelopeTenantContext:
+      type: object
+      required: [success, data, meta]
+      properties:
+        success: { type: boolean, enum: [true] }
+        data: { $ref: "#/components/schemas/TenantContext" }
+        meta: { $ref: "#/components/schemas/ResponseMeta" }
 
     SearchSpec:
       type: object
@@ -2880,6 +2976,10 @@ components:
             - OAUTH_LINK_CHOICE_REQUIRED
             - INVALID_LINK_TICKET
             - OAUTH_PROVIDER_DISABLED
+            - ORGANIZATION_REQUIRED
+            - NO_TENANT_MEMBERSHIP
+            - ORGANIZATION_SUSPENDED
+            - ORGANIZATION_ACCESS_EXPIRED
         message:
           type: string
         details:
