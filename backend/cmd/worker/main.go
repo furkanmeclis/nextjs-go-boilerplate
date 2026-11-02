@@ -24,6 +24,7 @@ import (
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/events"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/ioengine"
 	ioadapters "github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/ioengine/adapters"
+	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/license"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/mail"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/outbox"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/searchengine"
@@ -54,6 +55,10 @@ func main() {
 		os.Exit(code)
 	}
 	log = slog.New(observability.NewSlogHandler(log.Handler()))
+
+	// License core, phase 1: verify + log only. Never gates job processing yet.
+	license.Observe(log, cfg.App.Env, cfg.App.Name, cfg.License.Key, cfg.License.Enforce)
+
 	if !cfg.Queue.Enabled {
 		log.Error("queue_disabled")
 		exit(1)

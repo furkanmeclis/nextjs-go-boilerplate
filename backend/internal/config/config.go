@@ -32,6 +32,23 @@ type Config struct {
 	Search     SearchConfig
 	Sentry     SentryConfig
 	Tenancy    TenancyConfig
+	License    LicenseConfig
+}
+
+// LicenseConfig controls the offline license core. See
+// docs/design/license-core.md. Ships off: with no key configured and
+// Enforce=false, a deployment behaves exactly as an unlicensed build.
+type LicenseConfig struct {
+	// Key is the signed license token (LICENSE_KEY). Empty is allowed;
+	// outside development it resolves to an "unlicensed" state that phase 1
+	// only logs.
+	Key string
+	// ControlURL is the author control-plane WSS endpoint the outbound agent
+	// dials (phase 3). Empty = no remote channel at all.
+	ControlURL string
+	// Enforce is the master switch. Off (default) = verify + log only; on =
+	// gate /v1 on the effective license state (phase 2+).
+	Enforce bool
 }
 
 // TenancyConfig controls organizations (the multi-tenant shell). See
@@ -334,6 +351,11 @@ func Load() (Config, error) {
 			Enabled:   getBool("TENANCY_ENABLED", false),
 			SelfServe: getBool("TENANCY_SELF_SERVE", false),
 			CacheTTL:  getDuration("TENANCY_CACHE_TTL", 60*time.Second),
+		},
+		License: LicenseConfig{
+			Key:        strings.TrimSpace(getEnv("LICENSE_KEY", "")),
+			ControlURL: strings.TrimSpace(getEnv("LICENSE_CONTROL_URL", "")),
+			Enforce:    getBool("LICENSE_ENFORCE", false),
 		},
 	}
 

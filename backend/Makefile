@@ -27,7 +27,7 @@ endef
 
 DB_URL ?= postgres://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?sslmode=disable
 
-.PHONY: tools run dev worker ping-job search-reindex build test lint fmt tidy sqlc migrate-up migrate-down migrate-create health create-super-admin openapi-lint
+.PHONY: tools run dev worker ping-job search-reindex build test lint fmt tidy sqlc migrate-up migrate-down migrate-create health create-super-admin license-keygen license-sign openapi-lint
 
 tools:
 	@echo "go:            $$(go version)"
@@ -100,6 +100,29 @@ create-super-admin:
 		-password "$(SA_PASSWORD)" \
 		-name "$(SA_NAME)" \
 		-surname "$(SA_SURNAME)"
+
+# --- License core (author-side signing tool; not shipped to deployments) ---
+# See docs/design/license-core.md. Generate a keypair, keep the private key
+# offline, and commit the public key into internal/platform/license/keys/.
+LIC_KEY_ID  ?= lic-$(shell date +%Y-%m)
+LIC_OUT     ?= ./secrets
+LIC_APP     ?= $(APP_NAME)
+LIC_KEY     ?= $(LIC_OUT)/$(LIC_KEY_ID).key.pem
+LIC_EXP     ?=
+LIC_FEATURES ?=
+LIC_DEPLOYMENT ?=
+
+license-keygen:
+	@go run ./cmd/license keygen --key-id "$(LIC_KEY_ID)" --out "$(LIC_OUT)"
+
+license-sign:
+	@go run ./cmd/license sign \
+		--app "$(LIC_APP)" \
+		--key-id "$(LIC_KEY_ID)" \
+		--key "$(LIC_KEY)" \
+		$(if $(LIC_DEPLOYMENT),--deployment "$(LIC_DEPLOYMENT)",) \
+		$(if $(LIC_FEATURES),--features "$(LIC_FEATURES)",) \
+		$(if $(LIC_EXP),--exp "$(LIC_EXP)",)
 
 openapi-lint:
 	npx --yes @redocly/cli@1 lint docs/openapi.yaml

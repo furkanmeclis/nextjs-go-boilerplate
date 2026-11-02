@@ -13,6 +13,12 @@ coverage.html
 .env.*.local
 *.pem
 *.key
+# ...except the license core's embedded PUBLIC keys (safe to commit; the
+# private halves live only on the author's machine). The *.pub.pem suffix is
+# deliberate: only public keys are re-included, so a private *.key.pem dropped
+# into this directory stays ignored. See docs/design/license-core.md.
+!internal/platform/license/keys/
+!internal/platform/license/keys/*.pub.pem
 
 # IDE / OS
 .idea/

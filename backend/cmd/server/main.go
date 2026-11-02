@@ -20,6 +20,7 @@ import (
 	notifusecase "github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/modules/notifications/usecase"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/observability"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/events"
+	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/license"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/mail"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/storage"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/queue"
@@ -90,6 +91,9 @@ func main() {
 	persist := logging.Attach(log, logsSvc)
 	log = persist.Logger()
 	defer persist.Close()
+
+	// License core, phase 1: verify + log only. Never gates traffic yet.
+	license.Observe(log, cfg.App.Env, cfg.App.Name, cfg.License.Key, cfg.License.Enforce)
 
 	eventBus := events.NewBus(log)
 	mailer := mail.NewSMTPSender(cfg.SMTP)
