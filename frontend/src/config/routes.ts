@@ -109,7 +109,11 @@ export const routes = {
     /** Organization picker for users with several memberships. */
     picker: "/t",
     home: (slug: string) => `/t/${encodeURIComponent(slug)}`,
+    members: (slug: string) => `/t/${encodeURIComponent(slug)}/members`,
+    settings: (slug: string) => `/t/${encodeURIComponent(slug)}/settings`,
   },
+  /** Organization invitation link (public; the token is the credential). */
+  invite: (token: string) => `/invite/${encodeURIComponent(token)}`,
   errors: {
     unauthorized: "/unauthorized",
     forbidden: "/forbidden",

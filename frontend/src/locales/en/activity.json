@@ -38,5 +38,17 @@
   "resources.platform.integrations.facebook": "Facebook integration",
   "resources.platform.integrations.apple": "Apple integration",
   "resources.auth.step_up": "Step-up verification",
-  "resources.auth.account": "Account"
+  "resources.auth.account": "Account",
+  "actions.organizations.created": "Organization created",
+  "actions.organizations.updated": "Organization updated",
+  "actions.organizations.deleted": "Organization deleted",
+  "actions.organizations.status_updated": "Organization status changed",
+  "actions.organizations.access_updated": "Organization access window changed",
+  "actions.organizations.member_added": "Member added",
+  "actions.organizations.member_role_updated": "Member role changed",
+  "actions.organizations.member_removed": "Member removed",
+  "actions.organizations.member_left": "Member left",
+  "actions.organizations.invitation_created": "Invitation sent",
+  "actions.organizations.invitation_revoked": "Invitation revoked",
+  "actions.organizations.invitation_accepted": "Invitation accepted"
 }

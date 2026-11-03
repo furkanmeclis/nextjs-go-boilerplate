@@ -233,3 +233,66 @@ INNER JOIN roles r ON r.id = oi.role_id AND r.scope = 'tenant'
 WHERE oi.organization_id = $1
 ORDER BY oi.created_at DESC
 LIMIT sqlc.arg(limit_count) OFFSET sqlc.arg(offset_count);
+
+-- name: ListPendingOrganizationInvitations :many
+-- Open invitations (not accepted, not revoked); expired ones are included so
+-- they can be revoked or re-sent.
+SELECT oi.*, r.slug AS role_key, r.name AS role_name,
+       u.name AS inviter_name, u.surname AS inviter_surname
+FROM organization_invitations oi
+INNER JOIN roles r ON r.id = oi.role_id AND r.scope = 'tenant'
+LEFT JOIN users u ON u.id = oi.invited_by
+WHERE oi.organization_id = $1
+  AND oi.accepted_at IS NULL
+  AND oi.revoked_at IS NULL
+ORDER BY oi.created_at DESC
+LIMIT sqlc.arg(limit_count) OFFSET sqlc.arg(offset_count);
+
+-- name: CountPendingOrganizationInvitations :one
+SELECT COUNT(*)::bigint
+FROM organization_invitations
+WHERE organization_id = $1
+  AND accepted_at IS NULL
+  AND revoked_at IS NULL;
+
+-- name: GetOrganizationInvitationByTokenHash :one
+-- Lookup by the hashed bearer token (the plain token is never stored).
+SELECT oi.*,
+       o.uuid AS organization_uuid, o.slug AS organization_slug,
+       o.name AS organization_name, o.status AS organization_status,
+       (o.deleted_at IS NOT NULL)::boolean AS organization_deleted,
+       r.slug AS role_key, r.name AS role_name,
+       u.name AS inviter_name, u.surname AS inviter_surname
+FROM organization_invitations oi
+INNER JOIN organizations o ON o.id = oi.organization_id
+INNER JOIN roles r ON r.id = oi.role_id
+LEFT JOIN users u ON u.id = oi.invited_by
+WHERE oi.token_hash = $1;
+
+-- name: AcceptOrganizationInvitation :one
+-- Single use: only a pending, unexpired invitation flips to accepted.
+UPDATE organization_invitations
+SET accepted_at = NOW()
+WHERE id = $1
+  AND accepted_at IS NULL
+  AND revoked_at IS NULL
+  AND expires_at > NOW()
+RETURNING *;
+
+-- name: RevokeOrganizationInvitation :one
+UPDATE organization_invitations
+SET revoked_at = NOW()
+WHERE uuid = $1
+  AND organization_id = $2
+  AND accepted_at IS NULL
+  AND revoked_at IS NULL
+RETURNING *;
+
+-- name: RevokePendingOrganizationInvitationsForEmail :execrows
+-- A new invitation replaces older open ones for the same address.
+UPDATE organization_invitations
+SET revoked_at = NOW()
+WHERE organization_id = $1
+  AND email = $2
+  AND accepted_at IS NULL
+  AND revoked_at IS NULL;

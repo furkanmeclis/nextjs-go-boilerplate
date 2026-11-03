@@ -46,7 +46,7 @@ func TestContextRoute(t *testing.T) {
 	}
 
 	mux := http.NewServeMux()
-	RegisterRoutes(mux, tokens, stubLoader{}, stubResolver{scope: scope})
+	RegisterRoutes(mux, tokens, stubLoader{}, stubResolver{scope: scope}, nil)
 
 	do := func(org string) *httptest.ResponseRecorder {
 		req := httptest.NewRequest(http.MethodGet, "/v1/tenant/context", nil)
@@ -94,7 +94,7 @@ func TestContextRoute(t *testing.T) {
 func TestNilResolverRegistersNothing(t *testing.T) {
 	t.Parallel()
 	mux := http.NewServeMux()
-	RegisterRoutes(mux, nil, nil, nil)
+	RegisterRoutes(mux, nil, nil, nil, nil)
 	rr := httptest.NewRecorder()
 	mux.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "/v1/tenant/context", nil))
 	if rr.Code != http.StatusNotFound {

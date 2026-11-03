@@ -55,6 +55,7 @@ type Service struct {
 	repo        Repository
 	hooks       OrganizationHooks
 	invalidator orgctx.Invalidator
+	inv         *invitations
 	now         func() time.Time
 }
 

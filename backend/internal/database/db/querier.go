@@ -12,6 +12,8 @@ import (
 )
 
 type Querier interface {
+	// Single use: only a pending, unexpired invitation flips to accepted.
+	AcceptOrganizationInvitation(ctx context.Context, id int64) (OrganizationInvitation, error)
 	AddOrganizationMember(ctx context.Context, arg AddOrganizationMemberParams) (OrganizationMember, error)
 	AssignUserRoleBySlug(ctx context.Context, arg AssignUserRoleBySlugParams) error
 	ClaimOutboxEvents(ctx context.Context, arg ClaimOutboxEventsParams) ([]OutboxEvent, error)
@@ -32,6 +34,7 @@ type Querier interface {
 	CountOrganizationOwners(ctx context.Context, organizationID int64) (int64, error)
 	CountOrganizations(ctx context.Context, arg CountOrganizationsParams) (int64, error)
 	CountOutboxByStatus(ctx context.Context, status string) (int64, error)
+	CountPendingOrganizationInvitations(ctx context.Context, organizationID int64) (int64, error)
 	CountPermissions(ctx context.Context, q_ pgtype.Text) (int64, error)
 	CountPlatformNotifications(ctx context.Context, arg CountPlatformNotificationsParams) (int64, error)
 	CountRoles(ctx context.Context, q_ pgtype.Text) (int64, error)
@@ -99,6 +102,8 @@ type Querier interface {
 	GetOrganizationByID(ctx context.Context, id int64) (Organization, error)
 	GetOrganizationBySlug(ctx context.Context, slug string) (Organization, error)
 	GetOrganizationByUUID(ctx context.Context, argUuid uuid.UUID) (Organization, error)
+	// Lookup by the hashed bearer token (the plain token is never stored).
+	GetOrganizationInvitationByTokenHash(ctx context.Context, tokenHash string) (GetOrganizationInvitationByTokenHashRow, error)
 	GetOrganizationInvitationByUUID(ctx context.Context, argUuid uuid.UUID) (OrganizationInvitation, error)
 	GetOrganizationMember(ctx context.Context, arg GetOrganizationMemberParams) (GetOrganizationMemberRow, error)
 	GetOrganizationMemberByUserUUID(ctx context.Context, arg GetOrganizationMemberByUserUUIDParams) (GetOrganizationMemberByUserUUIDRow, error)
@@ -166,6 +171,9 @@ type Querier interface {
 	ListOrganizationMembersByOrg(ctx context.Context, arg ListOrganizationMembersByOrgParams) ([]ListOrganizationMembersByOrgRow, error)
 	ListOrganizationMembershipsByUser(ctx context.Context, userID int64) ([]ListOrganizationMembershipsByUserRow, error)
 	ListOrganizationsFiltered(ctx context.Context, arg ListOrganizationsFilteredParams) ([]Organization, error)
+	// Open invitations (not accepted, not revoked); expired ones are included so
+	// they can be revoked or re-sent.
+	ListPendingOrganizationInvitations(ctx context.Context, arg ListPendingOrganizationInvitationsParams) ([]ListPendingOrganizationInvitationsRow, error)
 	ListPermissionSlugsByRoleID(ctx context.Context, roleID int64) ([]string, error)
 	ListPermissionSlugsByRoleSlug(ctx context.Context, slug string) ([]string, error)
 	ListPermissionsFiltered(ctx context.Context, arg ListPermissionsFilteredParams) ([]Permission, error)
@@ -228,7 +236,10 @@ type Querier interface {
 	ResolveOrganizationScopeBySlug(ctx context.Context, arg ResolveOrganizationScopeBySlugParams) (ResolveOrganizationScopeBySlugRow, error)
 	ResolveOrganizationScopeByUUID(ctx context.Context, arg ResolveOrganizationScopeByUUIDParams) (ResolveOrganizationScopeByUUIDRow, error)
 	RevokeAllRefreshTokensForUser(ctx context.Context, userID int64) error
+	RevokeOrganizationInvitation(ctx context.Context, arg RevokeOrganizationInvitationParams) (OrganizationInvitation, error)
 	RevokeOtherRefreshTokensForUser(ctx context.Context, arg RevokeOtherRefreshTokensForUserParams) error
+	// A new invitation replaces older open ones for the same address.
+	RevokePendingOrganizationInvitationsForEmail(ctx context.Context, arg RevokePendingOrganizationInvitationsForEmailParams) (int64, error)
 	RevokeRefreshTokenByHash(ctx context.Context, tokenHash string) (int64, error)
 	RevokeRefreshTokenByUUIDForUser(ctx context.Context, arg RevokeRefreshTokenByUUIDForUserParams) (int64, error)
 	RevokeStorageLink(ctx context.Context, argUuid uuid.UUID) (StorageLink, error)

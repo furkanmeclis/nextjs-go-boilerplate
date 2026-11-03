@@ -188,3 +188,52 @@ func mapErr(err error) error {
 	}
 	return err
 }
+
+// --- Invitations (usecase.InvitationRepository) ---
+
+func (r *Postgres) CreateInvitation(ctx context.Context, q *db.Queries, params db.CreateOrganizationInvitationParams) (db.OrganizationInvitation, error) {
+	return q.CreateOrganizationInvitation(ctx, params)
+}
+
+func (r *Postgres) RevokePendingInvitationsForEmail(ctx context.Context, q *db.Queries, orgID int64, email string) error {
+	_, err := q.RevokePendingOrganizationInvitationsForEmail(ctx, db.RevokePendingOrganizationInvitationsForEmailParams{
+		OrganizationID: orgID, Email: email,
+	})
+	return err
+}
+
+func (r *Postgres) ListPendingInvitations(ctx context.Context, orgID int64, limit, offset int32) ([]db.ListPendingOrganizationInvitationsRow, int64, error) {
+	rows, err := r.q.ListPendingOrganizationInvitations(ctx, db.ListPendingOrganizationInvitationsParams{
+		OrganizationID: orgID, LimitCount: limit, OffsetCount: offset,
+	})
+	if err != nil {
+		return nil, 0, err
+	}
+	total, err := r.q.CountPendingOrganizationInvitations(ctx, orgID)
+	if err != nil {
+		return nil, 0, err
+	}
+	return rows, total, nil
+}
+
+func (r *Postgres) RevokeInvitation(ctx context.Context, orgID int64, id uuid.UUID) error {
+	_, err := r.q.RevokeOrganizationInvitation(ctx, db.RevokeOrganizationInvitationParams{
+		Uuid: id, OrganizationID: orgID,
+	})
+	return mapErr(err)
+}
+
+func (r *Postgres) GetInvitationByTokenHash(ctx context.Context, hash string) (db.GetOrganizationInvitationByTokenHashRow, error) {
+	row, err := r.q.GetOrganizationInvitationByTokenHash(ctx, hash)
+	return row, mapErr(err)
+}
+
+func (r *Postgres) AcceptInvitation(ctx context.Context, q *db.Queries, id int64) error {
+	_, err := q.AcceptOrganizationInvitation(ctx, id)
+	return mapErr(err)
+}
+
+func (r *Postgres) GetUserByEmail(ctx context.Context, email string) (db.User, error) {
+	row, err := r.q.GetUserByEmail(ctx, email)
+	return row, mapErr(err)
+}

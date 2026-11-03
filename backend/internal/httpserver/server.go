@@ -258,10 +258,20 @@ func New(cfg config.Config, log *slog.Logger, deps Deps) (*Server, error) {
 
 	// Organizations (tenant core). Platform management is always mounted;
 	// the /v1/tenant/* shell only with TENANCY_ENABLED.
-	orgSvc := orgusecase.New(orgrepository.NewPostgres(deps.DB, deps.Queries), nil)
+	orgRepo := orgrepository.NewPostgres(deps.DB, deps.Queries)
+	orgSvc := orgusecase.New(orgRepo, nil)
 	organizationsmodule.RegisterRoutes(mux, orghandler.New(orgSvc, activityRec), tokens, loader)
-	var tenantResolver orgctx.Resolver
+	var (
+		tenantResolver orgctx.Resolver
+		tenantHandler  *tenantmodule.Handler
+	)
 	if cfg.Tenancy.Enabled {
+		// Invitation emails go through the notifications queue (never SMTP
+		// inline); links point at the frontend's /invite/{token} page.
+		orgSvc.SetInvitations(orgRepo, notifSvc, orgusecase.InvitationConfig{
+			TTL: cfg.Tenancy.InviteTTL, FrontendURL: cfg.Auth.FrontendURL,
+		}, log)
+		tenantHandler = tenantmodule.NewHandler(orgSvc, activityRec, ratelimit.New(deps.Redis, cfg.App.Env))
 		// /me lists memberships only when the /t shell exists: the frontend
 		// routes members into it, which would dead-end with tenancy off.
 		uc.SetOrganizationsLister(orgSvc)
@@ -269,7 +279,7 @@ func New(cfg config.Config, log *slog.Logger, deps Deps) (*Server, error) {
 		orgSvc.SetInvalidator(orgCache)
 		tenantResolver = orgCache
 	}
-	tenantmodule.RegisterRoutes(mux, tokens, loader, tenantResolver)
+	tenantmodule.RegisterRoutes(mux, tokens, loader, tenantResolver, tenantHandler)
 	realtime.RegisterRoutes(mux, realtime.NewHandler(rtIssuer, uc), tokens, loader)
 
 	qrGeo, err := qrlogin.NewLocator(cfg.Auth.QRGeoIPDB, cfg.Auth.QRTrustGeoHeaders)
