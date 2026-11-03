@@ -8,7 +8,7 @@ import {
   type RefreshResult,
 } from "@/lib/server/refresh-single-flight";
 import {
-  clientIpFromHeaders,
+  forwardedForFromHeaders,
   fetchUpstream,
   fetchUpstreamStream,
 } from "@/lib/server/upstream";
@@ -472,9 +472,10 @@ export async function proxyToUpstream(
   else headers.set("Accept", "application/json");
   if (contentType) headers.set("Content-Type", contentType);
   // Go rate limits and audit rows key on the client IP; without this every
-  // request would share the BFF's address (one global bucket).
-  const clientIp = clientIpFromHeaders(request.headers);
-  if (clientIp) headers.set("X-Forwarded-For", clientIp);
+  // request would share the BFF's address (one global bucket). The API picks
+  // the client out of the chain (trusted-proxy walk), not the BFF.
+  const forwardedFor = forwardedForFromHeaders(request.headers);
+  if (forwardedFor) headers.set("X-Forwarded-For", forwardedFor);
   if (isQRSessionCreatePath(path, request.method)) {
     // The phone shows which browser / where the sign-in request comes from.
     const userAgent = request.headers.get("user-agent");

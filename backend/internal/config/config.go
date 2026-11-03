@@ -120,6 +120,10 @@ type HTTPConfig struct {
 	ReadTimeout  time.Duration
 	WriteTimeout time.Duration
 	IdleTimeout  time.Duration
+	// TrustedProxies lists CIDRs / IPs whose X-Forwarded-For hops are believed
+	// (TRUSTED_PROXIES, comma-separated). Empty = loopback + private ranges;
+	// "none" = never trust forwarding headers. See platform/clientip.
+	TrustedProxies []string
 }
 
 type DBConfig struct {
@@ -251,6 +255,8 @@ func Load() (Config, error) {
 			ReadTimeout:  getDuration("HTTP_READ_TIMEOUT", 10*time.Second),
 			WriteTimeout: getDuration("HTTP_WRITE_TIMEOUT", 30*time.Second),
 			IdleTimeout:  getDuration("HTTP_IDLE_TIMEOUT", 60*time.Second),
+
+			TrustedProxies: splitCSV(getEnv("TRUSTED_PROXIES", "")),
 		},
 		DB: DBConfig{
 			Host:     getEnv("DB_HOST", "127.0.0.1"),

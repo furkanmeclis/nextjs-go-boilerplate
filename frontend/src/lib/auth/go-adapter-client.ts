@@ -266,14 +266,14 @@ export async function loginWithPassword(
   email: string,
   password: string,
   totpCode?: string,
-  clientIp?: string | null,
+  forwardedFor?: string | null,
 ) {
   const result = await fetchUpstream("auth/login", {
     method: "POST",
     headers: {
       Accept: "application/json",
       "Content-Type": "application/json",
-      ...(clientIp ? { "X-Forwarded-For": clientIp } : {}),
+      ...(forwardedFor ? { "X-Forwarded-For": forwardedFor } : {}),
     },
     body: JSON.stringify({
       email,
@@ -288,14 +288,14 @@ export async function loginWithEmailCode(
   email: string,
   code: string,
   totpCode?: string,
-  clientIp?: string | null,
+  forwardedFor?: string | null,
 ) {
   const result = await fetchUpstream("auth/email-code/verify", {
     method: "POST",
     headers: {
       Accept: "application/json",
       "Content-Type": "application/json",
-      ...(clientIp ? { "X-Forwarded-For": clientIp } : {}),
+      ...(forwardedFor ? { "X-Forwarded-For": forwardedFor } : {}),
     },
     body: JSON.stringify({
       email,
@@ -315,14 +315,14 @@ export async function exchangeQRLogin(
   sessionId: string,
   browserSecret: string,
   exchangeToken: string,
-  clientIp?: string | null,
+  forwardedFor?: string | null,
 ) {
   const result = await fetchUpstream("auth/qr/exchange", {
     method: "POST",
     headers: {
       Accept: "application/json",
       "Content-Type": "application/json",
-      ...(clientIp ? { "X-Forwarded-For": clientIp } : {}),
+      ...(forwardedFor ? { "X-Forwarded-For": forwardedFor } : {}),
     },
     body: JSON.stringify({
       session_id: sessionId,

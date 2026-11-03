@@ -29,6 +29,8 @@ x-backend-environment: &backend-environment
   APP_NAME: ${APP_NAME:-api}
   APP_ENV: production
   APP_HTTP_ADDR: :8080
+  # Empty = loopback + private ranges (the BFF reaches the API over the app network).
+  TRUSTED_PROXIES: ${TRUSTED_PROXIES:-}
   DB_HOST: postgres.${APP_NETWORK_NAME:-${NAME_PREFIX:?NAME_PREFIX is required}-app}
   DB_PORT: "5432"
   DB_USER: ${DB_USER:?DB_USER is required}
