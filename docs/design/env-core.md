@@ -145,7 +145,7 @@ Generalises clickfix's check (implemented in phase 3; `make compose-env-check`).
 - **Delivered set:** not a parse of the raw YAML but each service's environment from `docker compose config`, resolved with an env that `prod-env.sh init` generates from the schema. That is exactly what the container receives (anchors, `<<:` merges, per-service overrides), and it keeps working while other sessions restructure the file. As a side effect, the check fails if compose starts **requiring** a variable the schema does not manage.
 - **Allowlist** (`KEY | omit|wire | reason`):
   - `omit` = deliberately not delivered. Storage aliases (`MINIO_*`, `S3_PUBLIC_BASE_URL`, `STORAGE_LOCAL_PATH`), `SMTP_FROM` (alias of `MAIL_FROM`), `REDIS_DB`, `CENTRIFUGO_ENABLED`.
-  - `wire` = should be delivered but is not yet: 11 operator tunables (`JWT_*_TTL`, `DB_MAX_CONNS`, `STORAGE_MAX_BYTES`, `BULK_*`, `HTTP_*_TIMEOUT`, `CENTRIFUGO_TOKEN_TTL`, `SENTRY_RELEASE`). A value set in Dokploy is silently dropped today. They are reported as a warning together with the graft snippet (`KEY: ${KEY:-}`), which is behaviour-neutral: an empty value makes every `config.go` helper fall back to its default. The snippet is left for the compose owners, since this work does not edit `compose.prod.yml`.
+  - `wire` = should be delivered but is not yet. Reported as a warning together with the graft snippet (`KEY: ${KEY:-}`), which is behaviour-neutral: an empty value makes every `config.go` helper fall back to its default. The 11 operator tunables found at introduction (`JWT_*_TTL`, `DB_MAX_CONNS`, `STORAGE_MAX_BYTES`, `BULK_*`, `HTTP_*_TIMEOUT`, `CENTRIFUGO_TOKEN_TTL`, `SENTRY_RELEASE`), whose Dokploy values were silently dropped, were wired at merge, so the list is empty today.
 - **Fails on:** a read key with no delivery and no decision; a stale entry (key no longer read, or listed but now delivered, which is how grafting the snippet prompts the cleanup); a service with no environment (renamed: pass `--services`); a malformed allowlist.
 - Tests: `scripts/check-compose-env.test.sh` (dropped keys incl. names with digits, new reads, test files ignored, stale entries, the snippet graft end to end).
 
@@ -198,4 +198,4 @@ Each phase is one commit on the session branch (auto-PR is off; the owner merges
 5. **SOPS/age**: out of core.
 6. **Frontend container env**: still open. Its `process.env.*` reads (with `NEXT_PUBLIC_*` inlined at build time) need their own extractor before `check-compose-env.sh` can cover the frontend service.
 
-Pending at merge (owner): graft the `KEY: ${KEY:-}` snippet that `check-compose-env.sh` prints into `x-backend-environment` and drop the matching `wire` lines from `deploy/env/compose-env.allow`; graft the `env` CI job onto the reworked `ci.yml`.
+Done at merge: the `wire` tunables are in `x-backend-environment` and their allowlist lines are gone. Pending: graft the `env` CI job onto the reworked `ci.yml` when the GHCR work lands.

@@ -29,6 +29,10 @@ x-backend-environment: &backend-environment
   APP_NAME: ${APP_NAME:-api}
   APP_ENV: production
   APP_HTTP_ADDR: :8080
+  # Operator tunables below use KEY: ${KEY:-}: empty keeps the Go default.
+  HTTP_READ_TIMEOUT: ${HTTP_READ_TIMEOUT:-}
+  HTTP_WRITE_TIMEOUT: ${HTTP_WRITE_TIMEOUT:-}
+  HTTP_IDLE_TIMEOUT: ${HTTP_IDLE_TIMEOUT:-}
   # Empty = loopback + private ranges (the BFF reaches the API over the app network).
   TRUSTED_PROXIES: ${TRUSTED_PROXIES:-}
   DB_HOST: postgres.${APP_NETWORK_NAME:-${NAME_PREFIX:?NAME_PREFIX is required}-app}
@@ -37,6 +41,7 @@ x-backend-environment: &backend-environment
   DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
   DB_NAME: ${DB_NAME:?DB_NAME is required}
   DB_SSLMODE: ${DB_SSLMODE:-disable}
+  DB_MAX_CONNS: ${DB_MAX_CONNS:-}
   REDIS_ADDR: redis.${APP_NETWORK_NAME:-${NAME_PREFIX:?NAME_PREFIX is required}-app}:6379
   REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
   STORAGE_DRIVER: ${STORAGE_DRIVER:-s3}
@@ -52,8 +57,11 @@ x-backend-environment: &backend-environment
   CENTRIFUGO_API_KEY: ${CENTRIFUGO_API_KEY:?CENTRIFUGO_API_KEY is required}
   CENTRIFUGO_TOKEN_HMAC_SECRET: ${CENTRIFUGO_TOKEN_HMAC_SECRET:?CENTRIFUGO_TOKEN_HMAC_SECRET is required}
   CENTRIFUGO_WS_URL: ${CENTRIFUGO_WS_URL:?CENTRIFUGO_WS_URL is required}
+  CENTRIFUGO_TOKEN_TTL: ${CENTRIFUGO_TOKEN_TTL:-}
   JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?JWT_ACCESS_SECRET is required}
   JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?JWT_REFRESH_SECRET is required}
+  JWT_ACCESS_TTL: ${JWT_ACCESS_TTL:-}
+  JWT_REFRESH_TTL: ${JWT_REFRESH_TTL:-}
   AUTH_ADAPTER_SECRET: ${AUTH_ADAPTER_SECRET:?AUTH_ADAPTER_SECRET is required}
   APP_ENCRYPTION_KEY: ${APP_ENCRYPTION_KEY:?APP_ENCRYPTION_KEY is required}
   CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?CORS_ALLOWED_ORIGINS is required}
@@ -75,6 +83,8 @@ x-backend-environment: &backend-environment
   QUEUE_ENABLED: ${QUEUE_ENABLED:-true}
   QUEUE_WORKER_INPROCESS: "false"
   QUEUE_CONCURRENCY: ${QUEUE_CONCURRENCY:-10}
+  BULK_SYNC_MAX: ${BULK_SYNC_MAX:-}
+  BULK_ROLLBACK_HOURS: ${BULK_ROLLBACK_HOURS:-}
   VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
   VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
   VAPID_SUBJECT: ${VAPID_SUBJECT:-mailto:noreply@example.com}
@@ -105,6 +115,7 @@ x-backend-environment: &backend-environment
   # Dokploy env is shared by every service, so the backend DSN has its own name.
   SENTRY_DSN: ${BACKEND_SENTRY_DSN:-}
   SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT:-production}
+  SENTRY_RELEASE: ${SENTRY_RELEASE:-}
   # Share of HTTP requests sent as performance transactions (0 = off).
   SENTRY_TRACES_SAMPLE_RATE: ${SENTRY_TRACES_SAMPLE_RATE:-0}
 

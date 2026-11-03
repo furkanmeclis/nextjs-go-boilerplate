@@ -51,26 +51,32 @@ echo 'GONE_KEY | omit | removed long ago' >>"$T/allow.stale"
 expect_fail 'stale allowlist entry: GONE_KEY is no longer read' --allow "$T/allow.stale"
 ok "an allowlist entry for a key the backend no longer reads fails"
 
-# Graft the suggested snippet: the 'wire' keys become delivered (stale entries),
-# nothing else changes, and dropping those entries makes the check pass.
-"$CHK" 2>"$T/warn" >/dev/null
-grep -E '^    [A-Z0-9_]+: \$\{[A-Z0-9_]+:-\}$' "$T/warn" | sed 's/^  //' >"$T/snippet"
-[[ -s $T/snippet ]] || fail "no snippet in the warning"
-C=$(compose_copy graft)
+# 'wire' keys pass with a warning carrying a KEY: ${KEY:-} snippet. Grafting
+# that snippet makes them delivered (stale entries); dropping the entries passes
+# with no warning. Built on a copy with two tunables removed, so it does not
+# depend on the repo having 'wire' keys left.
+C=$(compose_copy unwired)
+sed -E '/^  (JWT_ACCESS_TTL|HTTP_READ_TIMEOUT): /d' "$ROOT/compose.prod.yml" >"$C"
+cp "$ALLOW" "$T/allow.wire"
+printf '%s\n' 'JWT_ACCESS_TTL | wire | test' 'HTTP_READ_TIMEOUT | wire | test' >>"$T/allow.wire"
+"$CHK" --compose "$C" --allow "$T/allow.wire" 2>"$T/warn" >/dev/null || { cat "$T/warn" >&2; fail "'wire' keys should only warn"; }
+grep -E '^    [A-Z0-9_]+: \$\{[A-Z0-9_]+:-\}$' "$T/warn" | sed 's/^  //' >"$T/snippet" || true
+[[ $(wc -l <"$T/snippet") -eq 2 ]] || { cat "$T/warn" >&2; fail "expected a two-key snippet in the warning"; }
+G=$(compose_copy graft)
 awk -v snip="$T/snippet" '{ print } /^x-backend-environment: &backend-environment$/ { while ((getline l < snip) > 0) print l }' \
-  "$ROOT/compose.prod.yml" >"$C"
-expect_fail 'stale allowlist entry: .* is now delivered' --compose "$C"
+  "$C" >"$G"
+expect_fail 'stale allowlist entry: .* is now delivered' --compose "$G" --allow "$T/allow.wire"
 ! grep -q 'not delivered by' "$T/out" || fail "graft introduced a missing key"
-grep -v '| wire |' "$ALLOW" >"$T/allow.grafted"
-"$CHK" --compose "$C" --allow "$T/allow.grafted" >"$T/out" 2>&1 || { cat "$T/out" >&2; fail "grafted compose + trimmed allowlist should pass"; }
+"$CHK" --compose "$G" >"$T/out" 2>&1 || { cat "$T/out" >&2; fail "grafted compose + trimmed allowlist should pass"; }
 ! grep -q warning "$T/out" || fail "no warning expected after the graft"
-ok "the suggested KEY: \${KEY:-} snippet grafts cleanly and clears every warning"
+ok "'wire' keys warn with a KEY: \${KEY:-} snippet that grafts cleanly and clears the warning"
 
-# The graft is behaviour-neutral: empty values resolve to the Go defaults.
+# Wired tunables are behaviour-neutral: empty values resolve to the Go defaults.
+C=$ROOT/compose.prod.yml
 "$ROOT/scripts/prod-env.sh" init --file "$T/env" --yes --set APP_URL=https://app.example.com </dev/null 2>/dev/null
-docker compose --env-file "$T/env" -f "$C" config >"$T/resolved" 2>&1 || { cat "$T/resolved" >&2; fail "compose config on the grafted copy"; }
-grep -q 'JWT_ACCESS_TTL: ""' "$T/resolved" || fail "grafted keys should resolve to an empty value when unset"
-ok "grafted keys resolve to empty when unset (config.go then uses its default)"
+docker compose --env-file "$T/env" -f "$C" config >"$T/resolved" 2>&1 || { cat "$T/resolved" >&2; fail "compose config on compose.prod.yml"; }
+grep -q 'JWT_ACCESS_TTL: ""' "$T/resolved" || fail "wired tunables should resolve to an empty value when unset"
+ok "wired tunables resolve to empty when unset (config.go then uses its default)"
 
 expect_fail "service 'api' has no environment" --services "backend api"
 ok "an unknown service fails instead of passing silently"

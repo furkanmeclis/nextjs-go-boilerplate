@@ -24,18 +24,3 @@ STORAGE_LOCAL_PATH | omit | only for STORAGE_DRIVER=local, not used by the prod 
 CENTRIFUGO_ENABLED | omit | Centrifugo is part of the prod stack (backend depends_on it)
 REDIS_DB | omit | each app has its own Redis; DB 0
 SMTP_FROM | omit | legacy alias of MAIL_FROM, which is delivered
-
-# Operator tunables with a safe Go default. Not delivered today, so a value set
-# in Dokploy is silently ignored. Wiring them as KEY: ${KEY:-} changes nothing
-# until someone sets them; left for the compose owners (see docs/design/env-core.md §8).
-BULK_ROLLBACK_HOURS | wire | default 24
-BULK_SYNC_MAX | wire | default 50
-CENTRIFUGO_TOKEN_TTL | wire | default 1h
-DB_MAX_CONNS | wire | default 20
-HTTP_IDLE_TIMEOUT | wire | default 60s
-HTTP_READ_TIMEOUT | wire | default 10s
-HTTP_WRITE_TIMEOUT | wire | default 30s
-JWT_ACCESS_TTL | wire | default 15m
-JWT_REFRESH_TTL | wire | default 168h
-SENTRY_RELEASE | wire | default: SDK detection; set it from the image tag
-STORAGE_MAX_BYTES | wire | default 10 MiB upload limit
