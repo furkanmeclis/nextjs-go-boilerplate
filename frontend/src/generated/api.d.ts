@@ -2167,6 +2167,7 @@ export interface components {
             user: components["schemas"]["PublicUser"];
             roles: string[];
             permissions: string[];
+            /** @description Tenant memberships (role and `tenant.*` permissions per organization). Present only when `TENANCY_ENABLED=true`. */
             organizations?: components["schemas"]["MeOrganization"][];
             links: components["schemas"]["MeLinks"];
             channels: components["schemas"]["MeChannels"];

@@ -259,10 +259,12 @@ func New(cfg config.Config, log *slog.Logger, deps Deps) (*Server, error) {
 	// Organizations (tenant core). Platform management is always mounted;
 	// the /v1/tenant/* shell only with TENANCY_ENABLED.
 	orgSvc := orgusecase.New(orgrepository.NewPostgres(deps.DB, deps.Queries), nil)
-	uc.SetOrganizationsLister(orgSvc)
 	organizationsmodule.RegisterRoutes(mux, orghandler.New(orgSvc, activityRec), tokens, loader)
 	var tenantResolver orgctx.Resolver
 	if cfg.Tenancy.Enabled {
+		// /me lists memberships only when the /t shell exists: the frontend
+		// routes members into it, which would dead-end with tenancy off.
+		uc.SetOrganizationsLister(orgSvc)
 		orgCache := orgcache.New(orgSvc, deps.Redis, cfg.Tenancy.CacheTTL, cfg.App.Env)
 		orgSvc.SetInvalidator(orgCache)
 		tenantResolver = orgCache
