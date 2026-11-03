@@ -41,7 +41,7 @@ jobs:
   # over every build-context service without hardcoding backend+frontend.
   # ---------------------------------------------------------------------------
   changes:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       backend: ${{ steps.f.outputs.backend }}
       frontend: ${{ steps.f.outputs.frontend }}
@@ -156,7 +156,7 @@ jobs:
   backend:
     needs: changes
     if: needs.changes.outputs.backend == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: backend
@@ -189,7 +189,7 @@ jobs:
   frontend:
     needs: changes
     if: needs.changes.outputs.frontend == 'true' || needs.changes.outputs.contracts == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: frontend
@@ -236,20 +236,20 @@ jobs:
     if: >-
       ( github.event_name != 'push' || github.ref != 'refs/heads/main' ) &&
       ( needs.changes.outputs.infra == 'true' || needs.changes.outputs.full == 'true' )
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
         image: ${{ fromJSON(needs.changes.outputs.images) }}
     steps:
       - uses: actions/checkout@v7
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v4
       - id: meta
         run: |
           echo "version=sha-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
           echo "built_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
       - name: Build ${{ matrix.image.service }} (no push)
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: ${{ matrix.image.context }}
           file: ${{ matrix.image.context }}/${{ matrix.image.dockerfile }}
@@ -277,7 +277,7 @@ jobs:
   release-meta:
     needs: changes
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       version: ${{ steps.m.outputs.version }}
       built_at: ${{ steps.m.outputs.built_at }}
@@ -337,7 +337,7 @@ jobs:
       needs.frontend.result != 'failure' &&
       needs.backend.result != 'cancelled' &&
       needs.frontend.result != 'cancelled'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
       packages: write
@@ -347,8 +347,8 @@ jobs:
         image: ${{ fromJSON(needs.changes.outputs.images) }}
     steps:
       - uses: actions/checkout@v7
-      - uses: docker/setup-buildx-action@v3
-      - uses: docker/login-action@v3
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -360,7 +360,7 @@ jobs:
           echo "image=ghcr.io/${repo}-${{ matrix.image.service }}" >> "$GITHUB_OUTPUT"
           echo "sha=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
       - name: Build and push ${{ matrix.image.service }}
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: ${{ matrix.image.context }}
           file: ${{ matrix.image.context }}/${{ matrix.image.dockerfile }}
@@ -388,7 +388,7 @@ jobs:
   release-tag:
     needs: [release-meta, publish-images]
     if: always() && needs.publish-images.result == 'success'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
     steps:
@@ -433,7 +433,7 @@ jobs:
   mobile:
     needs: changes
     if: needs.changes.outputs.mobile == 'true' || needs.changes.outputs.backend == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: .
@@ -507,7 +507,7 @@ jobs:
       needs.frontend.result != 'cancelled' &&
       needs.mobile.result != 'failure' &&
       needs.mobile.result != 'cancelled'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
       - id: guard
@@ -529,7 +529,7 @@ jobs:
           cache: npm
           cache-dependency-path: mobile/package-lock.json
       - if: steps.guard.outputs.ship == 'true'
-        uses: expo/expo-github-action@v8
+        uses: expo/expo-github-action@v9
         with:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
@@ -563,7 +563,7 @@ jobs:
       !contains(github.event.head_commit.message, '[no-automerge]') &&
       needs.backend.result != 'failure' &&
       needs.frontend.result != 'failure'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
       pull-requests: write
@@ -616,7 +616,7 @@ jobs:
   ci:
     if: always()
     needs: [changes, backend, frontend, mobile, image-build, release-meta, publish-images, release-tag, mobile-release]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Gate
         run: |
