@@ -1,6 +1,6 @@
 # Tenant core — design study
 
-Status: **phase 1 implemented** (backend: schema, organizations module, per-request org context, cache; see §11). Later phases are proposals. Reference implementation: `otopoly-go` (forked from this boilerplate, added organizations on top). This document keeps what worked there, fixes what hurt, and makes it reusable for every app cloned from the boilerplate.
+Status: **phases 1–5 implemented** (schema + core, `/t/{slug}` shell + platform organizations UI, invitations + settings + members, engine stamping + realtime `org:` channel + query lint, docs + `add-tenant-resource` skill; see §11). §12 lists what is still open. Reference implementation: `otopoly-go` (forked from this boilerplate, added organizations on top). This document keeps what worked there, fixes what hurt, and makes it reusable for every app cloned from the boilerplate.
 
 ## 1. Goal
 
@@ -127,7 +127,7 @@ Registered in `internal/httpserver/server.go`; the core ships with none.
 
 1. Every tenant table has `organization_id BIGINT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE` and an index starting with it.
 2. Repositories take `orgID int64` explicitly (never read it from context inside SQL helpers).
-3. `internal/database/queries_test.go` parses `queries/*.sql`: any query touching a table listed in `tenant_tables.txt` must reference `organization_id`. CI fails otherwise.
+3. `internal/database/queries_test.go` parses `queries/*.sql`: any query touching a table listed in `tenant_tables.txt` must reference `organization_id`, unless the line above its `-- name:` is `-- tenant-lint: cross-org <reason>` (token lookups, a user's own memberships). CI fails otherwise. Engine tables with a nullable `organization_id` are not listed yet.
 4. IO / bulk / activity engines stamp `organization_id` from `orgctx` (otopoly: `ioengine.QueryOrganizationID`, `activity.WithOrganization`, bulk `executeTenant`).
 5. Optional later: Postgres RLS with `SET LOCAL app.organization_id` per transaction.
 

@@ -35,8 +35,9 @@ This repo is a two-app monorepo plus Compose files. Dependencies point inward: H
 | Platform | `/platform` | `super_admin` or any `platform.*` permission |
 | CMS | `/` | other authenticated users (`cms_user` seed, or any role without platform perms) |
 | Guest | `/platform/login` (aliases also exist at `/login`) | signed-out users |
+| Tenant | `/t/{slug}` (only with `TENANCY_ENABLED`) | members of that organization |
 
-There is **no** tenant, workspace, or `/business` shell. JWT claims are `sub`, `roles`, `is_super_admin`, `exp`, optional `imp` (impersonator) — no `tid` / `wid`.
+JWT claims are `sub`, `roles`, `is_super_admin`, `exp`, optional `imp` (impersonator). The organization is **not** in the token: tenant requests carry `X-Organization: {slug|uuid}` (added by `tenantRequest()` from the route slug), the API resolves the membership per request (`RequireOrganization` → `orgctx.Scope`) and checks `tenant.*` permissions of that membership (`RequireTenantPermission`). Two tabs on two organizations are independent. Engines (activity, notifications, export/import/bulk jobs) stamp `organization_id` from the scope; workers restore it from the job row. Realtime has an `org:{uuid}` channel for active members. Design and phases: [design/tenant-core.md](./design/tenant-core.md); adding a resource: `.agents/skills/add-tenant-resource`.
 
 ## Request flow
 

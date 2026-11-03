@@ -42,7 +42,7 @@ Canonical env: **repo-root** `.env`. First clone: `.agents/skills/boilerplate-fi
 - New `/v1` routes update `backend/docs/openapi.yaml` in the same change; then `pnpm api:generate`.
 - Media URLs: API-owned only; never assemble storage keys in the browser.
 - Never expose Meilisearch to the browser (`GET /v1/search` only).
-- There are no tenants or workspaces in this starter. No `/business` shell. JWT has no `tid` / `wid` (optional `imp` for impersonation).
+- Tenancy is the tenant core only (organizations, `/t/{slug}`, `X-Organization`, behind `TENANCY_ENABLED`); no workspaces, no `/business` shell, no org ids in the JWT (optional `imp` for impersonation). New org-owned data: `add-tenant-resource` skill.
 - Handlers never call SMTP/SMS; enqueue via notifications.
 - Permission slugs only via migration + `internal/platform/rbac` + `frontend/src/config/permissions.ts`.
 
