@@ -4,7 +4,7 @@ import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef } from "react";
 
-import type { AppLayoutVariant } from "@/components/layout/app-layout";
+import type { NavCatalog } from "@/features/nav-engine/types";
 import {
   CommandDialog,
   CommandEmpty,
@@ -24,11 +24,11 @@ import type { PaletteItem } from "@/features/search-engine/types";
 import { useLocale } from "@/providers/locale-provider";
 import { cn } from "@/lib/utils";
 
-export function CommandPalette({ variant }: { variant: AppLayoutVariant }) {
+export function CommandPalette({ catalogs }: { catalogs: NavCatalog[] }) {
   const { t } = useLocale();
   const router = useRouter();
   const { open, setOpen } = useCommandPalette();
-  const data = useCommandPaletteData(variant);
+  const data = useCommandPaletteData(catalogs);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {

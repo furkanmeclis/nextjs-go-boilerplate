@@ -99,6 +99,12 @@ export const routes = {
       preferences: "/platform/profile/preferences",
     },
   },
+  /** Organization (tenant) shell — mounted only when tenancy is enabled. */
+  tenant: {
+    /** Organization picker for users with several memberships. */
+    picker: "/t",
+    home: (slug: string) => `/t/${encodeURIComponent(slug)}`,
+  },
   errors: {
     unauthorized: "/unauthorized",
     forbidden: "/forbidden",

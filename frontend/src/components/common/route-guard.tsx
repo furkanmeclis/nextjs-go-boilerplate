@@ -2,7 +2,7 @@
 
 import { useEffect, type ReactNode } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -18,13 +18,19 @@ import {
   isCmsUser,
   isPlatformUser,
 } from "@/lib/auth/types";
+import { safeNextPath } from "@/lib/auth/next-path";
 import { useAuthStore } from "@/lib/auth/session-store";
 import { useAuth } from "@/providers/auth-provider";
 import { useLocale } from "@/providers/locale-provider";
 
 type RouteGuardProps = {
   children: ReactNode;
-  mode: "guest" | "platform" | "cms";
+  /**
+   * `tenant` only requires a session: organization access is decided per
+   * membership by the tenant shell, so platform users who are members may
+   * enter too.
+   */
+  mode: "guest" | "platform" | "cms" | "tenant";
 };
 
 function PageLoader({ label }: { label: string }) {
@@ -57,8 +63,15 @@ function RoleMismatch({ expected, home }: { expected: string; home: string }) {
   );
 }
 
+const AUTHENTICATED_MODES = new Set<RouteGuardProps["mode"]>([
+  "platform",
+  "cms",
+  "tenant",
+]);
+
 export function RouteGuard({ children, mode }: RouteGuardProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const { bootstrapped, isAuthenticated, user } = useAuth();
   const { t } = useLocale();
   const cachedUser = useAuthStore((s) => s.user);
@@ -67,14 +80,23 @@ export function RouteGuard({ children, mode }: RouteGuardProps) {
     if (!bootstrapped) return;
 
     if (mode === "guest" && isAuthenticated && user) {
-      router.replace(defaultHomeForUser(user));
+      // Same target as the login form: an explicit ?next= wins, otherwise
+      // the user's default shell. (Without this the guard raced the form and
+      // dropped deep links such as /t/{slug}.)
+      const next = new URLSearchParams(window.location.search).get("next");
+      router.replace(safeNextPath(next, defaultHomeForUser(user)));
       return;
     }
 
-    if ((mode === "platform" || mode === "cms") && !isAuthenticated) {
-      router.replace(routes.guest.login);
+    if (AUTHENTICATED_MODES.has(mode) && !isAuthenticated) {
+      // Tenant links are shareable: come back to the same org after login.
+      router.replace(
+        mode === "tenant" && pathname
+          ? `${routes.guest.login}?next=${encodeURIComponent(pathname)}`
+          : routes.guest.login,
+      );
     }
-  }, [bootstrapped, mode, isAuthenticated, user, router]);
+  }, [bootstrapped, mode, isAuthenticated, user, router, pathname]);
 
   // Show the loader only when there is no cached user to render optimistically.
   // With a cached user, render immediately and let session verification update
@@ -83,7 +105,7 @@ export function RouteGuard({ children, mode }: RouteGuardProps) {
     return <PageLoader label={t("common.loading")} />;
   }
 
-  if ((mode === "platform" || mode === "cms") && !isAuthenticated) {
+  if (AUTHENTICATED_MODES.has(mode) && !isAuthenticated) {
     return null;
   }
 

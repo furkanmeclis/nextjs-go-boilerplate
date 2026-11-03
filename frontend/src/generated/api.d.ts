@@ -1815,7 +1815,7 @@ export interface paths {
         };
         /**
          * Public app config
-         * @description Unauthenticated bootstrap payload (auth methods, branding).
+         * @description Unauthenticated bootstrap payload (auth methods, branding, and `tenancy: {enabled, self_serve}` reflecting `TENANCY_ENABLED` / `TENANCY_SELF_SERVE`).
          */
         get: operations["getAppConfig"];
         put?: never;
