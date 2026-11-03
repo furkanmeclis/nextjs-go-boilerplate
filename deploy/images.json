@@ -1,0 +1,7 @@
+{
+  "_comment": "Build-context images for this app. CI (the image-build, publish-images jobs in .github/workflows/ci.yml) iterates `images` as a matrix, so it is never hardcoded to backend+frontend: add an entry here to build and ship a new container (e.g. a widget) automatically. `service` becomes the GHCR image suffix (ghcr.io/<owner>/<repo>-<service>); compose.prod.yml pulls the published tags via BACKEND_IMAGE / FRONTEND_IMAGE. The server does not build these.",
+  "images": [
+    { "service": "backend", "context": "backend", "dockerfile": "Dockerfile" },
+    { "service": "frontend", "context": "frontend", "dockerfile": "Dockerfile" }
+  ]
+}
