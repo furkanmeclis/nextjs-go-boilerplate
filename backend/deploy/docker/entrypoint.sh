@@ -24,7 +24,10 @@ case "${ROLE}" in
     ;;
   migrate)
     : "${DATABASE_URL:?DATABASE_URL is required}"
-    exec migrate -path /app/migrations -database "${DATABASE_URL}" up
+    migrate -path /app/migrations -database "${DATABASE_URL}" up
+    # One app_releases row per deploy (version/sha/notes baked into this
+    # image). Fail-soft: it exits 0 on any problem; `|| true` is belt+braces.
+    /app/release-record || true
     ;;
   *)
     exec /app/server
