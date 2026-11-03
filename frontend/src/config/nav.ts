@@ -212,6 +212,13 @@ export const platformNav = defineNav({
       items: [
         usersNavItem,
         {
+          id: "organizations",
+          titleKey: "organizations.title",
+          href: routes.platform.organizations.root,
+          icon: Building2,
+          permission: permissions.organizations.read,
+        },
+        {
           id: "notifications",
           titleKey: "layout.nav_notifications",
           href: routes.platform.notifications.root,
