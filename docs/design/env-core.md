@@ -1,6 +1,6 @@
 # Environment config core — design study
 
-Status: **phase 1 implemented** (schema + `scripts/prod-env.sh`; see §12). Later phases are proposals. Reference implementations live in sibling forks of this boilerplate: `rentopia-app-go` (mature schema-driven generator), `olexfilms` (earlier non-schema generator with a careful rotation policy), `clickfix` (a compose-env CI check). This document surveys that prior art, recommends the **healthiest** version for the core, and lays out a phased plan. It deliberately does **not** copy any one fork.
+Status: **phases 1–2 implemented** (schema, `scripts/prod-env.sh`, generated `.env.server.example` + `make env-check`; see §12). Later phases are proposals. Reference implementations live in sibling forks of this boilerplate: `rentopia-app-go` (mature schema-driven generator), `olexfilms` (earlier non-schema generator with a careful rotation policy), `clickfix` (a compose-env CI check). This document surveys that prior art, recommends the **healthiest** version for the core, and lays out a phased plan. It deliberately does **not** copy any one fork.
 
 ## 1. Goal
 
@@ -128,7 +128,7 @@ The non-negotiable lesson from olexfilms:
 
 ## 7. Generated `.env.server.example` + sync check
 
-`.env.server.example` stops being a hand-written prose file and becomes `scripts/prod-env.sh example` output, committed. CI (and a `make` target) regenerate it and assert no diff:
+`.env.server.example` stops being a hand-written prose file and becomes `scripts/prod-env.sh example` output, committed. `scripts/check-env-sync.sh` (`make env-check`) regenerates it and asserts no diff, checks that every schema key has a local default in `.env.example` (open question 2, on), and runs `scripts/prod-env.test.sh`. In essence:
 
 ```sh
 scripts/prod-env.sh example > /tmp/env.server.example.gen

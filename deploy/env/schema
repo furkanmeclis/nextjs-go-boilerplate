@@ -30,6 +30,7 @@
 # Public origin of the app (the frontend domain). Every URL below derives from it.
 APP_URL | ask:{AUTH_URL}
 # Unique per app on a host: names containers, volumes and the app network.
+# Plain Docker host only (Dokploy creates it): docker network create dokploy-network
 NAME_PREFIX | ask:{APP_LABEL}
 # Images built by `make prod-up`; point them at a registry to pull instead.
 BACKEND_IMAGE | derive:{NAME_PREFIX}-backend:latest

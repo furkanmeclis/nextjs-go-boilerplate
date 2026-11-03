@@ -145,7 +145,8 @@ ok "--rotate needs confirmation, changes only the named secrets (VAPID as a pair
 # --- legacy file (hand-made from .env.example, no version) ------------------------
 L=$T/legacy
 cp "$ROOT/.env.example" "$L"
-sed -i.orig -e 's#^AUTH_URL=.*#AUTH_URL=https://legacy.example.com#' "$L"
+# Pre-schema files have no APP_URL; upgrade must take it from AUTH_URL.
+sed -i.orig -e 's#^AUTH_URL=.*#AUTH_URL=https://legacy.example.com#' -e '/^APP_URL=/d' "$L"
 if "$PE" check --file "$L" >"$T/legacy.out" 2>&1; then fail "check passed on a legacy file"; fi
 grep -q 'file is v0' "$T/legacy.out" || fail "legacy: version gap"
 grep -q 'insecure: JWT_ACCESS_SECRET' "$T/legacy.out" || fail "legacy: dev secret not flagged"
