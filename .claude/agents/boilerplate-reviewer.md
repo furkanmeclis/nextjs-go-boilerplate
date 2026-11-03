@@ -14,7 +14,7 @@ Get the diff with `git diff main...HEAD` (or the range you were given). For each
 3. **Migrations**: sequential `00000N_*.up.sql` + `.down.sql` pairs, no duplicate numbers, down reverses up. Generated `internal/database/db/*.go` matches the queries (no hand edits).
 4. **Browser boundaries**: the browser only calls same-origin `/api/v1/*`; no Go host URLs, no S3 key or bucket URL assembly in `frontend/src`, Meilisearch never called from the browser.
 5. **Tenancy**: AGENTS.md says do not invent tenants or workspaces unless the change is the tenant core itself.
-6. **Secrets and env**: no real secrets, tokens or project-specific ids (other products' bundle ids, domains, brand names) in code, docs or examples; new env keys documented in `.env.example` / `.env.server.example`; prod compose keeps internal hosts as `<service>.<app network>`.
+6. **Secrets and env**: no real secrets, tokens or project-specific ids (other products' bundle ids, domains, brand names) in code, docs or examples; new env keys follow `docs/EXTENDING.md` → "Environment variables" (local default in `.env.example`; prod keys in `deploy/env/schema` with `@version` bumped and `.env.server.example` regenerated, not hand-edited; delivered in `compose.prod.yml` or recorded in `deploy/env/compose-env.allow`; secrets in `managedSecrets` in `backend/internal/config/guard.go`); `make env-check` passes; prod compose keeps internal hosts as `<service>.<app network>`.
 7. **i18n**: new UI strings exist in both `frontend/src/locales/tr` and `en`.
 
 End with a short list of FAIL items and the exact fix for each.

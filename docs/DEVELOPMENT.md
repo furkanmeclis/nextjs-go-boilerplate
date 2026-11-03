@@ -74,7 +74,7 @@ Swap name and colors in `frontend/src/config/brand.ts` and the CSS tokens in the
 npx web-push generate-vapid-keys
 ```
 
-Set `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, and `VAPID_SUBJECT` in `.env`. The frontend registers via `/app-push-sw.js` → BFF → `/v1/notifications/vapid-public-key` + push-subscriptions.
+Set `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, and `VAPID_SUBJECT` in `.env` (production: `prod-env-init` generates the pair). The frontend registers via `/app-push-sw.js` → BFF → `/v1/notifications/vapid-public-key` + push-subscriptions.
 
 Closed-browser push does not work until these three are set.
 
@@ -82,15 +82,29 @@ Optional frontend public vars (root `.env`): `NEXT_PUBLIC_BFF_BASE_URL`, `NEXT_P
 
 ## Production / Dokploy
 
-1. `cp .env.example .env.server`, set a unique `NAME_PREFIX` and replace every secret (`${VAR:?…}` is required)
-2. `make prod-config` then `make prod-up`
-3. Plain Docker host only (Dokploy creates it for you): `docker network create dokploy-network` once
+The production env is generated from `deploy/env/schema`; never start from `.env.example` (design: [design/env-core.md](./design/env-core.md)). Needs bash 4.3+ and openssl (macOS: `brew install bash`).
+
+1. `make prod-env-init` asks for `APP_URL` and offers defaults for `NAME_PREFIX` (first host label) and the Centrifugo URL (`wss://realtime.<host>/…`). It derives every URL, generates every secret and the VAPID pair, and writes `.env.server` (mode 600, git-ignored). Non-interactive: `make prod-env-init ARGS="--set APP_URL=https://app.example.com --yes"`.
+2. Fill `SMTP_*` (and the Sentry DSNs if you use them) in `.env.server`.
+3. `make prod-config` then `make prod-up`. On Dokploy, paste the file into the compose app's environment and add two domains: **frontend** (port 3000) on the `APP_URL` host and **centrifugo** (port 8000) on the `CENTRIFUGO_WS_URL` host.
+4. Plain Docker host only (Dokploy creates it for you): `docker network create dokploy-network` once
+
+Keep the generated file as the master copy (password manager or the server) and run the commands below on it; values edited only in the Dokploy UI are invisible to `check`.
+
+| Task | Command |
+|---|---|
+| After pulling a schema change | `make prod-env-upgrade`: keeps every value, applies renames/removals, fills only new keys, re-stamps `ENV_SCHEMA_VERSION`, backup in `.env.server.bak` |
+| Verify a file | `make prod-env-check`: exits 1 on a schema-version gap, missing or blank keys, or secrets still holding `.env.example` values |
+| Rotate a secret on purpose | `scripts/prod-env.sh upgrade --rotate JWT_REFRESH_SECRET` (confirmation; restart the stack). Refuses `APP_ENCRYPTION_KEY` (encrypted data becomes unreadable) and `DB_PASSWORD` (Postgres keeps it in its volume: `ALTER USER` first, then edit the file) |
+| Older hand-made `.env.server` | `make prod-env-upgrade`, then `make prod-env-check`, then rotate every secret it reports as insecure. Rotation is never automatic |
+
+The backend enforces the same rules at boot: `APP_ENV` must be `development`, `test`, `staging` or `production`, and in staging/production it refuses to start while any managed secret is empty or still holds its public development value, naming every offending key.
 
 Networks: Compose creates a private bridge network per app (`${APP_NETWORK_NAME:-${NAME_PREFIX}-app}`) and every service joins it. Only **frontend** (`:3000`) and **centrifugo** (`:8000`) also join the shared `dokploy-network`, so the proxy can route their domains. The backend is reached through the frontend's `/api` proxy, and SeaweedFS, Postgres, Redis, Meilisearch and the worker stay private (files reach browsers through API endpoints, never a bucket URL). No service publishes host ports.
 
 Object storage is SeaweedFS's S3 gateway (`seaweedfs`, port 8333 on the app network), reached through the backend's S3 driver (`STORAGE_DRIVER=s3`). The only S3 identity is the backend's (`S3_ACCESS_KEY` / `S3_SECRET_KEY`); anonymous requests are denied. `seaweedfs-init` creates `S3_BUCKET` before the backend starts. **Coming from MinIO:** SeaweedFS starts on a new, empty volume (`SEAWEEDFS_VOLUME_NAME`); the old `*-minio` volume is left untouched. Copy the bucket across with any S3 client (for example `rclone sync` between two S3 remotes, path-style, same credentials) before switching an existing deployment, or point `S3_ENDPOINT` at the old store until you have.
 
-`APP_ENCRYPTION_KEY` (32-byte, raw or base64) encrypts GitHub App secrets at rest. Generate: `openssl rand -base64 32`. Replace the example key in production.
+`APP_ENCRYPTION_KEY` (32-byte, raw or base64) encrypts GitHub App secrets at rest. `prod-env-init` generates it; never rotate it once data is stored.
 
 ## Error tracking (optional, Sentry protocol)
 

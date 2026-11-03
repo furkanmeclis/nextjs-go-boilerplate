@@ -2,8 +2,8 @@
 name: boilerplate-first-setup
 description: >-
   First-time setup for this Next.js + Go boilerplate: root .env, NAME_PREFIX,
-  compose local/prod, Dokploy network, VAPID, media URL rules, super admin,
-  and make local-dev. Use when initializing the repo, configuring Docker naming,
+  compose local/prod, the schema-driven production env (scripts/prod-env.sh),
+  Dokploy network, VAPID, media URL rules, super admin, and make local-dev. Use when initializing the repo, configuring Docker naming,
   or onboarding a new clone.
 ---
 
@@ -23,10 +23,10 @@ Do **not** keep a long-lived `frontend/.env.local` for API URLs. Do **not** trea
 ## 1. Copy env
 
 ```sh
-cp .env.example .env
-# production later:
-cp .env.example .env.server   # then replace every secret
+cp .env.example .env          # local dev: safe defaults, nothing to generate
 ```
+
+Production never starts from `.env.example`: `make prod-env-init` generates `.env.server` from `deploy/env/schema` (§7).
 
 `API_URL` **must** include `/v1` (default `http://127.0.0.1:8080/v1`).
 
@@ -94,7 +94,7 @@ Required for closed-browser notifications; optional otherwise.
 npx web-push generate-vapid-keys
 ```
 
-Set `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` in `.env`.
+Set `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` in `.env`. In production `make prod-env-init` generates the pair.
 
 Frontend: `/app-push-sw.js` → BFF → `/v1/notifications/vapid-public-key` + push-subscriptions.
 
@@ -106,13 +106,28 @@ Browser must **never** assemble S3 URLs from object keys. Use API-returned `publ
 
 ## 7. Production / Dokploy
 
-1. Fill `.env.server` with a unique `NAME_PREFIX` — every `${VAR:?…}` is required
-2. `make prod-config` then `make prod-up`
-3. Plain Docker host only: `docker network create dokploy-network` (once; Dokploy creates it itself)
+The production env comes from `deploy/env/schema` (design: `docs/design/env-core.md`). Needs bash 4.3+ and openssl.
+
+1. `make prod-env-init`: asks `APP_URL`, offers defaults for `NAME_PREFIX` (first host label) and `CENTRIFUGO_WS_URL` (`wss://realtime.<host>/…`), derives every URL, generates every secret + the VAPID pair, writes `.env.server` (mode 600, git-ignored). Agents / CI: `make prod-env-init ARGS="--set APP_URL=https://app.example.com --yes"`. Never invent secret values by hand.
+2. Fill `SMTP_*` (and `BACKEND_SENTRY_DSN` / `FRONTEND_SENTRY_DSN` if used)
+3. `make prod-config` then `make prod-up`. Dokploy: paste the file into the app's environment; domains frontend:3000 (`APP_URL` host) and centrifugo:8000 (`CENTRIFUGO_WS_URL` host)
+4. Plain Docker host only: `docker network create dokploy-network` (once; Dokploy creates it itself)
+
+Later:
+
+| When | Run |
+|------|-----|
+| Schema changed (new release) | `make prod-env-upgrade`: keeps every value, migrates renames/removals, adds new keys, backup `.env.server.bak` |
+| Before a deploy | `make prod-env-check`: exit 1 on version gap, missing keys, dev secrets |
+| Existing hand-made `.env.server` | `make prod-env-upgrade` → `make prod-env-check` → rotate what it flags (`scripts/prod-env.sh upgrade --rotate KEY`), deliberately |
+
+Never `--rotate` `APP_ENCRYPTION_KEY` or `DB_PASSWORD` (the script refuses). The backend refuses to boot in staging/production with an empty or development secret, and only accepts `APP_ENV` = `development` | `test` | `staging` | `production`.
 
 Compose creates the app's own private network (`${NAME_PREFIX}-app`). Only **frontend** and **centrifugo** join `dokploy-network` (set their domains in Dokploy: service + container port). Backend, SeaweedFS, Postgres, Redis, Meilisearch and the worker stay private.
 
-`SEARCH_*` / `MEILI_*` enable Cmd+K. `APP_ENCRYPTION_KEY` (32-byte raw or base64) encrypts GitHub App secrets. Generate: `openssl rand -base64 32`.
+`SEARCH_*` / `MEILI_*` enable Cmd+K. `APP_ENCRYPTION_KEY` (32-byte raw or base64) encrypts GitHub App secrets; `prod-env-init` generates it.
+
+New env var? Follow `docs/EXTENDING.md` → "Environment variables" (config.go → `.env.example` → schema → compose → guard), then `make env-check`.
 
 ## 8. After clone checklist
 
@@ -122,5 +137,5 @@ Compose creates the app's own private network (`${NAME_PREFIX}-app`). Only **fro
 - [ ] Login at `/platform/login`
 - [ ] MailHog receives verify/reset mail
 - [ ] VAPID keys if push is in scope
-- [ ] `APP_ENCRYPTION_KEY` replaced if GitHub OAuth will be used
+- [ ] Production: `make prod-env-init` (not a copy of `.env.example`), then `make prod-env-check` passes
 - [ ] Brand tokens swapped if this is a named product

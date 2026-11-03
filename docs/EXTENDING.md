@@ -114,6 +114,19 @@ Sensitive mutations can require a fresh password or passkey confirmation even wh
 - Redis keys should use `app:<env>:…` if you add caching.
 - Realtime channels: prefer `user:{user_uuid}`. Issue tokens only through `/v1/realtime/*`.
 
+## Environment variables
+
+`deploy/env/schema` is the source of truth for the production env; CI keeps the other files in line with it ([design](./design/env-core.md)). Adding a variable:
+
+1. **Read it** in `backend/internal/config/config.go` with a string-literal key (`getEnv("MY_KEY", "default")`); the checks below find reads by literal name.
+2. **Local default** in `.env.example` (local dev never needs a generator).
+3. **Production**, when prod needs a value: add a line to `deploy/env/schema` (`derive:`, `const:`, `secret:…`, `ask:` or `empty`), bump `@version`, then `scripts/prod-env.sh example > .env.server.example`. Renaming or dropping a key: `@rename OLD NEW <ver>` / `@remove KEY <ver>`, so `prod-env.sh upgrade` migrates deployed files without losing values. Optional tuning knobs with a safe Go default can stay out of the schema.
+4. **Deliver it** to the containers: add it to `x-backend-environment` in `compose.prod.yml` (`MY_KEY: ${MY_KEY:-}` keeps the Go default when unset), or record why not in `deploy/env/compose-env.allow`.
+5. **Secrets**: add a row to `managedSecrets` in `backend/internal/config/guard.go` with its development value, so staging/production refuse it. A test fails until you do.
+6. `make env-check && (cd backend && go test ./internal/config/)`.
+
+Do not edit `.env.server.example` by hand, and never put real values in either example file.
+
 ## What not to copy from old products
 
 This starter was carved out of earlier apps. Do **not** bring back:

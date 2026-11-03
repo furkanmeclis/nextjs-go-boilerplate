@@ -1,6 +1,6 @@
 # Environment config core — design study
 
-Status: **phases 1–4 implemented** (schema, `scripts/prod-env.sh`, generated `.env.server.example`, compose-env check, runtime guard; see §12). Later phases are proposals. Reference implementations live in sibling forks of this boilerplate: `rentopia-app-go` (mature schema-driven generator), `olexfilms` (earlier non-schema generator with a careful rotation policy), `clickfix` (a compose-env CI check). This document surveys that prior art, recommends the **healthiest** version for the core, and lays out a phased plan. It deliberately does **not** copy any one fork.
+Status: **implemented** (phases 1–5: schema, `scripts/prod-env.sh`, generated `.env.server.example`, compose-env check, runtime guard, docs + skill; see §12). Operator docs: `docs/DEVELOPMENT.md` → Production; adding a variable: `docs/EXTENDING.md` → Environment variables. Later phases are proposals. Reference implementations live in sibling forks of this boilerplate: `rentopia-app-go` (mature schema-driven generator), `olexfilms` (earlier non-schema generator with a careful rotation policy), `clickfix` (a compose-env CI check). This document surveys that prior art, recommends the **healthiest** version for the core, and lays out a phased plan. It deliberately does **not** copy any one fork.
 
 ## 1. Goal
 
@@ -189,11 +189,13 @@ Each phase is one commit on the session branch (auto-PR is off; the owner merges
 
 **Coordination with the two concurrent `compose.prod.yml` sessions (SeaweedFS storage, GHCR images):** phases 1–2 and 4 do not touch `compose.prod.yml`. Phase 3 only **reads** it. If phase 3's check finds a backend key that must be delivered, the only edit is adding that key to the `x-backend-environment` block — never storage or image wiring. Expect to rebase; the owner sequences the merges. `BACKEND_IMAGE`/`FRONTEND_IMAGE` schema rules (§4) may need adjusting once the GHCR work settles their exact form — flagged for the owner.
 
-## 13. Open questions
+## 13. Decisions on the open questions
 
-1. **`NAME_PREFIX` — second prompt, or fully derived?** Proposal: prompt with a default (first host label), so it stays boilerplate-neutral without a blind guess. Fully deriving it (`app.example.com` → `app`) is fragile for multi-app hosts.
-2. **`.env.example` ⊆ schema lint (§10)?** Proposal: ship it behind a toggle, default on, because a prod key with no local default is a real papercut. Owner's call on how tightly to couple the dev and prod files.
-3. **`BACKEND_IMAGE`/`FRONTEND_IMAGE` rules** depend on the in-flight GHCR work. Phase 1 derives `{NAME_PREFIX}-backend:latest` (what `make prod-up` builds); switch to a registry path once that lands.
-4. **Guard home — extend `config.go` or add `platform/envguard`?** Proposal: extend `config.go`'s `validate()` (smallest surface; the defaults already live there). Promote to `platform/envguard` only if boot sequencing needs it.
-5. **SOPS/age for GitOps forks (§3 option D)** — leave out of core, or ship a documented opt-in recipe? Proposal: out of core; a short note in `docs/` is enough until a fork actually needs committed secrets.
-6. **Frontend-read env** (`AUTH_SECRET`, `NEXT_PUBLIC_*`, `FRONTEND_SENTRY_DSN`) — the schema covers them for `.env.server` generation, but should the compose-env check also assert the frontend's `environment:` block the way it does the backend's? Proposal: yes, as a second pass in phase 3 if cheap; otherwise phase 3.5.
+1. **`NAME_PREFIX`**: asked, defaulting to the first host label (`app` when that is not a valid prefix).
+2. **`.env.example` ⊆ schema lint**: on (`scripts/check-env-sync.sh`).
+3. **Image rules**: derived `{NAME_PREFIX}-backend:latest` for now; the GHCR merge switches them to registry paths (one-line change + `@version` bump).
+4. **Guard home**: `backend/internal/config/guard.go`, called from `validate()`.
+5. **SOPS/age**: out of core.
+6. **Frontend container env**: still open. Its `process.env.*` reads (with `NEXT_PUBLIC_*` inlined at build time) need their own extractor before `check-compose-env.sh` can cover the frontend service.
+
+Pending at merge (owner): graft the `KEY: ${KEY:-}` snippet that `check-compose-env.sh` prints into `x-backend-environment` and drop the matching `wire` lines from `deploy/env/compose-env.allow`; graft the `env` CI job onto the reworked `ci.yml`.

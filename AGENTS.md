@@ -8,7 +8,7 @@ Canonical env is the **repo-root** `.env`. Compose files are `compose.local.yml`
 
 | Skill | When |
 |-------|------|
-| [boilerplate-first-setup](./.agents/skills/boilerplate-first-setup/SKILL.md) | Clone, `.env`, Docker names, Dokploy, `make local-dev` |
+| [boilerplate-first-setup](./.agents/skills/boilerplate-first-setup/SKILL.md) | Clone, `.env`, Docker names, production env (`make prod-env-init`), Dokploy, `make local-dev` |
 | [monorepo-playbooks](./.agents/skills/monorepo-playbooks/SKILL.md) | Cross-app work; repo map |
 | [add-platform-resource](./.agents/skills/add-platform-resource/SKILL.md) | New list resource (module → RBAC → OpenAPI → UI → nav) |
 | [nav-engine](./.agents/skills/nav-engine/SKILL.md) | Sidebar catalog, badges, info |
@@ -28,7 +28,8 @@ Canonical env is the **repo-root** `.env`. Compose files are `compose.local.yml`
 |-----|------|
 | [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) | Shells, request flow, stores, RBAC |
 | [docs/DEVELOPMENT.md](./docs/DEVELOPMENT.md) | Local / prod commands |
-| [docs/EXTENDING.md](./docs/EXTENDING.md) | How to add a feature (narrative) |
+| [docs/EXTENDING.md](./docs/EXTENDING.md) | How to add a feature (narrative), incl. new env vars |
+| [docs/design/env-core.md](./docs/design/env-core.md) | Env schema, `prod-env.sh`, env CI checks, boot guard |
 | [backend/API_CONVENTIONS.md](./backend/API_CONVENTIONS.md) | Envelope, lists, meta |
 | [backend/DATABASE_RULES.md](./backend/DATABASE_RULES.md) | Migrations + sqlc |
 | [backend/docs/auth.md](./backend/docs/auth.md) | JWT, roles, permissions |
@@ -41,3 +42,4 @@ Canonical env is the **repo-root** `.env`. Compose files are `compose.local.yml`
 - New `/v1` routes update `backend/docs/openapi.yaml` in the same change.
 - Permission slugs are added only via migration + `internal/platform/rbac` + `frontend/src/config/permissions.ts`.
 - After OpenAPI changes: `cd frontend && pnpm api:generate`.
+- Production env comes from `deploy/env/schema` (`make prod-env-init`), never from a copy of `.env.example`. New env vars follow `docs/EXTENDING.md` → "Environment variables"; `.env.server.example` is generated (`scripts/prod-env.sh example`), never hand-edited. `make env-check` must pass.
