@@ -264,7 +264,11 @@ func (s *Service) AddMember(ctx context.Context, orgUUID, userUUID uuid.UUID, ro
 	return s.GetMember(ctx, org.ID, user.Uuid)
 }
 
-func (s *Service) ChangeMemberRole(ctx context.Context, orgUUID, userUUID uuid.UUID, roleKey string) (orgmodel.Member, error) {
+// ChangeMemberRole sets a member's tenant role. actorRole is the caller's role
+// in the organization; the owner-escalation rule (CheckRoleChange) is checked
+// again inside the locked transaction so a concurrent change cannot slip past
+// a handler-level pre-check. Platform callers pass orgctx.RoleOwner.
+func (s *Service) ChangeMemberRole(ctx context.Context, orgUUID, userUUID uuid.UUID, roleKey, actorRole string) (orgmodel.Member, error) {
 	org, user, err := s.loadOrgUser(ctx, orgUUID, userUUID)
 	if err != nil {
 		return orgmodel.Member{}, err
@@ -282,6 +286,9 @@ func (s *Service) ChangeMemberRole(ctx context.Context, orgUUID, userUUID uuid.U
 		if err != nil {
 			return mapRepoNotFound(err, ErrRoleNotFound)
 		}
+		if err := CheckRoleChange(actorRole, current.RoleKey, role.Slug); err != nil {
+			return err
+		}
 		if current.RoleKey == orgctx.RoleOwner && role.Slug != orgctx.RoleOwner {
 			if err := s.guardLastOwner(ctx, q, org.ID); err != nil {
 				return err
@@ -298,7 +305,8 @@ func (s *Service) ChangeMemberRole(ctx context.Context, orgUUID, userUUID uuid.U
 	return s.GetMember(ctx, org.ID, user.Uuid)
 }
 
-func (s *Service) RemoveMember(ctx context.Context, orgUUID, userUUID uuid.UUID) error {
+// RemoveMember deletes a membership. actorRole works as in ChangeMemberRole.
+func (s *Service) RemoveMember(ctx context.Context, orgUUID, userUUID uuid.UUID, actorRole string) error {
 	org, user, err := s.loadOrgUser(ctx, orgUUID, userUUID)
 	if err != nil {
 		return err
@@ -310,6 +318,9 @@ func (s *Service) RemoveMember(ctx context.Context, orgUUID, userUUID uuid.UUID)
 		current, err := s.repo.GetOrganizationMember(ctx, q, org.ID, user.ID)
 		if err != nil {
 			return mapRepoNotFound(err, ErrMemberNotFound)
+		}
+		if err := CheckRoleChange(actorRole, current.RoleKey, ""); err != nil {
+			return err
 		}
 		if current.RoleKey == orgctx.RoleOwner {
 			if err := s.guardLastOwner(ctx, q, org.ID); err != nil {

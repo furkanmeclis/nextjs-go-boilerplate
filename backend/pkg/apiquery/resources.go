@@ -13,8 +13,8 @@ var (
 	}
 	TenantMembersSearchable = []string{"email", "name", "surname"}
 
-	// TenantsSort columns (platform catalog).
-	TenantsSort = SortColumns{
+	// OrganizationsSort columns (platform organizations catalog).
+	OrganizationsSort = SortColumns{
 		"name":       "name",
 		"slug":       "slug",
 		"status":     "status",

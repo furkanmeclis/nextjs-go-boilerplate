@@ -15,6 +15,7 @@ import (
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/activity"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/bulkengine"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/i18n"
+	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/orgctx"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/queue"
 	"github.com/google/uuid"
 	"github.com/hibiken/asynq"
@@ -129,7 +130,8 @@ func (s *Service) Execute(ctx context.Context, actorID int64, in ExecuteInput) (
 		return ExecuteResult{Async: false, Summary: summary}, nil
 	}
 	row, err := s.q.CreateBulkJob(ctx, db.CreateBulkJobParams{
-		Resource: in.Resource, Action: in.Action, ActorID: actorID,
+		OrganizationID: orgctx.Param(ctx),
+		Resource:       in.Resource, Action: in.Action, ActorID: actorID,
 		Locale: string(locale), Status: "queued", TargetJson: targetJSON,
 	})
 	if err != nil {
@@ -166,6 +168,9 @@ func (s *Service) ProcessBulk(ctx context.Context, jobID int64) error {
 	if err != nil {
 		return err
 	}
+	// Workers run outside a request: restore the org the job was created in so
+	// adapters, audit rows and notifications stay scoped to it.
+	ctx = orgctx.WithOrganizationID(ctx, job.OrganizationID)
 	def, adapter, err := s.registry.ActionDef(job.Resource, job.Action)
 	if err != nil {
 		return s.failBulk(ctx, jobID, err.Error())

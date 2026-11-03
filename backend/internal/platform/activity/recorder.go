@@ -9,6 +9,7 @@ import (
 
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/database/db"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/clientip"
+	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/orgctx"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -53,13 +54,14 @@ func (r *Recorder) Record(ctx context.Context, actorID *int64, action, resource 
 		}
 	}
 	_, err = r.q.InsertActivityEvent(ctx, db.InsertActivityEventParams{
-		ActorUserID:  pgtypeInt8(actorID),
-		Action:       action,
-		Resource:     resource,
-		ResourceUuid: ru,
-		Payload:      body,
-		IpAddress:    ip,
-		UserAgent:    ua,
+		OrganizationID: orgctx.Param(ctx),
+		ActorUserID:    pgtypeInt8(actorID),
+		Action:         action,
+		Resource:       resource,
+		ResourceUuid:   ru,
+		Payload:        body,
+		IpAddress:      ip,
+		UserAgent:      ua,
 	})
 	if err != nil {
 		r.log.Warn("activity_record_failed", "action", action, "error", err)

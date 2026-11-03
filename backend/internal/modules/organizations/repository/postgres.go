@@ -216,9 +216,9 @@ func (r *Postgres) ListPendingInvitations(ctx context.Context, orgID int64, limi
 	return rows, total, nil
 }
 
-func (r *Postgres) RevokeInvitation(ctx context.Context, orgID int64, id uuid.UUID) error {
+func (r *Postgres) RevokeInvitation(ctx context.Context, orgID int64, id uuid.UUID, allowOwner bool) error {
 	_, err := r.q.RevokeOrganizationInvitation(ctx, db.RevokeOrganizationInvitationParams{
-		Uuid: id, OrganizationID: orgID,
+		Uuid: id, OrganizationID: orgID, AllowOwner: allowOwner,
 	})
 	return mapErr(err)
 }

@@ -1,0 +1,10 @@
+# Tables whose rows belong to one organization. Every sqlc query that touches
+# one of them must reference organization_id (see queries_test.go), or carry a
+# "-- tenant-lint: cross-org <reason>" line directly above its "-- name:" line.
+#
+# Engine tables with a nullable organization_id (activity_events,
+# notifications, export_jobs, import_jobs, bulk_jobs) are not listed yet: their
+# rows are user-scoped today and platform views read across organizations.
+# Add a table here once every query on it is org-filtered or exempted.
+organization_members
+organization_invitations

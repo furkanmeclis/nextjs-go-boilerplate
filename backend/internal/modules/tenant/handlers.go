@@ -28,11 +28,11 @@ type OrganizationService interface {
 	PatchOrganization(ctx context.Context, id uuid.UUID, in orgmodel.PatchOrganizationInput) (orgmodel.Organization, error)
 	ListMembers(ctx context.Context, orgUUID uuid.UUID, f orgmodel.MemberListFilter) ([]orgmodel.Member, int64, error)
 	GetMember(ctx context.Context, orgID int64, userUUID uuid.UUID) (orgmodel.Member, error)
-	ChangeMemberRole(ctx context.Context, orgUUID, userUUID uuid.UUID, roleKey string) (orgmodel.Member, error)
-	RemoveMember(ctx context.Context, orgUUID, userUUID uuid.UUID) error
+	ChangeMemberRole(ctx context.Context, orgUUID, userUUID uuid.UUID, roleKey, actorRole string) (orgmodel.Member, error)
+	RemoveMember(ctx context.Context, orgUUID, userUUID uuid.UUID, actorRole string) error
 	ListInvitations(ctx context.Context, orgID int64, limit, offset int32) ([]orgmodel.Invitation, int64, error)
 	CreateInvitation(ctx context.Context, in orgmodel.CreateInvitationInput) (orgmodel.Invitation, error)
-	RevokeInvitation(ctx context.Context, orgID int64, id uuid.UUID) error
+	RevokeInvitation(ctx context.Context, orgID int64, id uuid.UUID, actorRole string) error
 	PreviewInvitation(ctx context.Context, token string) (orgmodel.InvitationPreview, error)
 	AcceptInvitation(ctx context.Context, token string, userID int64) (orgmodel.AcceptedInvitation, error)
 }
@@ -105,7 +105,7 @@ func (h *Handler) changeMemberRole(w http.ResponseWriter, r *http.Request) {
 		writeError(w, r, err)
 		return
 	}
-	member, err := h.svc.ChangeMemberRole(r.Context(), s.UUID, userUUID, in.RoleKey)
+	member, err := h.svc.ChangeMemberRole(r.Context(), s.UUID, userUUID, in.RoleKey, s.MemberRole)
 	if err != nil {
 		writeError(w, r, err)
 		return
@@ -132,7 +132,7 @@ func (h *Handler) removeMember(w http.ResponseWriter, r *http.Request) {
 		writeError(w, r, err)
 		return
 	}
-	if err := h.svc.RemoveMember(r.Context(), s.UUID, userUUID); err != nil {
+	if err := h.svc.RemoveMember(r.Context(), s.UUID, userUUID, s.MemberRole); err != nil {
 		writeError(w, r, err)
 		return
 	}
@@ -149,7 +149,7 @@ func (h *Handler) leave(w http.ResponseWriter, r *http.Request) {
 		response.Forbidden(w, r, "Cannot leave an organization while impersonating")
 		return
 	}
-	if err := h.svc.RemoveMember(r.Context(), s.UUID, p.UserID); err != nil {
+	if err := h.svc.RemoveMember(r.Context(), s.UUID, p.UserID, s.MemberRole); err != nil {
 		writeError(w, r, err)
 		return
 	}
@@ -217,7 +217,7 @@ func (h *Handler) revokeInvitation(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	if err := h.svc.RevokeInvitation(r.Context(), s.ID, id); err != nil {
+	if err := h.svc.RevokeInvitation(r.Context(), s.ID, id, s.MemberRole); err != nil {
 		writeError(w, r, err)
 		return
 	}

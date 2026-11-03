@@ -11,6 +11,7 @@ import (
 	orgusecase "github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/modules/organizations/usecase"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/activity"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/authctx"
+	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/orgctx"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/resourcemeta"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/pkg/apiquery"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/pkg/response"
@@ -31,7 +32,7 @@ func (h *Handler) Meta(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
-	q, ok := parseListQuery(w, r, apiquery.TenantsSort)
+	q, ok := parseListQuery(w, r, apiquery.OrganizationsSort)
 	if !ok {
 		return
 	}
@@ -222,7 +223,7 @@ func (h *Handler) PatchMember(w http.ResponseWriter, r *http.Request) {
 	if err := decodeJSON(w, r, &in); err != nil {
 		return
 	}
-	member, err := h.svc.ChangeMemberRole(r.Context(), orgID, userID, in.RoleKey)
+	member, err := h.svc.ChangeMemberRole(r.Context(), orgID, userID, in.RoleKey, orgctx.RoleOwner) // platform admins act with owner rights
 	if err != nil {
 		writeError(w, r, err)
 		return
@@ -236,7 +237,7 @@ func (h *Handler) DeleteMember(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	if err := h.svc.RemoveMember(r.Context(), orgID, userID); err != nil {
+	if err := h.svc.RemoveMember(r.Context(), orgID, userID, orgctx.RoleOwner); err != nil {
 		writeError(w, r, err)
 		return
 	}

@@ -16,6 +16,7 @@ import (
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/i18n"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/ioengine"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/ioengine/adapters"
+	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/orgctx"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/storage"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/queue"
 	"github.com/google/uuid"
@@ -91,7 +92,8 @@ func (s *Service) Upload(ctx context.Context, actorID int64, resource string, fo
 		return ImportJobView{}, err
 	}
 	row, err := s.q.CreateImportJob(ctx, db.CreateImportJobParams{
-		Resource: resource, ActorID: actorID, Format: string(format), Locale: locale,
+		OrganizationID: orgctx.Param(ctx),
+		Resource:       resource, ActorID: actorID, Format: string(format), Locale: locale,
 		FileKey: pgtype.Text{},
 	})
 	if err != nil {
@@ -214,6 +216,9 @@ func (s *Service) ProcessImport(ctx context.Context, jobID int64) error {
 	if err != nil {
 		return err
 	}
+	// Workers run outside a request: restore the org the job was created in so
+	// adapters, audit rows and notifications stay scoped to it.
+	ctx = orgctx.WithOrganizationID(ctx, job.OrganizationID)
 	adapter, err := s.registry.Get(job.Resource)
 	if err != nil {
 		return s.failImport(ctx, jobID, err.Error())

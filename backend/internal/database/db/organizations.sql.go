@@ -22,6 +22,7 @@ WHERE id = $1
 RETURNING id, uuid, organization_id, email, role_id, token_hash, expires_at, accepted_at, revoked_at, invited_by, created_at
 `
 
+// tenant-lint: cross-org id comes from the token lookup in the same locked tx
 // Single use: only a pending, unexpired invitation flips to accepted.
 func (q *Queries) AcceptOrganizationInvitation(ctx context.Context, id int64) (OrganizationInvitation, error) {
 	row := q.db.QueryRow(ctx, acceptOrganizationInvitation, id)
@@ -395,30 +396,6 @@ func (q *Queries) GetOrganizationInvitationByTokenHash(ctx context.Context, toke
 		&i.RoleName,
 		&i.InviterName,
 		&i.InviterSurname,
-	)
-	return i, err
-}
-
-const getOrganizationInvitationByUUID = `-- name: GetOrganizationInvitationByUUID :one
-SELECT id, uuid, organization_id, email, role_id, token_hash, expires_at, accepted_at, revoked_at, invited_by, created_at FROM organization_invitations
-WHERE uuid = $1
-`
-
-func (q *Queries) GetOrganizationInvitationByUUID(ctx context.Context, argUuid uuid.UUID) (OrganizationInvitation, error) {
-	row := q.db.QueryRow(ctx, getOrganizationInvitationByUUID, argUuid)
-	var i OrganizationInvitation
-	err := row.Scan(
-		&i.ID,
-		&i.Uuid,
-		&i.OrganizationID,
-		&i.Email,
-		&i.RoleID,
-		&i.TokenHash,
-		&i.ExpiresAt,
-		&i.AcceptedAt,
-		&i.RevokedAt,
-		&i.InvitedBy,
-		&i.CreatedAt,
 	)
 	return i, err
 }
@@ -1062,22 +1039,27 @@ func (q *Queries) ResolveOrganizationScopeByUUID(ctx context.Context, arg Resolv
 }
 
 const revokeOrganizationInvitation = `-- name: RevokeOrganizationInvitation :one
-UPDATE organization_invitations
+UPDATE organization_invitations oi
 SET revoked_at = NOW()
-WHERE uuid = $1
-  AND organization_id = $2
-  AND accepted_at IS NULL
-  AND revoked_at IS NULL
-RETURNING id, uuid, organization_id, email, role_id, token_hash, expires_at, accepted_at, revoked_at, invited_by, created_at
+WHERE oi.uuid = $1
+  AND oi.organization_id = $2
+  AND oi.accepted_at IS NULL
+  AND oi.revoked_at IS NULL
+  AND ($3::boolean OR NOT EXISTS (
+    SELECT 1 FROM roles r WHERE r.id = oi.role_id AND r.slug = 'owner'))
+RETURNING oi.id, oi.uuid, oi.organization_id, oi.email, oi.role_id, oi.token_hash, oi.expires_at, oi.accepted_at, oi.revoked_at, oi.invited_by, oi.created_at
 `
 
 type RevokeOrganizationInvitationParams struct {
 	Uuid           uuid.UUID `json:"uuid"`
 	OrganizationID int64     `json:"organization_id"`
+	AllowOwner     bool      `json:"allow_owner"`
 }
 
+// Only owners may cancel an invitation that would grant the owner role
+// (allow_owner); for anyone else such a row is simply not found.
 func (q *Queries) RevokeOrganizationInvitation(ctx context.Context, arg RevokeOrganizationInvitationParams) (OrganizationInvitation, error) {
-	row := q.db.QueryRow(ctx, revokeOrganizationInvitation, arg.Uuid, arg.OrganizationID)
+	row := q.db.QueryRow(ctx, revokeOrganizationInvitation, arg.Uuid, arg.OrganizationID, arg.AllowOwner)
 	var i OrganizationInvitation
 	err := row.Scan(
 		&i.ID,

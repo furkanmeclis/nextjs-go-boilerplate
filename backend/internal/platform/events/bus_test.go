@@ -18,15 +18,15 @@ func TestBus_PublishInvokesSubscribers(t *testing.T) {
 		if event.Name != CustomersCreated {
 			t.Fatalf("name = %s", event.Name)
 		}
-		if event.TenantID == nil || *event.TenantID != tenantID {
-			t.Fatalf("tenant = %#v", event.TenantID)
+		if event.OrganizationID == nil || *event.OrganizationID != tenantID {
+			t.Fatalf("tenant = %#v", event.OrganizationID)
 		}
 		if event.EventID.String() == "" {
 			t.Fatal("expected event id")
 		}
 		return nil
 	})
-	err := bus.Publish(context.Background(), New(CustomersCreated).WithTenant(tenantID))
+	err := bus.Publish(context.Background(), New(CustomersCreated).WithOrganization(tenantID))
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -18,10 +18,10 @@ func TestParseAndValidateSort(t *testing.T) {
 	if q.Limit != 50 || q.Offset != 10 || q.Q != "acme" {
 		t.Fatalf("parse: %+v", q)
 	}
-	if err := apiquery.ValidateSort(q.Sort, apiquery.TenantsSort); err != nil {
+	if err := apiquery.ValidateSort(q.Sort, apiquery.OrganizationsSort); err != nil {
 		t.Fatal(err)
 	}
-	if err := apiquery.ValidateSort(apiquery.ParseSort("bogus"), apiquery.TenantsSort); err == nil {
+	if err := apiquery.ValidateSort(apiquery.ParseSort("bogus"), apiquery.OrganizationsSort); err == nil {
 		t.Fatal("expected validation error")
 	}
 }

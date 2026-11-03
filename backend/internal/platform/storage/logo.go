@@ -82,19 +82,9 @@ func ValidateLogoSize(size int64) error {
 	return nil
 }
 
-// TenantLogoObjectKey builds tenants/{uuid}/logo.{ext}.
-func TenantLogoObjectKey(tenantUUID uuid.UUID, ext string) string {
-	return fmt.Sprintf("tenants/%s/logo.%s", tenantUUID.String(), strings.TrimPrefix(ext, "."))
-}
-
-// WorkspaceLogoObjectKey builds tenants/{tid}/workspaces/{wid}/logo.{ext}.
-func WorkspaceLogoObjectKey(tenantUUID, workspaceUUID uuid.UUID, ext string) string {
-	return fmt.Sprintf(
-		"tenants/%s/workspaces/%s/logo.%s",
-		tenantUUID.String(),
-		workspaceUUID.String(),
-		strings.TrimPrefix(ext, "."),
-	)
+// OrganizationLogoObjectKey builds organizations/{uuid}/logo.{ext}.
+func OrganizationLogoObjectKey(orgUUID uuid.UUID, ext string) string {
+	return fmt.Sprintf("organizations/%s/logo.%s", orgUUID.String(), strings.TrimPrefix(ext, "."))
 }
 
 // WidgetLogoObjectKey builds channel-accounts/{uuid}/widget-logo.{ext}.

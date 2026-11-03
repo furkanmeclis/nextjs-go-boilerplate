@@ -35,7 +35,7 @@ type InvitationRepository interface {
 	CreateInvitation(ctx context.Context, q *db.Queries, params db.CreateOrganizationInvitationParams) (db.OrganizationInvitation, error)
 	RevokePendingInvitationsForEmail(ctx context.Context, q *db.Queries, orgID int64, email string) error
 	ListPendingInvitations(ctx context.Context, orgID int64, limit, offset int32) ([]db.ListPendingOrganizationInvitationsRow, int64, error)
-	RevokeInvitation(ctx context.Context, orgID int64, id uuid.UUID) error
+	RevokeInvitation(ctx context.Context, orgID int64, id uuid.UUID, allowOwner bool) error
 	GetInvitationByTokenHash(ctx context.Context, hash string) (db.GetOrganizationInvitationByTokenHashRow, error)
 	AcceptInvitation(ctx context.Context, q *db.Queries, id int64) error
 	GetUserByEmail(ctx context.Context, email string) (db.User, error)
@@ -234,12 +234,14 @@ func (s *Service) sendInvitationEmail(ctx context.Context, in orgmodel.CreateInv
 	}
 }
 
-// RevokeInvitation cancels an open invitation of the organization.
-func (s *Service) RevokeInvitation(ctx context.Context, orgID int64, id uuid.UUID) error {
+// RevokeInvitation cancels an open invitation of the organization. Only an
+// owner may cancel an owner-role invitation; for other actors it is not found.
+func (s *Service) RevokeInvitation(ctx context.Context, orgID int64, id uuid.UUID, actorRole string) error {
 	if s.inv == nil {
 		return ErrInvitationsDisabled
 	}
-	return mapRepoNotFound(s.inv.repo.RevokeInvitation(ctx, orgID, id), ErrInvitationNotFound)
+	allowOwner := actorRole == orgctx.RoleOwner
+	return mapRepoNotFound(s.inv.repo.RevokeInvitation(ctx, orgID, id, allowOwner), ErrInvitationNotFound)
 }
 
 // PreviewInvitation describes an invitation to the holder of its link.

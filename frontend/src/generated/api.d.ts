@@ -1010,8 +1010,9 @@ export interface paths {
         put?: never;
         /**
          * Issue Centrifugo subscription JWT
-         * @description Body `{ channel }`. Allowlist `user:{own_uuid}`, member `workspace:{uuid}`,
-         *     and `conversation:{uuid}` (authenticated session; HTTP inbox ACL is the hard boundary).
+         * @description Body `{ channel }`. Allowlist: `user:{own_uuid}`, `org:{uuid}` for active
+         *     members of that organization (tenancy enabled), and `system.notifications`
+         *     for super admins. Anything else is refused.
          */
         post: operations["postRealtimeSubscriptionToken"];
         delete?: never;

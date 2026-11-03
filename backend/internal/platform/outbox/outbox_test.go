@@ -18,7 +18,7 @@ func TestEnqueueAndDrain(t *testing.T) {
 
 	tid := int64(7)
 	ev := events.New("customers.created").
-		WithTenant(tid).
+		WithOrganization(tid).
 		WithPayload(map[string]any{"customer_event_uuid": "ce-1"})
 
 	if err := mem.Enqueue(context.Background(), nil, ev); err != nil {

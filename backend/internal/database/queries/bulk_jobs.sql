@@ -1,6 +1,6 @@
 -- name: CreateBulkJob :one
-INSERT INTO bulk_jobs (resource, action, actor_id, locale, status, target_json)
-VALUES ($1, $2, $3, $4, $5, $6)
+INSERT INTO bulk_jobs (resource, action, actor_id, locale, status, target_json, organization_id)
+VALUES ($1, $2, $3, $4, $5, $6, sqlc.narg(organization_id))
 RETURNING *;
 
 -- name: GetBulkJobByUUID :one

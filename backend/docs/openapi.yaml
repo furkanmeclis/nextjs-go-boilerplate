@@ -7,9 +7,10 @@ info:
     Starter HTTP API for the Next.js + Go boilerplate.
 
     **In scope:** authentication, global RBAC, platform users/roles, notifications,
-    Web Push (VAPID), passkeys, and Centrifugo realtime tokens.
+    Web Push (VAPID), passkeys, Centrifugo realtime tokens, and organizations
+    (tenant core: `/v1/tenant/*` with the `X-Organization` header).
 
-    **Out of scope:** tenants, workspaces, CRM, inbox, commerce, AI, tickets, reports.
+    **Out of scope:** CRM, inbox, commerce, AI, tickets, reports.
     Those product modules were stripped. Live Go routes (`internal/modules/**/routes.go`)
     are the source of truth if a path below is missing from the router.
 
@@ -1844,8 +1845,9 @@ paths:
       operationId: postRealtimeSubscriptionToken
       summary: Issue Centrifugo subscription JWT
       description: |
-        Body `{ channel }`. Allowlist `user:{own_uuid}`, member `workspace:{uuid}`,
-        and `conversation:{uuid}` (authenticated session; HTTP inbox ACL is the hard boundary).
+        Body `{ channel }`. Allowlist: `user:{own_uuid}`, `org:{uuid}` for active
+        members of that organization (tenancy enabled), and `system.notifications`
+        for super admins. Anything else is refused.
       security:
         - bearerAuth: []
       requestBody:
