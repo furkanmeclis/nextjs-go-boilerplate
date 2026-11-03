@@ -3584,6 +3584,9 @@ components:
             type: string
         organizations:
           type: array
+          description: >-
+            Tenant memberships (role and `tenant.*` permissions per
+            organization). Present only when `TENANCY_ENABLED=true`.
           items:
             $ref: "#/components/schemas/MeOrganization"
         links:
