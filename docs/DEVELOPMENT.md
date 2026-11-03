@@ -82,9 +82,44 @@ Optional frontend public vars (root `.env`): `NEXT_PUBLIC_BFF_BASE_URL`, `NEXT_P
 
 ## Production / Dokploy
 
+The server **never builds** app images. CI builds them, pushes them to GHCR, and tags a release. Dokploy pulls the images and deploys.
+
+```
+push feature branch ─► CI: changes → backend / frontend / mobile / image-build (no push) ─► ci gate
+owner merges to main ─► CI on main: backend + frontend green
+                          → publish-images  ghcr.io/<owner>/<repo>-<service>:main + :sha-<short>
+                          → release-tag     next v0.N git tag
+                          → mobile-release  EAS, only on a real mobile/** change
+Dokploy (watches v0.* tags) ─► docker compose -f compose.prod.yml up  (pull_policy: always)
+```
+
+- **Which images**: every entry in [`deploy/images.json`](../deploy/images.json). CI loops over it as a matrix (nothing is hardcoded), so you ship a new container by adding an entry there plus a service in `compose.prod.yml`.
+- **Image names** come from the repository: `ghcr.io/<owner>/<repo>-backend`, `…-frontend`. A fork publishes under its own name with no edits.
+- **Release tags**: `release-tag` cuts `v0.1`, `v0.2`, … only after every image is pushed. Point Dokploy's deploy trigger at tags matching `v0.*`.
+
+### One-time setup
+
+1. GHCR packages are private by default. Either make the two packages public, or log the server in once: `docker login ghcr.io` with a PAT that has `read:packages`. In Dokploy, add it as a registry.
+2. Point Dokploy's deploy trigger at git tags matching `v0.*`.
+3. Create the env file (next section). `init` asks for `IMAGE_REPO` (`ghcr.io/<owner>/<repo>`) and derives `BACKEND_IMAGE` / `FRONTEND_IMAGE` (`…-backend:main`, `…-frontend:main`) and `IMAGE_PULL_POLICY=always`. To pin a deploy to an exact build, edit the tags to `:sha-<short>`.
+
+### Secrets and settings (GitHub → Settings)
+
+| What | Needed for | Notes |
+|---|---|---|
+| `GITHUB_TOKEN` | `publish-images`, `release-tag` | Built in; the workflow grants `packages: write` / `contents: write`. No secret to add. If pushes are refused, check Settings → Actions → General → Workflow permissions. |
+| `EXPO_TOKEN` (optional) | `mobile-release` | Without it (or without `mobile/`, or without an EAS `projectId` in `mobile/app.json`), the job skips green with a note. |
+| `AUTO_PR_TOKEN` (optional) | `auto-pr` | Fine-grained PAT (Contents + Pull requests: read/write). The alternative is Settings → Actions → General → "Allow GitHub Actions to create and approve pull requests". With neither, `auto-pr` fails and you merge by hand. It is deliberately outside the `ci` gate. |
+
+Set **`ci`** as the only required status check on `main`. The individual jobs skip by path on purpose (the `changes` job maps `backend/**`, `frontend/**`, `mobile/**`, Dockerfiles / `compose.prod.yml` / `deploy/**`; docs and `*.md` run nothing). A weekly scheduled run rebuilds every image without pushing.
+
+Smoke-testing a local build of the prod stack: `docker build -t app-backend:local backend`, do the same for the frontend, point `BACKEND_IMAGE` / `FRONTEND_IMAGE` in `.env.server` at those tags, set `IMAGE_PULL_POLICY=missing` and run `make prod-up`.
+
+### Environment file
+
 The production env is generated from `deploy/env/schema`; never start from `.env.example` (design: [design/env-core.md](./design/env-core.md)). Needs bash 4.3+ and openssl (macOS: `brew install bash`).
 
-1. `make prod-env-init` asks for `APP_URL` and offers defaults for `NAME_PREFIX` (first host label) and the Centrifugo URL (`wss://realtime.<host>/…`). It derives every URL, generates every secret and the VAPID pair, and writes `.env.server` (mode 600, git-ignored). Non-interactive: `make prod-env-init ARGS="--set APP_URL=https://app.example.com --yes"`.
+1. `make prod-env-init` asks for `APP_URL` and `IMAGE_REPO` (`ghcr.io/<owner>/<repo>`, lowercase) and offers defaults for `NAME_PREFIX` (first host label) and the Centrifugo URL (`wss://realtime.<host>/…`). It derives every URL, generates every secret and the VAPID pair, and writes `.env.server` (mode 600, git-ignored). Non-interactive: `make prod-env-init ARGS="--set APP_URL=https://app.example.com --set IMAGE_REPO=ghcr.io/<owner>/<repo> --yes"`.
 2. Fill `SMTP_*` (and the Sentry DSNs if you use them) in `.env.server`.
 3. `make prod-config` then `make prod-up`. On Dokploy, paste the file into the compose app's environment and add two domains: **frontend** (port 3000) on the `APP_URL` host and **centrifugo** (port 8000) on the `CENTRIFUGO_WS_URL` host.
 4. Plain Docker host only (Dokploy creates it for you): `docker network create dokploy-network` once

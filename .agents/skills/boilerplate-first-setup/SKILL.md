@@ -106,9 +106,19 @@ Browser must **never** assemble S3 URLs from object keys. Use API-returned `publ
 
 ## 7. Production / Dokploy
 
+**Prebuilt images.** The server never builds. On a green push to `main`, CI pushes `ghcr.io/<owner>/<repo>-<service>:main` and `:sha-<short>` for every entry in `deploy/images.json`, then cuts the next `v0.N` tag. Dokploy deploys on `v0.*` tags and pulls the images. Full flow and diagram: `docs/DEVELOPMENT.md` → Production.
+
+1. GHCR access: make the packages public, or add a `ghcr.io` registry with a `read:packages` PAT in Dokploy (or run `docker login ghcr.io` on the host).
+2. Dokploy deploy trigger: git tags matching `v0.*`.
+3. Image variables come from the schema: `prod-env-init` asks `IMAGE_REPO` (`ghcr.io/<owner>/<repo>`) and derives `BACKEND_IMAGE`, `FRONTEND_IMAGE` (`:main`) and `IMAGE_PULL_POLICY=always`.
+
+Secrets: `GITHUB_TOKEN` is built in. The workflow grants it `packages: write` for GHCR and `contents: write` for the tag. Optional `EXPO_TOKEN` enables `mobile-release`; it skips green without it. `auto-pr` needs either Settings → Actions → General → "Allow GitHub Actions to create and approve pull requests" or an `AUTO_PR_TOKEN` PAT. Otherwise merge to `main` by hand. Make `ci` the single required check.
+
+New container (e.g. a widget)? Add `{ "service", "context", "dockerfile" }` to `deploy/images.json` and a service in `compose.prod.yml` that uses `pull_policy: ${IMAGE_PULL_POLICY:-always}`. CI then builds and publishes it automatically.
+
 The production env comes from `deploy/env/schema` (design: `docs/design/env-core.md`). Needs bash 4.3+ and openssl.
 
-1. `make prod-env-init`: asks `APP_URL`, offers defaults for `NAME_PREFIX` (first host label) and `CENTRIFUGO_WS_URL` (`wss://realtime.<host>/…`), derives every URL, generates every secret + the VAPID pair, writes `.env.server` (mode 600, git-ignored). Agents / CI: `make prod-env-init ARGS="--set APP_URL=https://app.example.com --yes"`. Never invent secret values by hand.
+1. `make prod-env-init`: asks `APP_URL` and `IMAGE_REPO`, offers defaults for `NAME_PREFIX` (first host label) and `CENTRIFUGO_WS_URL` (`wss://realtime.<host>/…`), derives every URL, generates every secret + the VAPID pair, writes `.env.server` (mode 600, git-ignored). Agents / CI: `make prod-env-init ARGS="--set APP_URL=https://app.example.com --set IMAGE_REPO=ghcr.io/<owner>/<repo> --yes"`. Never invent secret values by hand.
 2. Fill `SMTP_*` (and `BACKEND_SENTRY_DSN` / `FRONTEND_SENTRY_DSN` if used)
 3. `make prod-config` then `make prod-up`. Dokploy: paste the file into the app's environment; domains frontend:3000 (`APP_URL` host) and centrifugo:8000 (`CENTRIFUGO_WS_URL` host)
 4. Plain Docker host only: `docker network create dokploy-network` (once; Dokploy creates it itself)
@@ -139,3 +149,4 @@ New env var? Follow `docs/EXTENDING.md` → "Environment variables" (config.go �
 - [ ] VAPID keys if push is in scope
 - [ ] Production: `make prod-env-init` (not a copy of `.env.example`), then `make prod-env-check` passes
 - [ ] Brand tokens swapped if this is a named product
+- [ ] `ci` is the required check on `main`; Dokploy pulls `ghcr.io/<owner>/<repo>-*` and deploys on `v0.*` tags
