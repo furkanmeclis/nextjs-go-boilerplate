@@ -66,6 +66,16 @@ jobs:
         working-directory: .
         run: node scripts/check-i18n.mjs
 
+  # Env config (docs/design/env-core.md): .env.server.example matches
+  # deploy/env/schema, .env.example has every schema key, prod-env tests pass
+  # (they also run `docker compose config` on compose.prod.yml).
+  env:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Env schema sync
+        run: scripts/check-env-sync.sh
+
   # Feature branch pushed and both test jobs green → open (or reuse) a PR into
   # main and turn on auto-merge. GitHub merges once main's required checks pass.
   # Opt out per push by putting [no-automerge] in the head commit message.
