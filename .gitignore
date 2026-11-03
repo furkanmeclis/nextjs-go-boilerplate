@@ -1,7 +1,10 @@
 # Root env
 .env
 .env.server
+# prod-env.sh backups and temp files hold live secrets too
+.env.server.*
 !.env.example
+!.env.server.example
 
 # Frontend (Next.js)
 frontend/node_modules/

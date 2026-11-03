@@ -1,6 +1,6 @@
 # Environment config core — design study
 
-Status: **design proposal** (nothing implemented yet; this document is the Phase 0 deliverable and is up for review before any code lands). Reference implementations live in sibling forks of this boilerplate: `rentopia-app-go` (mature schema-driven generator), `olexfilms` (earlier non-schema generator with a careful rotation policy), `clickfix` (a compose-env CI check). This document surveys that prior art, recommends the **healthiest** version for the core, and lays out a phased plan. It deliberately does **not** copy any one fork.
+Status: **phase 1 implemented** (schema + `scripts/prod-env.sh`; see §12). Later phases are proposals. Reference implementations live in sibling forks of this boilerplate: `rentopia-app-go` (mature schema-driven generator), `olexfilms` (earlier non-schema generator with a careful rotation policy), `clickfix` (a compose-env CI check). This document surveys that prior art, recommends the **healthiest** version for the core, and lays out a phased plan. It deliberately does **not** copy any one fork.
 
 ## 1. Goal
 
@@ -51,71 +51,63 @@ Healthiest-version refinements beyond rentopia's fork:
 
 ## 4. Schema format
 
-One file, `deploy/env/schema`. Line-oriented, diffable, parsed by awk. Adapted from rentopia and generalised.
+One file, `deploy/env/schema` (implemented in phase 1; the file itself is the reference, this is an excerpt). Line-oriented and diffable. Adapted from rentopia and generalised.
 
 ```
-@version 3
+@version 1
 
-# --- Identity / naming ---
-NAME_PREFIX        | ask:NAME_PREFIX           # second prompt; default = first host label
-COMPOSE_PROJECT_NAME | derive:{NAME_PREFIX}-prod
-APP_NETWORK_NAME   | derive:{NAME_PREFIX}-app
-POSTGRES_VOLUME_NAME | derive:{NAME_PREFIX}-prod-postgres
-BACKEND_IMAGE      | ask:BACKEND_IMAGE
-FRONTEND_IMAGE     | ask:FRONTEND_IMAGE
+@norotate APP_ENCRYPTION_KEY
+@norotate DB_PASSWORD
 
-# --- App / URLs ---
-APP_URL            | ask:APP_URL               # the ONLY URL prompt; everything below derives
-APP_ENV            | const:production
-AUTH_URL           | derive:{APP_URL}
-PUBLIC_FRONTEND_URL | derive:{APP_URL}
+# --- Identity ---
+# Public origin of the app (the frontend domain). Every URL below derives from it.
+APP_URL | ask:{AUTH_URL}
+# Unique per app on a host: names containers, volumes and the app network.
+NAME_PREFIX | ask:{APP_LABEL}
+BACKEND_IMAGE | derive:{NAME_PREFIX}-backend:latest
+
+# --- Public URLs ---
+AUTH_URL | derive:{APP_URL}
 CORS_ALLOWED_ORIGINS | derive:{APP_URL}
-CENTRIFUGO_WS_URL  | derive:wss://{APP_HOST}/connection/websocket
-CENTRIFUGO_ALLOWED_ORIGINS | derive:{APP_URL}
-AUTH_WEBAUTHN_RP_ID | derive:{APP_HOST}
+# Centrifugo has its own domain (Dokploy: service centrifugo, container port 8000).
+CENTRIFUGO_WS_URL | ask:wss://realtime.{APP_HOST}/connection/websocket
 
-# --- Secrets (generated once; never regenerated on upgrade) ---
-DB_PASSWORD        | secret:alnum:32
-REDIS_PASSWORD     | secret:alnum:32
-JWT_ACCESS_SECRET  | secret:hex:64
-JWT_REFRESH_SECRET | secret:hex:64
-AUTH_SECRET        | secret:b64:32
-AUTH_ADAPTER_SECRET | secret:b64:32
-APP_ENCRYPTION_KEY | secret:b64:32            # PII at rest — see rotation block list, §6
-CENTRIFUGO_API_KEY | secret:hex:32
-CENTRIFUGO_TOKEN_HMAC_SECRET | secret:hex:32
-S3_SECRET_KEY      | secret:alnum:40
-MEILI_MASTER_KEY   | secret:b64:32
-VAPID_PUBLIC_KEY   | vapid:public
-VAPID_PRIVATE_KEY  | vapid:private
-
-# --- Optional (blank unless the operator fills them) ---
-BACKEND_SENTRY_DSN | empty
-SMTP_HOST          | empty
+# --- Signing and encryption secrets ---
+JWT_ACCESS_SECRET | secret:hex:32
+# Encrypts credentials stored in the database. Never rotate it: they become unreadable.
+APP_ENCRYPTION_KEY | secret:b64:32
+VAPID_PUBLIC_KEY | vapid:public
+VAPID_PRIVATE_KEY | vapid:private
+SMTP_HOST | empty
 ```
+
+`#` comment lines and blank lines are copied into the generated files, so the schema documents itself for operators; `##` lines are schema-only notes. Keys the schema does not list (tenancy, mobile auth, log level, …) keep their `compose.prod.yml` defaults and stay documented in `.env.example`; the schema covers what compose **requires** plus the few optional keys operators actually set (SMTP, Sentry).
 
 Rules (one per managed key, `KEY | rule`):
 
 | Rule | Meaning |
 |---|---|
-| `ask:NAME` | Prompt the operator. `APP_URL` and `NAME_PREFIX` are the only two. `NAME_PREFIX` offers a default (first DNS label of `APP_URL`); `BACKEND_IMAGE`/`FRONTEND_IMAGE` are asked too (registry-specific — the GHCR work owns their shape, §12). |
-| `derive:<template>` | Compute from already-set values. Substitutions: `{APP_URL}`, `{APP_HOST}` (hostname, no scheme/port), `{APP_SCHEME}`, and `{KEY}` for any earlier key. |
-| `const:<value>` | Fixed literal (e.g. `APP_ENV=production`). |
-| `secret:hex\|alnum\|b64:<n>` | Generate `<n>` bytes/chars via openssl. Generated once; preserved forever after. |
-| `vapid:public` / `vapid:private` | Generated as a matched pair (one `openssl ec` keypair → the two values). |
-| `empty` | Managed, intentionally blank; the operator may fill it. Keeps the key in the file and the docs without inventing a value. |
+| `ask:<default>` | Prompt the operator (or take `--set KEY=…`). `<default>` is a template; with `--yes` the default is accepted. Only `APP_URL` has no usable default on a fresh file; `NAME_PREFIX` defaults to the first host label (`app` when that would not be a valid prefix); `CENTRIFUGO_WS_URL` defaults to `wss://realtime.<host>/…`. A default that names a missing key resolves to empty, which is how `APP_URL | ask:{AUTH_URL}` upgrades legacy files. |
+| `derive:<template>` | Computed. `{KEY}` = any **earlier** key, plus `{APP_HOST}`, `{APP_SCHEME}`, `{APP_LABEL}` taken from `APP_URL`. Checked at parse time. |
+| `const:<value>` | Fixed literal (e.g. `DB_USER=app`, `SMTP_PORT=587`). |
+| `secret:hex\|b64\|alnum:<n>` | Generated by openssl (`hex`/`b64`: n bytes, `alnum`: n chars). Generated once, preserved forever. `b64:32` is what `crypto.NewSecretBox` expects for `APP_ENCRYPTION_KEY`. |
+| `vapid:public` / `vapid:private` | One P-256 key pair in web-push format (base64url, no padding), generated together. |
+| `empty` | Managed but blank; the operator fills it. |
 
-Schema evolution (migrations), applied in order by `upgrade`:
+Directives:
 
 | Directive | Meaning |
 |---|---|
-| `@version N` | The current schema version. Stamped into generated files as `ENV_SCHEMA_VERSION=N`. |
-| `@rename OLD NEW <ver>` | At `<ver>`, a key was renamed. `upgrade` moves the **existing value** OLD→NEW (so a deployed secret survives a rename). |
-| `@remove KEY <ver>` | At `<ver>`, a key was dropped. `upgrade` comments it out (`# removed@<ver>: KEY=…`) rather than deleting, so a rollback can recover it. |
+| `@version N` | Current schema version; stamped as `ENV_SCHEMA_VERSION=N`. Bump it with every change. |
+| `@rename OLD NEW <ver>` | At `<ver>` OLD became NEW; `upgrade` moves the **existing value** (a deployed secret survives the rename). |
+| `@remove KEY <ver>` | At `<ver>` KEY was dropped; `upgrade` comments it out (`# removed@<ver>: KEY=…`) so a rollback can recover it. |
+| `@norotate KEY` | `upgrade --rotate` refuses KEY because rotating it destroys data. Forks add their PII keys here. |
+
+Image names are **derived** (`{NAME_PREFIX}-backend:latest`, what `make prod-up` builds) rather than asked, so `init` still needs a single answer. The GHCR session will likely change these two rules to a registry path; that is a one-line schema change plus a `@version` bump.
 
 ## 5. Generator CLI — `scripts/prod-env.sh`
 
-Four subcommands. bash 4+, openssl, awk; no network.
+Four subcommands. bash 4.3+ and openssl; no network. Tests: `scripts/prod-env.test.sh`.
 
 - **`init`** — fresh `.env.server`. Prompts `APP_URL` then `NAME_PREFIX` (default offered); derives every URL/name; generates every secret and the VAPID pair; writes `const`/`empty` keys; stamps `ENV_SCHEMA_VERSION`. Refuses to clobber an existing `.env.server` (use `upgrade`).
 - **`upgrade`** — migrate an existing `.env.server` to the current `@version`. Backs up to `.env.server.bak` first. Keeps **every existing value verbatim** (secrets never change), applies `@rename`/`@remove` in version order, generates only keys that are newly present and missing, re-stamps `ENV_SCHEMA_VERSION`. Idempotent: a second run is a no-op.
@@ -130,7 +122,7 @@ The non-negotiable lesson from olexfilms:
 
 - `upgrade` **never** regenerates an existing secret. Only missing keys are generated.
 - Rotation is explicit opt-in: `scripts/prod-env.sh upgrade --rotate KEY[,KEY]`. It prints a loud warning naming each key and what rotating it invalidates (sessions, realtime tokens, …) and backs up first.
-- A **hard block list** refuses rotation of keys whose rotation destroys data, regardless of `--rotate`: `APP_ENCRYPTION_KEY` (data encrypted at rest becomes unreadable) and any key tagged PII/at-rest. These can only be changed by a deliberate, documented re-encryption procedure, never by this script.
+- A **block list** (`@norotate` in the schema) refuses rotation of keys whose rotation destroys data, regardless of `--rotate`: `APP_ENCRYPTION_KEY` (data encrypted at rest becomes unreadable) and `DB_PASSWORD` (Postgres keeps the password in its volume, so a new value only locks the app out; change it with `ALTER USER` first). Forks add PII keys the same way. These change only through a deliberate, documented procedure, never through this script.
 - Secrets are generated on the host and land only in `.env.server`, which is `.gitignore`d. Nothing secret is ever committed or logged (the script echoes key *names*, never values).
 - **Gap to close in phase 1:** `.gitignore` ignores `.env.server` and `.env` but **not** `.env.server.bak`, the backup `upgrade` writes. Add `.env.server.bak` (and `.env.server.*` except `.env.server.example`) to `.gitignore` so a backup full of live secrets can never be committed.
 
@@ -182,7 +174,7 @@ Each phase is one commit on the session branch (auto-PR is off; the owner merges
 
 | Phase | Commit | Scope | Done when |
 |---|---|---|---|
-| 0 | this doc | `docs/design/env-core.md` | Owner approves the approach ← **we are here** |
+| 0 | this doc | `docs/design/env-core.md` | Owner approves the approach (done) |
 | 1 | schema + generator | `deploy/env/schema`, `scripts/prod-env.sh init\|upgrade\|check\|example`, `.gitignore` fix for `.env.server.bak` (§6) | `init` produces a valid `.env.server` that `make prod-config` accepts; `upgrade` preserves secrets across a rename; `check` exits non-zero on a gap |
 | 2 | generated example + sync | replace `.env.server.example` with `example` output; `make env-check` + CI step; refresh `backend/.env.example`, `frontend/.env.example` pointers | Editing the schema without regenerating fails CI |
 | 3 | compose-env check | `scripts/check-compose-env.sh` + CI step (+ allowlist) | A backend-read key missing from `x-backend-environment` and the allowlist fails CI |
@@ -195,7 +187,7 @@ Each phase is one commit on the session branch (auto-PR is off; the owner merges
 
 1. **`NAME_PREFIX` — second prompt, or fully derived?** Proposal: prompt with a default (first host label), so it stays boilerplate-neutral without a blind guess. Fully deriving it (`app.example.com` → `app`) is fragile for multi-app hosts.
 2. **`.env.example` ⊆ schema lint (§10)?** Proposal: ship it behind a toggle, default on, because a prod key with no local default is a real papercut. Owner's call on how tightly to couple the dev and prod files.
-3. **`BACKEND_IMAGE`/`FRONTEND_IMAGE` rules** depend on the in-flight GHCR work. Proposal: `ask:` for now; revisit to `derive:` from a registry + `NAME_PREFIX` once that lands.
+3. **`BACKEND_IMAGE`/`FRONTEND_IMAGE` rules** depend on the in-flight GHCR work. Phase 1 derives `{NAME_PREFIX}-backend:latest` (what `make prod-up` builds); switch to a registry path once that lands.
 4. **Guard home — extend `config.go` or add `platform/envguard`?** Proposal: extend `config.go`'s `validate()` (smallest surface; the defaults already live there). Promote to `platform/envguard` only if boot sequencing needs it.
 5. **SOPS/age for GitOps forks (§3 option D)** — leave out of core, or ship a documented opt-in recipe? Proposal: out of core; a short note in `docs/` is enough until a fork actually needs committed secrets.
 6. **Frontend-read env** (`AUTH_SECRET`, `NEXT_PUBLIC_*`, `FRONTEND_SENTRY_DSN`) — the schema covers them for `.env.server` generation, but should the compose-env check also assert the frontend's `environment:` block the way it does the backend's? Proposal: yes, as a second pass in phase 3 if cheap; otherwise phase 3.5.

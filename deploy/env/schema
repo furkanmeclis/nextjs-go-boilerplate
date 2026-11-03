@@ -1,0 +1,83 @@
+## deploy/env/schema — single source of truth for the production env (.env.server).
+## Tooling: scripts/prod-env.sh init | upgrade | check | example. Design: docs/design/env-core.md.
+##
+## "##" lines are schema-only notes. "#" lines and blank lines are copied into
+## generated files (.env.server, .env.server.example), so write them for operators.
+##
+## One managed key per line:  KEY | rule
+##   ask:<default>            prompt (or --set KEY=…); <default> is a template, may be empty
+##   derive:<template>        computed; {KEY} = an earlier key, plus {APP_HOST} {APP_SCHEME} {APP_LABEL}
+##                            (hostname, scheme and first host label of APP_URL)
+##   const:<value>            fixed value
+##   secret:hex|b64|alnum:<n> generated once (hex/b64: n bytes, alnum: n chars), kept forever
+##   vapid:public|private     Web Push key pair, generated together
+##   empty                    managed but blank until the operator fills it
+##
+## Directives:
+##   @version N               bump on every change below; stamped as ENV_SCHEMA_VERSION
+##   @rename OLD NEW N        at version N, OLD became NEW (upgrade moves the value)
+##   @remove KEY N            at version N, KEY was dropped (upgrade comments it out)
+##   @norotate KEY            `upgrade --rotate` refuses KEY (rotating destroys data)
+##
+## Keys left out here keep their compose.prod.yml defaults; .env.example documents them all.
+
+@version 1
+
+@norotate APP_ENCRYPTION_KEY
+@norotate DB_PASSWORD
+
+# --- Identity ---
+# Public origin of the app (the frontend domain). Every URL below derives from it.
+APP_URL | ask:{AUTH_URL}
+# Unique per app on a host: names containers, volumes and the app network.
+NAME_PREFIX | ask:{APP_LABEL}
+# Images built by `make prod-up`; point them at a registry to pull instead.
+BACKEND_IMAGE | derive:{NAME_PREFIX}-backend:latest
+FRONTEND_IMAGE | derive:{NAME_PREFIX}-frontend:latest
+
+# --- Public URLs ---
+AUTH_URL | derive:{APP_URL}
+PUBLIC_FRONTEND_URL | derive:{APP_URL}
+CORS_ALLOWED_ORIGINS | derive:{APP_URL}
+CENTRIFUGO_ALLOWED_ORIGINS | derive:{APP_URL}
+# Centrifugo has its own domain (Dokploy: service centrifugo, container port 8000).
+CENTRIFUGO_WS_URL | ask:wss://realtime.{APP_HOST}/connection/websocket
+NEXT_PUBLIC_CENTRIFUGO_URL | derive:{CENTRIFUGO_WS_URL}
+
+# --- Database, cache, object storage ---
+DB_USER | const:app
+DB_NAME | const:app
+# Postgres stores this in its volume at first start. To change it, ALTER USER first,
+# then edit this file by hand; `--rotate` refuses it.
+DB_PASSWORD | secret:alnum:32
+REDIS_PASSWORD | secret:alnum:32
+S3_BUCKET | const:app
+S3_ACCESS_KEY | secret:alnum:20
+S3_SECRET_KEY | secret:alnum:40
+
+# --- Signing and encryption secrets ---
+JWT_ACCESS_SECRET | secret:hex:32
+JWT_REFRESH_SECRET | secret:hex:32
+AUTH_SECRET | secret:b64:32
+AUTH_ADAPTER_SECRET | secret:hex:32
+# Encrypts credentials stored in the database. Never rotate it: they become unreadable.
+APP_ENCRYPTION_KEY | secret:b64:32
+CENTRIFUGO_API_KEY | secret:hex:32
+CENTRIFUGO_TOKEN_HMAC_SECRET | secret:hex:32
+MEILI_MASTER_KEY | secret:hex:32
+
+# --- Web Push (VAPID) ---
+VAPID_PUBLIC_KEY | vapid:public
+VAPID_PRIVATE_KEY | vapid:private
+VAPID_SUBJECT | derive:mailto:noreply@{APP_HOST}
+
+# --- Mail (fill in your SMTP provider) ---
+MAIL_FROM | derive:noreply@{APP_HOST}
+SMTP_HOST | empty
+SMTP_PORT | const:587
+SMTP_USERNAME | empty
+SMTP_PASSWORD | empty
+
+# --- Error tracking (optional; empty = off) ---
+BACKEND_SENTRY_DSN | empty
+FRONTEND_SENTRY_DSN | empty
