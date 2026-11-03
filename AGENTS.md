@@ -36,7 +36,7 @@ Canonical env is the **repo-root** `.env`. Compose files are `compose.local.yml`
 ## Hard rules
 
 - Browser talks to same-origin `/api/v1/*`, never the Go host.
-- Media URLs are API-owned. Never assemble MinIO/S3 keys in the browser.
+- Media URLs are API-owned. Never assemble S3 keys in the browser.
 - Never expose Meilisearch to the browser; search goes through `/v1/search`.
 - New `/v1` routes update `backend/docs/openapi.yaml` in the same change.
 - Permission slugs are added only via migration + `internal/platform/rbac` + `frontend/src/config/permissions.ts`.

@@ -41,44 +41,66 @@ services:
     networks:
       - app
 
-  minio:
-    image: minio/minio:latest
-    container_name: ${NAME_PREFIX:-app}-minio
+  seaweedfs:
+    # S3-compatible object store (MinIO community images are archived). The
+    # backend talks to its S3 gateway through the unchanged S3 driver; only
+    # the gateway is published, master/volume/filer stay on the app network.
+    image: chrislusf/seaweedfs:4.48
+    container_name: ${NAME_PREFIX:-app}-seaweedfs
     restart: unless-stopped
-    command: server /data --console-address ":9001"
-    environment:
-      MINIO_ROOT_USER: ${S3_ACCESS_KEY:-minioadmin}
-      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:-minioadmin}
-    ports:
-      - "${MINIO_API_PORT:-9000}:9000"
-      - "${MINIO_CONSOLE_PORT:-9001}:9001"
-    volumes:
-      - minio_data:/data
-    healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://localhost:9000/minio/health/live"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-    networks:
-      - app
-
-  minio-init:
-    image: minio/mc:latest
-    container_name: ${NAME_PREFIX:-app}-minio-init
-    depends_on:
-      minio:
-        condition: service_healthy
     entrypoint:
       - /bin/sh
       - -c
       - |
         set -eu
-        mc alias set local http://minio:9000 "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD"
-        mc mb --ignore-existing "local/$$S3_BUCKET"
-        mc anonymous set download "local/$$S3_BUCKET"
+        # One credentialed identity and no "anonymous" identity: SeaweedFS
+        # then rejects every unsigned request (no public bucket reads).
+        printf '{"identities":[{"name":"app","credentials":[{"accessKey":"%s","secretKey":"%s"}],"actions":["Admin","Read","Write","List","Tagging"]}]}' "$$S3_ACCESS_KEY" "$$S3_SECRET_KEY" > /tmp/s3.json
+        exec weed server -dir=/data -ip.bind=0.0.0.0 -master.volumeSizeLimitMB=1024 -volume.max=0 -s3 -s3.port=8333 -s3.config=/tmp/s3.json
     environment:
-      MINIO_ROOT_USER: ${S3_ACCESS_KEY:-minioadmin}
-      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:-minioadmin}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-minioadmin}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:-minioadmin}
+    ports:
+      # Host port stays 9000 so S3_ENDPOINT=http://127.0.0.1:9000 keeps working.
+      - "${SEAWEEDFS_S3_PORT:-9000}:8333"
+    volumes:
+      - seaweedfs_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://127.0.0.1:8333/status"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks:
+      - app
+
+  seaweedfs-init:
+    # Creates the bucket (idempotent). The backend HeadBuckets at boot and
+    # exits when the bucket is missing.
+    image: chrislusf/seaweedfs:4.48
+    container_name: ${NAME_PREFIX:-app}-seaweedfs-init
+    depends_on:
+      seaweedfs:
+        condition: service_healthy
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        set -u
+        run() { printf '%s\n' "$$1" | weed shell -master=seaweedfs:9333 -filer=seaweedfs:8888; }
+        for _ in $$(seq 1 30); do
+          # Re-runs fail with "already exists"; only the list check decides.
+          run "s3.bucket.create -name $$S3_BUCKET" >/dev/null 2>&1 || true
+          # Exact first-column match on stdout only: connection errors and
+          # similarly named buckets must not count as success.
+          if run "s3.bucket.list" 2>/dev/null | awk -v b="$$S3_BUCKET" '$$1 == b { f = 1 } END { exit !f }'; then
+            echo "bucket $$S3_BUCKET ready"
+            exit 0
+          fi
+          sleep 2
+        done
+        echo "bucket $$S3_BUCKET could not be created" >&2
+        exit 1
+    environment:
       S3_BUCKET: ${S3_BUCKET:-app}
     restart: "no"
     networks:
@@ -160,8 +182,8 @@ volumes:
     name: ${POSTGRES_VOLUME_NAME:-${NAME_PREFIX:-app}-postgres}
   redis_data:
     name: ${REDIS_VOLUME_NAME:-${NAME_PREFIX:-app}-redis}
-  minio_data:
-    name: ${MINIO_VOLUME_NAME:-${NAME_PREFIX:-app}-minio}
+  seaweedfs_data:
+    name: ${SEAWEEDFS_VOLUME_NAME:-${NAME_PREFIX:-app}-seaweedfs}
   meili_data:
     name: ${MEILI_VOLUME_NAME:-${NAME_PREFIX:-app}-meilisearch}
 

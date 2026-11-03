@@ -4,7 +4,7 @@
 
 - **PostgreSQL** — primary system of record
 - **Redis** — cache, queue (Asynq), ephemeral state — not authoritative business data
-- **Object binary** — MinIO / S3; metadata may live in Postgres
+- **Object binary** — S3 (SeaweedFS locally); metadata may live in Postgres
 
 ## Access path
 
