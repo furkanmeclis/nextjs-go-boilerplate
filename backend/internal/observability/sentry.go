@@ -14,6 +14,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/buildinfo"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/config"
 	"github.com/getsentry/sentry-go"
 )
@@ -68,6 +69,11 @@ func Init(cfg config.SentryConfig, component string) (flush func(), err error) {
 }
 
 func buildRevision() string {
+	// Baked-in release (v0.N / sha-<short>) first: Docker builds have no .git,
+	// so vcs.revision below is empty inside images.
+	if rel := buildinfo.Current(); !rel.IsDev() {
+		return rel.Version
+	}
 	info, ok := debug.ReadBuildInfo()
 	if !ok {
 		return ""
