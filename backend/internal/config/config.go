@@ -182,6 +182,17 @@ type SMTPConfig struct {
 	Password string
 	From     string
 	FromName string
+	// Timeout bounds the whole send (dial + TLS + handshake + delivery). A
+	// hung SMTP server must never block a worker or request indefinitely.
+	Timeout time.Duration
+	// TLSMode selects transport security: "auto" (implicit TLS on port 465,
+	// otherwise STARTTLS when the server advertises it), "starttls" (require
+	// STARTTLS), "implicit" (wrap the connection in TLS immediately), or
+	// "none" (plaintext, e.g. MailHog in development).
+	TLSMode string
+	// TLSInsecureSkipVerify disables certificate verification. Intended only
+	// for self-signed servers in development; validate() refuses it in prod.
+	TLSInsecureSkipVerify bool
 }
 
 type LogConfig struct {
@@ -260,13 +271,16 @@ func Load() (Config, error) {
 			AllowedOrigins: splitCSV(getEnv("CORS_ALLOWED_ORIGINS", "http://localhost:3000")),
 		},
 		SMTP: SMTPConfig{
-			Driver:   strings.ToLower(getEnv("MAIL_DRIVER", "smtp")),
-			Host:     getEnv("SMTP_HOST", "127.0.0.1"),
-			Port:     getInt("SMTP_PORT", 1025),
-			Username: getEnv("SMTP_USERNAME", ""),
-			Password: getEnv("SMTP_PASSWORD", ""),
-			From:     firstNonEmpty(getEnv("MAIL_FROM", ""), getEnv("SMTP_FROM", "noreply@localhost")),
-			FromName: getEnv("MAIL_FROM_NAME", "App"),
+			Driver:                strings.ToLower(getEnv("MAIL_DRIVER", "smtp")),
+			Host:                  getEnv("SMTP_HOST", "127.0.0.1"),
+			Port:                  getInt("SMTP_PORT", 1025),
+			Username:              getEnv("SMTP_USERNAME", ""),
+			Password:              getEnv("SMTP_PASSWORD", ""),
+			From:                  firstNonEmpty(getEnv("MAIL_FROM", ""), getEnv("SMTP_FROM", "noreply@localhost")),
+			FromName:              getEnv("MAIL_FROM_NAME", "App"),
+			Timeout:               getDuration("SMTP_TIMEOUT", 10*time.Second),
+			TLSMode:               strings.ToLower(getEnv("SMTP_TLS", "auto")),
+			TLSInsecureSkipVerify: getBool("SMTP_TLS_INSECURE_SKIP_VERIFY", false),
 		},
 		Queue: QueueConfig{
 			Enabled:         getBool("QUEUE_ENABLED", true),
@@ -412,6 +426,14 @@ func (c Config) validate() error {
 				return fmt.Errorf("config: replace default MEILI_MASTER_KEY outside development")
 			}
 		}
+	}
+	switch c.SMTP.TLSMode {
+	case "", "auto", "starttls", "implicit", "none":
+	default:
+		return fmt.Errorf("config: SMTP_TLS must be one of auto|starttls|implicit|none")
+	}
+	if c.App.Env != "development" && c.App.Env != "test" && c.SMTP.TLSInsecureSkipVerify {
+		return fmt.Errorf("config: SMTP_TLS_INSECURE_SKIP_VERIFY must not be set outside development")
 	}
 	return nil
 }
