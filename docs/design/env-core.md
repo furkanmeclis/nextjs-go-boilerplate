@@ -1,6 +1,6 @@
 # Environment config core — design study
 
-Status: **phases 1–2 implemented** (schema, `scripts/prod-env.sh`, generated `.env.server.example` + `make env-check`; see §12). Later phases are proposals. Reference implementations live in sibling forks of this boilerplate: `rentopia-app-go` (mature schema-driven generator), `olexfilms` (earlier non-schema generator with a careful rotation policy), `clickfix` (a compose-env CI check). This document surveys that prior art, recommends the **healthiest** version for the core, and lays out a phased plan. It deliberately does **not** copy any one fork.
+Status: **phases 1–3 implemented** (schema, `scripts/prod-env.sh`, generated `.env.server.example`, compose-env check; `make env-check`; see §12). Later phases are proposals. Reference implementations live in sibling forks of this boilerplate: `rentopia-app-go` (mature schema-driven generator), `olexfilms` (earlier non-schema generator with a careful rotation policy), `clickfix` (a compose-env CI check). This document surveys that prior art, recommends the **healthiest** version for the core, and lays out a phased plan. It deliberately does **not** copy any one fork.
 
 ## 1. Goal
 
@@ -139,14 +139,17 @@ Adding a key to the schema without regenerating the example fails CI. This is wh
 
 ## 8. compose-env CI check — `scripts/check-compose-env.sh`
 
-Generalise clickfix's check. Every env var the Go backend **reads** must either be in `compose.prod.yml`'s `x-backend-environment` block or be on an explicit allowlist of "has a safe Go default, deliberately not delivered in prod" keys.
+Generalises clickfix's check (implemented in phase 3; `make compose-env-check`). Every env var the Go backend **reads** must either reach the `backend` and `worker` containers or carry a recorded decision in `deploy/env/compose-env.allow`.
 
-- **Read set:** parse the `getEnv("…")` / `getInt("…")` / `getBool("…")` / `os.Getenv("…")` / `getDuration/getFloat/getInt64` call sites in `backend/internal/config/` (all reads are centralised there). ~88 keys today.
-- **Wired set:** the keys under `x-backend-environment` (and, for the frontend, its `environment:` block).
-- **Allowlist** (checked into the script, commented): keys with a safe Go default that prod deliberately does not override — e.g. `HTTP_*_TIMEOUT`, `DB_MAX_CONNS`, `REDIS_DB`, `CENTRIFUGO_ENABLED`, `CENTRIFUGO_TOKEN_TTL`, `STORAGE_LOCAL_PATH`, `STORAGE_MAX_BYTES`, `BULK_*`, `SENTRY_RELEASE`, the `MINIO_*` aliases (fall back to `S3_*`), `S3_PUBLIC_BASE_URL`, `SMTP_FROM` (alias of `MAIL_FROM`).
-- A read key that is neither wired nor allowlisted **fails CI**: either wire it into `x-backend-environment` or justify it on the allowlist. The allowlist is the deliberate record of "this is fine to omit."
+- **Read set:** string-literal `getEnv`/`getInt`/`getInt64`/`getBool`/`getDuration`/`getFloat`/`os.Getenv`/`os.LookupEnv` calls in non-test Go files under `backend/` (87 keys today, all in `config.go`). Dynamic key names are not detected; keep reads literal.
+- **Delivered set:** not a parse of the raw YAML but each service's environment from `docker compose config`, resolved with an env that `prod-env.sh init` generates from the schema. That is exactly what the container receives (anchors, `<<:` merges, per-service overrides), and it keeps working while other sessions restructure the file. As a side effect, the check fails if compose starts **requiring** a variable the schema does not manage.
+- **Allowlist** (`KEY | omit|wire | reason`):
+  - `omit` = deliberately not delivered. Storage aliases (`MINIO_*`, `S3_PUBLIC_BASE_URL`, `STORAGE_LOCAL_PATH`), `SMTP_FROM` (alias of `MAIL_FROM`), `REDIS_DB`, `CENTRIFUGO_ENABLED`.
+  - `wire` = should be delivered but is not yet: 11 operator tunables (`JWT_*_TTL`, `DB_MAX_CONNS`, `STORAGE_MAX_BYTES`, `BULK_*`, `HTTP_*_TIMEOUT`, `CENTRIFUGO_TOKEN_TTL`, `SENTRY_RELEASE`). A value set in Dokploy is silently dropped today. They are reported as a warning together with the graft snippet (`KEY: ${KEY:-}`), which is behaviour-neutral: an empty value makes every `config.go` helper fall back to its default. The snippet is left for the compose owners, since this work does not edit `compose.prod.yml`.
+- **Fails on:** a read key with no delivery and no decision; a stale entry (key no longer read, or listed but now delivered, which is how grafting the snippet prompts the cleanup); a service with no environment (renamed: pass `--services`); a malformed allowlist.
+- Tests: `scripts/check-compose-env.test.sh` (dropped keys incl. names with digits, new reads, test files ignored, stale entries, the snippet graft end to end).
 
-This check only ever **reads** `compose.prod.yml`. Two other sessions are restructuring that file (SeaweedFS storage, GHCR images); this work does not touch its storage or image wiring. If a backend key genuinely needs delivering, it is added to the `x-backend-environment` block only (§12 coordination).
+The frontend container (open question 6) is not covered yet: its reads (`process.env.*`, with `NEXT_PUBLIC_*` inlined at build time) need a different extractor.
 
 ## 9. Runtime guard
 

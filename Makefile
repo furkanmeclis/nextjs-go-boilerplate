@@ -19,7 +19,7 @@ endef
 FRONTEND_PORT ?= 3000
 
 .PHONY: infra infra-down infra-logs infra-ps migrate-up backend-dev frontend-dev local-dev \
-	free-dev-ports prod-env-init prod-env-upgrade prod-env-check env-check prod-config prod-up prod-down tools create-super-admin search-reindex check-i18n
+	free-dev-ports prod-env-init prod-env-upgrade prod-env-check env-check compose-env-check prod-config prod-up prod-down tools create-super-admin search-reindex check-i18n
 
 infra:
 	@if [ -n "$(ENV_FILE)" ]; then \
@@ -122,8 +122,14 @@ prod-env-check:
 
 # CI check: .env.server.example matches the schema, .env.example has every
 # schema key, prod-env tests pass. Fix drift: scripts/prod-env.sh example > .env.server.example
-env-check:
+env-check: compose-env-check
 	scripts/check-env-sync.sh
+
+# CI check: every env var the backend reads reaches the backend/worker
+# containers in compose.prod.yml, or has a decision in deploy/env/compose-env.allow.
+compose-env-check:
+	scripts/check-compose-env.sh
+	scripts/check-compose-env.test.sh
 
 prod-config:
 	docker compose --env-file $(PROD_ENV_FILE) -f compose.prod.yml config
