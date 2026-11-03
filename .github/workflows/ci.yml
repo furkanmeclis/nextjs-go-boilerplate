@@ -75,6 +75,10 @@ jobs:
       - uses: actions/checkout@v7
       - name: Env schema sync
         run: scripts/check-env-sync.sh
+      - name: Backend env reaches compose.prod.yml
+        run: |
+          scripts/check-compose-env.sh
+          scripts/check-compose-env.test.sh
 
   # Feature branch pushed and both test jobs green → open (or reuse) a PR into
   # main and turn on auto-merge. GitHub merges once main's required checks pass.
