@@ -129,6 +129,12 @@ export function setGlobalApiErrorHandler(handler: ErrorHandler | null) {
   globalErrorHandler = handler;
 }
 
+// unwrap() emits before throwing, and the react-query caches emit the same
+// rejected error again; remember what was shown so it is toasted once.
+const emittedErrors = new WeakSet<ApiError>();
+
 export function emitApiError(error: ApiError) {
-  globalErrorHandler?.(error);
+  if (!globalErrorHandler || emittedErrors.has(error)) return;
+  emittedErrors.add(error);
+  globalErrorHandler(error);
 }
