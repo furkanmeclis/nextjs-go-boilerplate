@@ -20,6 +20,7 @@ Canonical env is the **repo-root** `.env`. Compose files are `compose.local.yml`
 | [step-up-engine](./.agents/skills/step-up-engine/SKILL.md) | Re-auth gates (password/passkey) on sensitive actions |
 | [admin-date-picker](./.agents/skills/admin-date-picker/SKILL.md) | Any date field in `frontend/` |
 | [db-migration](./.agents/skills/db-migration/SKILL.md) | New table/column/seed/query: migration → sqlc → OpenAPI |
+| [mobile-ci](./.agents/skills/mobile-ci/SKILL.md) | `mobile/` CI, pinned OpenAPI client types, EAS release trigger |
 | [verify-changes](./.agents/skills/verify-changes/SKILL.md) | Checks to run before commit / PR (mirrors CI) |
 
 ## Human docs
