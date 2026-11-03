@@ -12,6 +12,36 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const acceptOrganizationInvitation = `-- name: AcceptOrganizationInvitation :one
+UPDATE organization_invitations
+SET accepted_at = NOW()
+WHERE id = $1
+  AND accepted_at IS NULL
+  AND revoked_at IS NULL
+  AND expires_at > NOW()
+RETURNING id, uuid, organization_id, email, role_id, token_hash, expires_at, accepted_at, revoked_at, invited_by, created_at
+`
+
+// Single use: only a pending, unexpired invitation flips to accepted.
+func (q *Queries) AcceptOrganizationInvitation(ctx context.Context, id int64) (OrganizationInvitation, error) {
+	row := q.db.QueryRow(ctx, acceptOrganizationInvitation, id)
+	var i OrganizationInvitation
+	err := row.Scan(
+		&i.ID,
+		&i.Uuid,
+		&i.OrganizationID,
+		&i.Email,
+		&i.RoleID,
+		&i.TokenHash,
+		&i.ExpiresAt,
+		&i.AcceptedAt,
+		&i.RevokedAt,
+		&i.InvitedBy,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const addOrganizationMember = `-- name: AddOrganizationMember :one
 INSERT INTO organization_members (organization_id, user_id, role_id)
 VALUES ($1, $2, $3)
@@ -97,6 +127,21 @@ type CountOrganizationsParams struct {
 
 func (q *Queries) CountOrganizations(ctx context.Context, arg CountOrganizationsParams) (int64, error) {
 	row := q.db.QueryRow(ctx, countOrganizations, arg.Status, arg.Q)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const countPendingOrganizationInvitations = `-- name: CountPendingOrganizationInvitations :one
+SELECT COUNT(*)::bigint
+FROM organization_invitations
+WHERE organization_id = $1
+  AND accepted_at IS NULL
+  AND revoked_at IS NULL
+`
+
+func (q *Queries) CountPendingOrganizationInvitations(ctx context.Context, organizationID int64) (int64, error) {
+	row := q.db.QueryRow(ctx, countPendingOrganizationInvitations, organizationID)
 	var column_1 int64
 	err := row.Scan(&column_1)
 	return column_1, err
@@ -284,6 +329,72 @@ func (q *Queries) GetOrganizationByUUID(ctx context.Context, argUuid uuid.UUID) 
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+	)
+	return i, err
+}
+
+const getOrganizationInvitationByTokenHash = `-- name: GetOrganizationInvitationByTokenHash :one
+SELECT oi.id, oi.uuid, oi.organization_id, oi.email, oi.role_id, oi.token_hash, oi.expires_at, oi.accepted_at, oi.revoked_at, oi.invited_by, oi.created_at,
+       o.uuid AS organization_uuid, o.slug AS organization_slug,
+       o.name AS organization_name, o.status AS organization_status,
+       (o.deleted_at IS NOT NULL)::boolean AS organization_deleted,
+       r.slug AS role_key, r.name AS role_name,
+       u.name AS inviter_name, u.surname AS inviter_surname
+FROM organization_invitations oi
+INNER JOIN organizations o ON o.id = oi.organization_id
+INNER JOIN roles r ON r.id = oi.role_id
+LEFT JOIN users u ON u.id = oi.invited_by
+WHERE oi.token_hash = $1
+`
+
+type GetOrganizationInvitationByTokenHashRow struct {
+	ID                  int64              `json:"id"`
+	Uuid                uuid.UUID          `json:"uuid"`
+	OrganizationID      int64              `json:"organization_id"`
+	Email               string             `json:"email"`
+	RoleID              int64              `json:"role_id"`
+	TokenHash           string             `json:"token_hash"`
+	ExpiresAt           pgtype.Timestamptz `json:"expires_at"`
+	AcceptedAt          pgtype.Timestamptz `json:"accepted_at"`
+	RevokedAt           pgtype.Timestamptz `json:"revoked_at"`
+	InvitedBy           pgtype.Int8        `json:"invited_by"`
+	CreatedAt           pgtype.Timestamptz `json:"created_at"`
+	OrganizationUuid    uuid.UUID          `json:"organization_uuid"`
+	OrganizationSlug    string             `json:"organization_slug"`
+	OrganizationName    string             `json:"organization_name"`
+	OrganizationStatus  string             `json:"organization_status"`
+	OrganizationDeleted bool               `json:"organization_deleted"`
+	RoleKey             string             `json:"role_key"`
+	RoleName            string             `json:"role_name"`
+	InviterName         pgtype.Text        `json:"inviter_name"`
+	InviterSurname      pgtype.Text        `json:"inviter_surname"`
+}
+
+// Lookup by the hashed bearer token (the plain token is never stored).
+func (q *Queries) GetOrganizationInvitationByTokenHash(ctx context.Context, tokenHash string) (GetOrganizationInvitationByTokenHashRow, error) {
+	row := q.db.QueryRow(ctx, getOrganizationInvitationByTokenHash, tokenHash)
+	var i GetOrganizationInvitationByTokenHashRow
+	err := row.Scan(
+		&i.ID,
+		&i.Uuid,
+		&i.OrganizationID,
+		&i.Email,
+		&i.RoleID,
+		&i.TokenHash,
+		&i.ExpiresAt,
+		&i.AcceptedAt,
+		&i.RevokedAt,
+		&i.InvitedBy,
+		&i.CreatedAt,
+		&i.OrganizationUuid,
+		&i.OrganizationSlug,
+		&i.OrganizationName,
+		&i.OrganizationStatus,
+		&i.OrganizationDeleted,
+		&i.RoleKey,
+		&i.RoleName,
+		&i.InviterName,
+		&i.InviterSurname,
 	)
 	return i, err
 }
@@ -733,6 +844,81 @@ func (q *Queries) ListOrganizationsFiltered(ctx context.Context, arg ListOrganiz
 	return items, nil
 }
 
+const listPendingOrganizationInvitations = `-- name: ListPendingOrganizationInvitations :many
+SELECT oi.id, oi.uuid, oi.organization_id, oi.email, oi.role_id, oi.token_hash, oi.expires_at, oi.accepted_at, oi.revoked_at, oi.invited_by, oi.created_at, r.slug AS role_key, r.name AS role_name,
+       u.name AS inviter_name, u.surname AS inviter_surname
+FROM organization_invitations oi
+INNER JOIN roles r ON r.id = oi.role_id AND r.scope = 'tenant'
+LEFT JOIN users u ON u.id = oi.invited_by
+WHERE oi.organization_id = $1
+  AND oi.accepted_at IS NULL
+  AND oi.revoked_at IS NULL
+ORDER BY oi.created_at DESC
+LIMIT $3 OFFSET $2
+`
+
+type ListPendingOrganizationInvitationsParams struct {
+	OrganizationID int64 `json:"organization_id"`
+	OffsetCount    int32 `json:"offset_count"`
+	LimitCount     int32 `json:"limit_count"`
+}
+
+type ListPendingOrganizationInvitationsRow struct {
+	ID             int64              `json:"id"`
+	Uuid           uuid.UUID          `json:"uuid"`
+	OrganizationID int64              `json:"organization_id"`
+	Email          string             `json:"email"`
+	RoleID         int64              `json:"role_id"`
+	TokenHash      string             `json:"token_hash"`
+	ExpiresAt      pgtype.Timestamptz `json:"expires_at"`
+	AcceptedAt     pgtype.Timestamptz `json:"accepted_at"`
+	RevokedAt      pgtype.Timestamptz `json:"revoked_at"`
+	InvitedBy      pgtype.Int8        `json:"invited_by"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	RoleKey        string             `json:"role_key"`
+	RoleName       string             `json:"role_name"`
+	InviterName    pgtype.Text        `json:"inviter_name"`
+	InviterSurname pgtype.Text        `json:"inviter_surname"`
+}
+
+// Open invitations (not accepted, not revoked); expired ones are included so
+// they can be revoked or re-sent.
+func (q *Queries) ListPendingOrganizationInvitations(ctx context.Context, arg ListPendingOrganizationInvitationsParams) ([]ListPendingOrganizationInvitationsRow, error) {
+	rows, err := q.db.Query(ctx, listPendingOrganizationInvitations, arg.OrganizationID, arg.OffsetCount, arg.LimitCount)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListPendingOrganizationInvitationsRow{}
+	for rows.Next() {
+		var i ListPendingOrganizationInvitationsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Uuid,
+			&i.OrganizationID,
+			&i.Email,
+			&i.RoleID,
+			&i.TokenHash,
+			&i.ExpiresAt,
+			&i.AcceptedAt,
+			&i.RevokedAt,
+			&i.InvitedBy,
+			&i.CreatedAt,
+			&i.RoleKey,
+			&i.RoleName,
+			&i.InviterName,
+			&i.InviterSurname,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listTenantRolePermissionSlugsByRoleID = `-- name: ListTenantRolePermissionSlugsByRoleID :many
 SELECT p.slug
 FROM permissions p
@@ -873,6 +1059,63 @@ func (q *Queries) ResolveOrganizationScopeByUUID(ctx context.Context, arg Resolv
 		&i.RoleKey,
 	)
 	return i, err
+}
+
+const revokeOrganizationInvitation = `-- name: RevokeOrganizationInvitation :one
+UPDATE organization_invitations
+SET revoked_at = NOW()
+WHERE uuid = $1
+  AND organization_id = $2
+  AND accepted_at IS NULL
+  AND revoked_at IS NULL
+RETURNING id, uuid, organization_id, email, role_id, token_hash, expires_at, accepted_at, revoked_at, invited_by, created_at
+`
+
+type RevokeOrganizationInvitationParams struct {
+	Uuid           uuid.UUID `json:"uuid"`
+	OrganizationID int64     `json:"organization_id"`
+}
+
+func (q *Queries) RevokeOrganizationInvitation(ctx context.Context, arg RevokeOrganizationInvitationParams) (OrganizationInvitation, error) {
+	row := q.db.QueryRow(ctx, revokeOrganizationInvitation, arg.Uuid, arg.OrganizationID)
+	var i OrganizationInvitation
+	err := row.Scan(
+		&i.ID,
+		&i.Uuid,
+		&i.OrganizationID,
+		&i.Email,
+		&i.RoleID,
+		&i.TokenHash,
+		&i.ExpiresAt,
+		&i.AcceptedAt,
+		&i.RevokedAt,
+		&i.InvitedBy,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const revokePendingOrganizationInvitationsForEmail = `-- name: RevokePendingOrganizationInvitationsForEmail :execrows
+UPDATE organization_invitations
+SET revoked_at = NOW()
+WHERE organization_id = $1
+  AND email = $2
+  AND accepted_at IS NULL
+  AND revoked_at IS NULL
+`
+
+type RevokePendingOrganizationInvitationsForEmailParams struct {
+	OrganizationID int64  `json:"organization_id"`
+	Email          string `json:"email"`
+}
+
+// A new invitation replaces older open ones for the same address.
+func (q *Queries) RevokePendingOrganizationInvitationsForEmail(ctx context.Context, arg RevokePendingOrganizationInvitationsForEmailParams) (int64, error) {
+	result, err := q.db.Exec(ctx, revokePendingOrganizationInvitationsForEmail, arg.OrganizationID, arg.Email)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const setOrganizationAccessWindow = `-- name: SetOrganizationAccessWindow :one

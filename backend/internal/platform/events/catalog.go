@@ -139,6 +139,7 @@ const (
 	AuthPasswordReset      = "auth.password_reset"
 	AuthProfileUpdated     = "auth.profile_updated"
 	TenantMemberAdded      = "tenant.member_added"
+	TenantInvitation       = "tenant.invitation"
 	NotificationsTest      = "notifications.test"
 	NotificationsQueued    = "notifications.queued"
 	NotificationsSent      = "notifications.sent"
@@ -311,6 +312,7 @@ func catalogConstants() []string {
 		AuthPasswordReset,
 		AuthProfileUpdated,
 		TenantMemberAdded,
+		TenantInvitation,
 		NotificationsTest,
 		NotificationsQueued,
 		NotificationsSent,

@@ -44,6 +44,8 @@ type TenancyConfig struct {
 	// CacheTTL is how long a resolved organization + membership stays in
 	// Redis. Changes invalidate it immediately; the TTL only bounds memory.
 	CacheTTL time.Duration
+	// InviteTTL is how long an organization invitation link stays valid.
+	InviteTTL time.Duration
 }
 
 // SentryConfig configures error reporting to a Sentry-protocol endpoint.
@@ -354,6 +356,7 @@ func Load() (Config, error) {
 			Enabled:   getBool("TENANCY_ENABLED", false),
 			SelfServe: getBool("TENANCY_SELF_SERVE", false),
 			CacheTTL:  getDuration("TENANCY_CACHE_TTL", 60*time.Second),
+			InviteTTL: getDuration("TENANCY_INVITE_TTL", 168*time.Hour),
 		},
 	}
 
@@ -403,6 +406,9 @@ func (c Config) validate() error {
 		if c.Search.IndexPrefix == "" {
 			return fmt.Errorf("config: MEILI_INDEX_PREFIX is required when SEARCH_ENABLED=true")
 		}
+	}
+	if c.Tenancy.Enabled && c.Tenancy.InviteTTL <= 0 {
+		return fmt.Errorf("config: TENANCY_INVITE_TTL must be positive")
 	}
 	switch c.SMTP.TLSMode {
 	case "", "auto", "starttls", "implicit", "none":

@@ -87,3 +87,51 @@ type MemberListFilter struct {
 	SortField string
 	SortDesc  bool
 }
+
+// Invitation states as seen by the API (derived, not stored).
+const (
+	InvitationPending  = "pending"
+	InvitationExpired  = "expired"
+	InvitationAccepted = "accepted"
+	InvitationRevoked  = "revoked"
+)
+
+// Invitation is an open invitation listed for an organization's admins.
+type Invitation struct {
+	UUID      uuid.UUID   `json:"uuid"`
+	Email     string      `json:"email"`
+	Role      RoleSummary `json:"role"`
+	Status    string      `json:"status"`
+	ExpiresAt time.Time   `json:"expires_at"`
+	CreatedAt time.Time   `json:"created_at"`
+	InvitedBy *string     `json:"invited_by,omitempty"`
+}
+
+// InvitationPreview is what the holder of an invitation link may see.
+type InvitationPreview struct {
+	Organization struct {
+		Slug string `json:"slug"`
+		Name string `json:"name"`
+	} `json:"organization"`
+	Email     string      `json:"email"`
+	Role      RoleSummary `json:"role"`
+	Status    string      `json:"status"`
+	ExpiresAt time.Time   `json:"expires_at"`
+	InvitedBy *string     `json:"invited_by,omitempty"`
+}
+
+type CreateInvitationInput struct {
+	OrgID          int64
+	OrgName        string
+	InviterUserID  int64
+	InviterName    string
+	InviterRoleKey string
+	Email          string
+	RoleKey        string
+}
+
+// AcceptedInvitation tells the caller where the new membership lives.
+type AcceptedInvitation struct {
+	OrganizationSlug string      `json:"organization_slug"`
+	Role             RoleSummary `json:"role"`
+}
