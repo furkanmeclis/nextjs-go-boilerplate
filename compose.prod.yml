@@ -39,10 +39,10 @@ x-backend-environment: &backend-environment
   DB_SSLMODE: ${DB_SSLMODE:-disable}
   REDIS_ADDR: redis.${APP_NETWORK_NAME:-${NAME_PREFIX:?NAME_PREFIX is required}-app}:6379
   REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
-  STORAGE_DRIVER: ${STORAGE_DRIVER:-minio}
+  STORAGE_DRIVER: ${STORAGE_DRIVER:-s3}
   STORAGE_MAX_BYTES: ${STORAGE_MAX_BYTES:-10485760}
-  # MinIO is private: browsers get files through API endpoints, never a bucket URL.
-  S3_ENDPOINT: http://minio.${APP_NETWORK_NAME:-${NAME_PREFIX:?NAME_PREFIX is required}-app}:9000
+  # SeaweedFS is private: browsers get files through API endpoints, never a bucket URL.
+  S3_ENDPOINT: http://seaweedfs.${APP_NETWORK_NAME:-${NAME_PREFIX:?NAME_PREFIX is required}-app}:8333
   S3_ACCESS_KEY: ${S3_ACCESS_KEY:?S3_ACCESS_KEY is required}
   S3_SECRET_KEY: ${S3_SECRET_KEY:?S3_SECRET_KEY is required}
   S3_BUCKET: ${S3_BUCKET:?S3_BUCKET is required}
@@ -147,41 +147,64 @@ services:
     networks:
       - app
 
-  minio:
-    image: minio/minio:latest
-    container_name: ${NAME_PREFIX:?NAME_PREFIX is required}-minio
+  seaweedfs:
+    # S3-compatible object store (MinIO community images are archived), used
+    # through the unchanged S3 driver. Anonymous requests are denied: the only
+    # identity is the backend's credentialed one.
+    image: chrislusf/seaweedfs:4.48
+    container_name: ${NAME_PREFIX:?NAME_PREFIX is required}-seaweedfs
     restart: unless-stopped
-    command: server /data --console-address ":9001"
-    environment:
-      MINIO_ROOT_USER: ${S3_ACCESS_KEY:?S3_ACCESS_KEY is required}
-      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:?S3_SECRET_KEY is required}
-    volumes:
-      - minio_data:/data
-    healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://localhost:9000/minio/health/live"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-    # Private: never attach MinIO to dokploy-network or publish its ports.
-    networks:
-      - app
-
-  minio-init:
-    image: minio/mc:latest
-    container_name: ${NAME_PREFIX:?NAME_PREFIX is required}-minio-init
-    depends_on:
-      minio:
-        condition: service_healthy
     entrypoint:
       - /bin/sh
       - -c
       - |
         set -eu
-        mc alias set local "http://minio.$$APP_NETWORK:9000" "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD"
-        mc mb --ignore-existing "local/$$S3_BUCKET"
+        printf '{"identities":[{"name":"app","credentials":[{"accessKey":"%s","secretKey":"%s"}],"actions":["Admin","Read","Write","List","Tagging"]}]}' "$$S3_ACCESS_KEY" "$$S3_SECRET_KEY" > /tmp/s3.json
+        exec weed server -dir=/data -ip.bind=0.0.0.0 -master.volumeSizeLimitMB=1024 -volume.max=0 -s3 -s3.port=8333 -s3.config=/tmp/s3.json
     environment:
-      MINIO_ROOT_USER: ${S3_ACCESS_KEY:?S3_ACCESS_KEY is required}
-      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:?S3_SECRET_KEY is required}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:?S3_ACCESS_KEY is required}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:?S3_SECRET_KEY is required}
+    volumes:
+      - seaweedfs_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://127.0.0.1:8333/status"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    # Private: never attach SeaweedFS to dokploy-network or publish its ports.
+    # Only the S3 gateway (8333) checks credentials; master/volume/filer
+    # (9333/8080/8888) are unauthenticated and reachable by every container on
+    # the app network, so keep that network to this app's own services.
+    networks:
+      - app
+
+  seaweedfs-init:
+    # Creates the bucket (idempotent) before the backend's boot-time HeadBucket.
+    image: chrislusf/seaweedfs:4.48
+    container_name: ${NAME_PREFIX:?NAME_PREFIX is required}-seaweedfs-init
+    depends_on:
+      seaweedfs:
+        condition: service_healthy
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        set -u
+        run() { printf '%s\n' "$$1" | weed shell -master="seaweedfs.$$APP_NETWORK:9333" -filer="seaweedfs.$$APP_NETWORK:8888"; }
+        for _ in $$(seq 1 30); do
+          # Re-runs fail with "already exists"; only the list check decides.
+          run "s3.bucket.create -name $$S3_BUCKET" >/dev/null 2>&1 || true
+          # Exact first-column match on stdout only: connection errors (which
+          # contain the network name) and similar buckets must not pass.
+          if run "s3.bucket.list" 2>/dev/null | awk -v b="$$S3_BUCKET" '$$1 == b { f = 1 } END { exit !f }'; then
+            echo "bucket $$S3_BUCKET ready"
+            exit 0
+          fi
+          sleep 2
+        done
+        echo "bucket $$S3_BUCKET could not be created" >&2
+        exit 1
+    environment:
       S3_BUCKET: ${S3_BUCKET:?S3_BUCKET is required}
       APP_NETWORK: ${APP_NETWORK_NAME:-${NAME_PREFIX:?NAME_PREFIX is required}-app}
     restart: "no"
@@ -259,7 +282,7 @@ services:
         condition: service_completed_successfully
       redis:
         condition: service_healthy
-      minio-init:
+      seaweedfs-init:
         condition: service_completed_successfully
       centrifugo:
         condition: service_healthy
@@ -295,7 +318,7 @@ services:
         condition: service_completed_successfully
       redis:
         condition: service_healthy
-      minio-init:
+      seaweedfs-init:
         condition: service_completed_successfully
       centrifugo:
         condition: service_healthy
@@ -355,8 +378,8 @@ volumes:
     name: ${POSTGRES_VOLUME_NAME:-${NAME_PREFIX:?NAME_PREFIX is required}-prod-postgres}
   redis_data:
     name: ${REDIS_VOLUME_NAME:-${NAME_PREFIX:?NAME_PREFIX is required}-prod-redis}
-  minio_data:
-    name: ${MINIO_VOLUME_NAME:-${NAME_PREFIX:?NAME_PREFIX is required}-prod-minio}
+  seaweedfs_data:
+    name: ${SEAWEEDFS_VOLUME_NAME:-${NAME_PREFIX:?NAME_PREFIX is required}-prod-seaweedfs}
   meili_data:
     name: ${MEILI_VOLUME_NAME:-${NAME_PREFIX:?NAME_PREFIX is required}-prod-meilisearch}
 

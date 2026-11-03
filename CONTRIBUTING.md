@@ -8,7 +8,7 @@ This is a starter, not a product. Keep the surface small and the conventions str
 - Canonical env is the repo-root `.env`.
 - Do not treat `.next/` or generated output as source. Commit `backend/internal/database/db` after `make -C backend sqlc`.
 - New or changed `/v1` routes update `backend/docs/openapi.yaml` in the same change.
-- Media URLs are API-owned. Never assemble MinIO/S3 keys in the browser.
+- Media URLs are API-owned. Never assemble S3 keys in the browser.
 - If you change a convention (envelope, RBAC, shells, env), update the matching file under `docs/` or `backend/docs/` in the same change.
 - Agent checklists live under `.agents/skills/`. Index: [AGENTS.md](./AGENTS.md).
 

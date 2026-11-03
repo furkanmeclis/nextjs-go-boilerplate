@@ -26,7 +26,7 @@ Single-scope role model for this boilerplate: users are global; permissions come
 | `platform.settings.read` / `.write` | Letterhead / export branding |
 | `platform.activity.read` | Audit log |
 | `platform.imports.read` / `platform.exports.read` | I/O job lists |
-| `platform.storage.read` / `.write` | S3/MinIO file browser |
+| `platform.storage.read` / `.write` | S3 file browser |
 | `platform.logs.read` / `.write` | Application logs + purge |
 | `platform.access.read` / `.write` | Step-up policy |
 | `platform.auth.settings.read` / `.write` | Registration policy (also requires super admin) |

@@ -40,7 +40,7 @@ Canonical env: **repo-root** `.env`. First clone: `.agents/skills/boilerplate-fi
 - Backend: start from `backend/API_CONVENTIONS.md` and `backend/README.md`.
 - Do not treat `.next/` or generated output as source. Commit `backend/internal/database/db` after sqlc.
 - New `/v1` routes update `backend/docs/openapi.yaml` in the same change; then `pnpm api:generate`.
-- Media URLs: API-owned only; never assemble MinIO keys in the browser.
+- Media URLs: API-owned only; never assemble storage keys in the browser.
 - Never expose Meilisearch to the browser (`GET /v1/search` only).
 - There are no tenants or workspaces in this starter. No `/business` shell. JWT has no `tid` / `wid` (optional `imp` for impersonation).
 - Handlers never call SMTP/SMS; enqueue via notifications.
