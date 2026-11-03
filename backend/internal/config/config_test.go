@@ -51,6 +51,32 @@ func TestValidateRejectsDefaultSecretsInProduction(t *testing.T) {
 	}
 }
 
+func TestValidateSMTPTLS(t *testing.T) {
+	for _, mode := range []string{"", "auto", "starttls", "implicit", "none"} {
+		c := validProdConfig()
+		c.SMTP.TLSMode = mode
+		if err := c.validate(); err != nil {
+			t.Errorf("TLSMode %q rejected: %v", mode, err)
+		}
+	}
+	bad := validProdConfig()
+	bad.SMTP.TLSMode = "bogus"
+	if err := bad.validate(); err == nil {
+		t.Error("invalid TLSMode accepted")
+	}
+
+	insecure := validProdConfig()
+	insecure.SMTP.TLSInsecureSkipVerify = true
+	if err := insecure.validate(); err == nil {
+		t.Error("insecure skip-verify accepted in production")
+	}
+	insecure.App.Env = "development"
+	insecure.Encryption.Key = defaultEncryptionKey
+	if err := insecure.validate(); err != nil {
+		t.Errorf("insecure skip-verify must be allowed in development: %v", err)
+	}
+}
+
 func TestParseReviewAccounts(t *testing.T) {
 	got := parseReviewAccounts(" Review@Example.com:246810 , bad, short@x.io:123, nocolon@x.io ,x:123456")
 	if len(got) != 1 || got["review@example.com"] != "246810" {
