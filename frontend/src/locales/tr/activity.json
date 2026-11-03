@@ -27,6 +27,7 @@
   "actions.users.impersonation_stopped": "Kullanıcı taklit oturumu sonlandırıldı",
   "resources.platform.users": "Kullanıcılar",
   "resources.platform.roles": "Roller",
+  "resources.platform.organizations": "Organizasyonlar",
   "resources.platform.notifications": "Bildirimler",
   "resources.platform.activity": "Etkinlik",
   "resources.platform.settings": "Ayarlar",

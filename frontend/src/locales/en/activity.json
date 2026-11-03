@@ -27,6 +27,7 @@
   "actions.users.impersonation_stopped": "User impersonation ended",
   "resources.platform.users": "Users",
   "resources.platform.roles": "Roles",
+  "resources.platform.organizations": "Organizations",
   "resources.platform.notifications": "Notifications",
   "resources.platform.activity": "Activity",
   "resources.platform.settings": "Settings",

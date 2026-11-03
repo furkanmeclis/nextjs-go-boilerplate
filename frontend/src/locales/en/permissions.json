@@ -20,6 +20,8 @@
   "labels.platform.users.write": "Write platform users",
   "labels.platform.roles.read": "Read platform roles",
   "labels.platform.roles.write": "Write platform roles",
+  "labels.platform.organizations.read": "Read organizations",
+  "labels.platform.organizations.write": "Write organizations",
   "labels.platform.notifications.read": "Read platform notifications",
   "labels.platform.notifications.read_all": "Read all users' platform notifications",
   "labels.platform.notifications.export": "Export platform notifications",
