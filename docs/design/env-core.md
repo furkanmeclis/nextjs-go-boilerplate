@@ -1,6 +1,6 @@
 # Environment config core — design study
 
-Status: **phases 1–3 implemented** (schema, `scripts/prod-env.sh`, generated `.env.server.example`, compose-env check; `make env-check`; see §12). Later phases are proposals. Reference implementations live in sibling forks of this boilerplate: `rentopia-app-go` (mature schema-driven generator), `olexfilms` (earlier non-schema generator with a careful rotation policy), `clickfix` (a compose-env CI check). This document surveys that prior art, recommends the **healthiest** version for the core, and lays out a phased plan. It deliberately does **not** copy any one fork.
+Status: **phases 1–4 implemented** (schema, `scripts/prod-env.sh`, generated `.env.server.example`, compose-env check, runtime guard; see §12). Later phases are proposals. Reference implementations live in sibling forks of this boilerplate: `rentopia-app-go` (mature schema-driven generator), `olexfilms` (earlier non-schema generator with a careful rotation policy), `clickfix` (a compose-env CI check). This document surveys that prior art, recommends the **healthiest** version for the core, and lays out a phased plan. It deliberately does **not** copy any one fork.
 
 ## 1. Goal
 
@@ -153,13 +153,16 @@ The frontend container (open question 6) is not covered yet: its reads (`process
 
 ## 9. Runtime guard
 
-Generalise the four ad-hoc refusals already in `config.go`'s `validate()` into one table-driven guard, co-located with the defaults (the task's "in `backend/internal/config`" option — least new surface; `platform/envguard` is the alternative if boot-time sequencing ever needs it).
+Implemented in phase 4 as `backend/internal/config/guard.go`, called from the existing `validate()` (open question 4: extend `config.go` rather than add `platform/envguard`).
 
-1. **`APP_ENV` is validated** against a fixed set `{development, test, staging, production}` (today the code only branches on `== development`/`== test`). An unknown value fails fast.
-2. **Managed-secret default refusal** becomes a table: `{envKey → known default/example value}` for every `secret:` key in the schema. Outside `development`/`test`, any managed secret still holding its public default (from `.env.example` / source) fails `validate()` with a clear message. This subsumes the current four hand-written checks.
-3. **Single-source link (the healthiest part):** a Go test `//go:embed`s `deploy/env/schema`, extracts its `secret:` keys, and asserts the guard's table covers exactly that set. Add a secret to the schema and forget the guard → the test fails. This is what keeps the schema authoritative over the runtime, not just the shell scripts.
+1. **`APP_ENV` must be one of** `development`, `test`, `staging`, `production`. Anything else stops the process at boot, with a hint for common slips (`prod` → `production`, `dev` → `development`). Before this, any unknown value silently got the production checks; only the redis key namespaces use `APP_ENV` otherwise.
+2. **One table, `managedSecrets`**: `{env key, how to read it from Config, its public development values, when it applies}`. Outside `development`/`test` (staging included), every applicable secret that is empty or still holds a public development value is refused, and **all** offenders are reported in one error. It replaces the hand-written checks for JWT, `APP_ENCRYPTION_KEY`, `AUTH_ADAPTER_SECRET`, `CENTRIFUGO_*` and `MEILI_MASTER_KEY`, and adds `DB_PASSWORD` (`change_me`), `REDIS_PASSWORD` (empty) and the S3 credentials (`minioadmin`, checked against the store the active `STORAGE_DRIVER` really uses). Conditional rows: Centrifugo keys only when it is enabled, the Meili key only with search on, S3 keys only for the `minio`/`s3` drivers. The existing `JWT_ACCESS_SECRET` ≥ 32 chars rule stays.
+3. **Single-source link** (`guard_test.go`). `go:embed` cannot reach `deploy/` from the `backend/` module, so the tests read the schema and `.env.example` from the checkout:
+   - every `secret:`/`vapid:` key in the schema has a table row, or an entry in `unguardedSchemaSecrets` with a reason (`AUTH_SECRET`: frontend only; the VAPID pair: public / no dev default), and no row guards a key the schema dropped;
+   - every non-empty `.env.example` value of a guarded key is in that row's defaults, so a dev value can never be accepted in production;
+   - each row reads the env key it names (checked through the real `Load()`), plus behaviour tests for defaults, empties, disabled features, the active object store, staging and `APP_ENV` hints.
 
-No behaviour change for local dev: `development`/`test` keep every default, so `make local-dev` is untouched.
+Local dev is unchanged: `development`/`test` accept every default. A `.env.server` from `prod-env.sh init` passes; a copied `.env.example` is refused with every offending key listed.
 
 ## 10. Local dev stays frictionless
 

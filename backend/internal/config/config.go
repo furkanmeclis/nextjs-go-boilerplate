@@ -262,7 +262,7 @@ func Load() (Config, error) {
 			Host:     getEnv("DB_HOST", "127.0.0.1"),
 			Port:     getInt("DB_PORT", 5432),
 			User:     getEnv("DB_USER", "app"),
-			Password: getEnv("DB_PASSWORD", "change_me"),
+			Password: getEnv("DB_PASSWORD", defaultDBPassword),
 			Name:     getEnv("DB_NAME", "app"),
 			SSLMode:  getEnv("DB_SSLMODE", "disable"),
 			MaxConns: int32(getInt("DB_MAX_CONNS", 20)),
@@ -320,8 +320,8 @@ func Load() (Config, error) {
 			QRTrustGeoHeaders:     getBool("AUTH_QR_TRUST_GEO_HEADERS", false),
 		},
 		JWT: JWTConfig{
-			AccessSecret:  getEnv("JWT_ACCESS_SECRET", "app-dev-access-secret-change-me-32b"),
-			RefreshSecret: getEnv("JWT_REFRESH_SECRET", "app-dev-refresh-secret-change-me-32b"),
+			AccessSecret:  getEnv("JWT_ACCESS_SECRET", defaultJWTAccessSecret),
+			RefreshSecret: getEnv("JWT_REFRESH_SECRET", defaultJWTRefreshSecret),
 			AccessTTL:     getDuration("JWT_ACCESS_TTL", 15*time.Minute),
 			RefreshTTL:    getDuration("JWT_REFRESH_TTL", 168*time.Hour),
 		},
@@ -341,7 +341,7 @@ func Load() (Config, error) {
 			Enabled:     getBool("SEARCH_ENABLED", true),
 			Driver:      strings.ToLower(getEnv("SEARCH_DRIVER", "meilisearch")),
 			MeiliHost:   getEnv("MEILI_HOST", "http://127.0.0.1:7700"),
-			MeiliKey:    getEnv("MEILI_MASTER_KEY", "app-dev-meili-master-key-change-me"),
+			MeiliKey:    getEnv("MEILI_MASTER_KEY", defaultMeiliMasterKey),
 			IndexPrefix: getEnv("MEILI_INDEX_PREFIX", "app"),
 		},
 		Sentry: SentryConfig{
@@ -363,15 +363,12 @@ func Load() (Config, error) {
 	return cfg, nil
 }
 
-// Development-only fallbacks. validate() rejects them outside development.
-const (
-	defaultEncryptionKey       = "app-dev-encryption-key-32bytes!!"
-	defaultAdapterSecret       = "app-dev-auth-adapter-secret-change-me"
-	defaultCentrifugoAPIKey    = "app-centrifugo-api-key-change-me"
-	defaultCentrifugoTokenHMAC = "app-centrifugo-token-hmac-change-me"
-)
-
+// validate checks the loaded config. Secret defaults are refused outside
+// development/test by secretGuard (guard.go), driven by deploy/env/schema.
 func (c Config) validate() error {
+	if err := validateAppEnv(c.App.Env); err != nil {
+		return err
+	}
 	if c.App.Name == "" {
 		return fmt.Errorf("config: APP_NAME is required")
 	}
@@ -390,29 +387,11 @@ func (c Config) validate() error {
 	if c.JWT.AccessTTL <= 0 || c.JWT.RefreshTTL <= 0 {
 		return fmt.Errorf("config: JWT TTLs must be positive")
 	}
-	if c.App.Env != "development" && c.App.Env != "test" {
-		if c.JWT.AccessSecret == "" || c.JWT.RefreshSecret == "" {
-			return fmt.Errorf("config: JWT_ACCESS_SECRET and JWT_REFRESH_SECRET are required outside development")
-		}
-		if c.JWT.AccessSecret == "app-dev-access-secret-change-me-32b" ||
-			c.JWT.RefreshSecret == "app-dev-refresh-secret-change-me-32b" {
-			return fmt.Errorf("config: replace default JWT secrets outside development")
-		}
-		if len(c.JWT.AccessSecret) < 32 {
-			return fmt.Errorf("config: JWT_ACCESS_SECRET must be at least 32 characters outside development")
-		}
-		// Fallbacks below are public (.env.example / source); refuse them so
-		// production never encrypts secrets or signs tokens with known keys.
-		if c.Encryption.Key == "" || c.Encryption.Key == defaultEncryptionKey {
-			return fmt.Errorf("config: set a unique APP_ENCRYPTION_KEY outside development")
-		}
-		if c.Auth.AdapterSecret == defaultAdapterSecret {
-			return fmt.Errorf("config: replace default AUTH_ADAPTER_SECRET outside development")
-		}
-		if c.Centrifugo.Enabled && (c.Centrifugo.TokenHMAC == defaultCentrifugoTokenHMAC ||
-			c.Centrifugo.APIKey == defaultCentrifugoAPIKey) {
-			return fmt.Errorf("config: replace default CENTRIFUGO_TOKEN_HMAC_SECRET / CENTRIFUGO_API_KEY outside development")
-		}
+	if err := c.secretGuard(); err != nil {
+		return err
+	}
+	if !c.App.IsLocal() && len(c.JWT.AccessSecret) < 32 {
+		return fmt.Errorf("config: JWT_ACCESS_SECRET must be at least 32 characters outside development")
 	}
 	if c.JWT.AccessSecret == "" {
 		return fmt.Errorf("config: JWT_ACCESS_SECRET is required")
@@ -423,14 +402,6 @@ func (c Config) validate() error {
 		}
 		if c.Search.IndexPrefix == "" {
 			return fmt.Errorf("config: MEILI_INDEX_PREFIX is required when SEARCH_ENABLED=true")
-		}
-		if c.App.Env != "development" && c.App.Env != "test" {
-			if c.Search.MeiliKey == "" {
-				return fmt.Errorf("config: MEILI_MASTER_KEY is required when SEARCH_ENABLED=true")
-			}
-			if c.Search.MeiliKey == "app-dev-meili-master-key-change-me" {
-				return fmt.Errorf("config: replace default MEILI_MASTER_KEY outside development")
-			}
 		}
 	}
 	switch c.SMTP.TLSMode {
@@ -448,8 +419,8 @@ func loadStorageConfig() StorageConfig {
 	driver := strings.ToLower(getEnv("STORAGE_DRIVER", "minio"))
 	s3Endpoint := getEnv("S3_ENDPOINT", "http://127.0.0.1:9000")
 	s3Bucket := getEnv("S3_BUCKET", "app")
-	s3Access := getEnv("S3_ACCESS_KEY", "minioadmin")
-	s3Secret := getEnv("S3_SECRET_KEY", "minioadmin")
+	s3Access := getEnv("S3_ACCESS_KEY", defaultS3AccessKey)
+	s3Secret := getEnv("S3_SECRET_KEY", defaultS3SecretKey)
 	s3Region := getEnv("S3_REGION", "us-east-1")
 	s3PathStyle := getBool("S3_USE_PATH_STYLE", true)
 	s3Public := getEnv("S3_PUBLIC_BASE_URL", "")

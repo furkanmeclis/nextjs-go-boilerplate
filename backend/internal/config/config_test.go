@@ -22,6 +22,10 @@ func validProdConfig() Config {
 	c.Centrifugo.Enabled = true
 	c.Centrifugo.APIKey = "real-api-key"
 	c.Centrifugo.TokenHMAC = "real-hmac"
+	c.DB.Password = "real-db-password"
+	c.Redis.Password = "real-redis-password"
+	c.Storage.Driver = "minio"
+	c.Storage.MinIO.AccessKey, c.Storage.MinIO.SecretKey = "real-access", "real-secret"
 	return c
 }
 
