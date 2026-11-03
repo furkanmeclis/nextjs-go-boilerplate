@@ -1,30 +1,17 @@
 package access
 
 import (
-	"net/http"
-
-	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/middleware"
 	accesshandler "github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/modules/access/handler"
-	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/jwt"
+	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/module"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/rbac"
 )
 
-// RegisterRoutes mounts access policy routes.
-func RegisterRoutes(
-	mux *http.ServeMux,
-	h *accesshandler.Handler,
-	tokens *jwt.Manager,
-	loader middleware.IdentityLoader,
-) {
-	authn := middleware.Authenticate(tokens, loader)
-	require := func(slug string) func(http.Handler) http.Handler {
-		return middleware.RequirePermission(slug)
-	}
+// Module mounts the access policy routes.
+type Module struct{ H *accesshandler.Handler }
 
-	mux.Handle("GET /v1/platform/access/settings", middleware.Chain(
-		http.HandlerFunc(h.GetSettings), authn, require(rbac.PermPlatformAccessRead),
-	))
-	mux.Handle("PATCH /v1/platform/access/settings", middleware.Chain(
-		http.HandlerFunc(h.PatchSettings), authn, require(rbac.PermPlatformAccessWrite),
-	))
+func (Module) Name() string { return "access" }
+
+func (m Module) Routes(r *module.Router) {
+	r.Platform("GET /v1/platform/access/settings", rbac.PermPlatformAccessRead, m.H.GetSettings)
+	r.Platform("PATCH /v1/platform/access/settings", rbac.PermPlatformAccessWrite, m.H.PatchSettings)
 }

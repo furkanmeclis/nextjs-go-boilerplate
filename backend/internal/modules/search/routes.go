@@ -1,28 +1,16 @@
 package search
 
 import (
-	"net/http"
-
-	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/middleware"
 	searchhandler "github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/modules/search/handler"
-	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/jwt"
-	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/rbac"
+	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/module"
 )
 
-// RegisterRoutes mounts command-palette search endpoints.
-func RegisterRoutes(
-	mux *http.ServeMux,
-	h *searchhandler.Handler,
-	tokens *jwt.Manager,
-	loader middleware.IdentityLoader,
-) {
-	authn := middleware.Authenticate(tokens, loader)
-	session := middleware.RequirePermission(rbac.PermAuthSession)
+// Module mounts the command-palette search endpoints (any signed-in session).
+type Module struct{ H *searchhandler.Handler }
 
-	mux.Handle("GET /v1/search/specs", middleware.Chain(
-		http.HandlerFunc(h.Specs), authn, session,
-	))
-	mux.Handle("GET /v1/search", middleware.Chain(
-		http.HandlerFunc(h.Search), authn, session,
-	))
+func (Module) Name() string { return "search" }
+
+func (m Module) Routes(r *module.Router) {
+	r.Session("GET /v1/search/specs", m.H.Specs)
+	r.Session("GET /v1/search", m.H.Search)
 }

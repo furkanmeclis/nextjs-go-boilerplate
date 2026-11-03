@@ -1,29 +1,18 @@
 package activity
 
 import (
-	"net/http"
-
-	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/middleware"
 	activityhandler "github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/modules/activity/handler"
-	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/jwt"
+	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/module"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/rbac"
 )
 
-func RegisterRoutes(
-	mux *http.ServeMux,
-	h *activityhandler.Handler,
-	tokens *jwt.Manager,
-	loader middleware.IdentityLoader,
-) {
-	authn := middleware.Authenticate(tokens, loader)
-	require := func(slug string) func(http.Handler) http.Handler {
-		return middleware.RequirePermission(slug)
-	}
+// Module mounts the platform activity (audit log) routes.
+type Module struct{ H *activityhandler.Handler }
 
-	mux.Handle("GET /v1/platform/activity/meta", middleware.Chain(
-		http.HandlerFunc(h.Meta), authn, require(rbac.PermPlatformActivityRead),
-	))
-	mux.Handle("GET /v1/platform/activity", middleware.Chain(
-		http.HandlerFunc(h.List), authn, require(rbac.PermPlatformActivityRead),
-	))
+func (Module) Name() string { return "activity" }
+
+func (m Module) Routes(r *module.Router) {
+	read := rbac.PermPlatformActivityRead
+	r.Platform("GET /v1/platform/activity/meta", read, m.H.Meta)
+	r.Platform("GET /v1/platform/activity", read, m.H.List)
 }
