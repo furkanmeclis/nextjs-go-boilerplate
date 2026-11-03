@@ -4,11 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"log/slog"
-	"net"
 	"net/http"
 	"net/netip"
 
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/database/db"
+	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/clientip"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -43,10 +43,10 @@ func (r *Recorder) Record(ctx context.Context, actorID *int64, action, resource 
 	var ip *netip.Addr
 	var ua pgtype.Text
 	if rreq != nil {
-		if host, _, err := net.SplitHostPort(rreq.RemoteAddr); err == nil {
-			if parsed, err := netip.ParseAddr(host); err == nil {
-				ip = &parsed
-			}
+		// Resolved by clientip.Middleware; behind the BFF the raw RemoteAddr
+		// would be the proxy's address, not the client's.
+		if parsed, err := netip.ParseAddr(clientip.From(rreq)); err == nil {
+			ip = &parsed
 		}
 		if rreq.UserAgent() != "" {
 			ua = pgtype.Text{String: rreq.UserAgent(), Valid: true}

@@ -2403,8 +2403,9 @@ paths:
         expire 30 s after the session. Channel events (`data.type`):
         `scanned`, `approved` (with `exchange_token`), `rejected`.
 
-        The request's User-Agent and client IP (first `X-Forwarded-For` hop) are
-        stored for the approval screen. Errors: `429 RATE_LIMITED` (60 / 15 min
+        The request's User-Agent and client IP are stored for the approval
+        screen. The IP honours `X-Forwarded-For` only behind a trusted proxy
+        (`TRUSTED_PROXIES`; right-most untrusted hop). Errors: `429 RATE_LIMITED` (60 / 15 min
         per IP), `503 REALTIME_DISABLED`.
       security: []
       responses:

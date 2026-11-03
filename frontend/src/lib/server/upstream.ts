@@ -17,21 +17,25 @@ function buildUpstreamUrl(pathWithQuery: string): string {
 }
 
 /**
- * Best-effort client IP for the Go API's per-IP rate limits and audit trail.
- * Prefer the edge proxy's X-Real-IP, else the right-most X-Forwarded-For hop
- * (appended by our own proxy; left-most entries are client-controlled).
- * Returns null when the request carries neither.
+ * X-Forwarded-For chain to send to the Go API (per-IP rate limits, sessions,
+ * audit trail). The BFF does not pick a hop itself: it forwards the chain it
+ * received, and the API walks it right-to-left, believing only hops appended
+ * by trusted proxies (TRUSTED_PROXIES; platform/clientip). X-Real-IP is used
+ * only when there is no X-Forwarded-For at all: appending it would make it the
+ * right-most hop and let a client-supplied value outrank the edge's real one.
+ *
+ * Left-most entries are client-controlled, so this relies on the BFF sitting
+ * behind an edge proxy that appends the real client address (as in
+ * compose.prod.yml / Dokploy). Returns null when neither header is present.
  */
-export function clientIpFromHeaders(headers: Headers): string | null {
-  const real = headers.get("x-real-ip")?.trim();
-  if (real) return real;
-  const xff = headers.get("x-forwarded-for");
-  if (!xff) return null;
-  const hops = xff
+export function forwardedForFromHeaders(headers: Headers): string | null {
+  const hops = (headers.get("x-forwarded-for") ?? "")
     .split(",")
     .map((hop) => hop.trim())
     .filter(Boolean);
-  return hops.length > 0 ? hops[hops.length - 1]! : null;
+  const real = headers.get("x-real-ip")?.trim();
+  if (hops.length === 0 && real) hops.push(real);
+  return hops.length > 0 ? hops.join(", ") : null;
 }
 
 function scrubUpstreamHeaders(init?: HeadersInit): Headers {

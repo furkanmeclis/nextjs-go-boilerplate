@@ -68,6 +68,7 @@ import (
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/appleauth"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/bulkengine"
 	bulkadapters "github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/bulkengine/adapters"
+	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/clientip"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/crypto"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/events"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/ioengine"
@@ -125,6 +126,10 @@ type Server struct {
 
 // New wires router and middleware for the API skeleton.
 func New(cfg config.Config, log *slog.Logger, deps Deps) (*Server, error) {
+	ipResolver, err := clientip.NewResolver(cfg.HTTP.TrustedProxies)
+	if err != nil {
+		return nil, fmt.Errorf("httpserver: TRUSTED_PROXIES: %w", err)
+	}
 	mux := http.NewServeMux()
 	eventBus := deps.Events
 	if eventBus == nil {
@@ -339,7 +344,7 @@ func New(cfg config.Config, log *slog.Logger, deps Deps) (*Server, error) {
 
 	s.http = &http.Server{
 		Addr:         cfg.HTTP.Addr,
-		Handler:      middleware.RequestID(middleware.ServerErrors(log)(mux)),
+		Handler:      middleware.RequestID(clientip.Middleware(ipResolver)(middleware.ServerErrors(log)(mux))),
 		ReadTimeout:  cfg.HTTP.ReadTimeout,
 		WriteTimeout: cfg.HTTP.WriteTimeout,
 		IdleTimeout:  cfg.HTTP.IdleTimeout,

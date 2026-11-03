@@ -6,6 +6,8 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/clientip"
 )
 
 func TestHandlerPublicFlow(t *testing.T) {
@@ -15,12 +17,20 @@ func TestHandlerPublicFlow(t *testing.T) {
 	mux.HandleFunc("POST /v1/auth/qr/sessions", h.Create)
 	mux.HandleFunc("POST /v1/auth/qr/sessions/{id}/state", h.State)
 	mux.HandleFunc("POST /v1/auth/qr/exchange", h.Exchange)
+	// As in production: the request arrives from a trusted proxy (the BFF)
+	// through clientip.Middleware, so its X-Forwarded-For hop is honoured.
+	res, err := clientip.NewResolver(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	root := clientip.Middleware(res)(mux)
 
 	req := httptest.NewRequest("POST", "/v1/auth/qr/sessions", nil)
+	req.RemoteAddr = "10.0.0.2:41000"
 	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0) Firefox/130.0")
 	req.Header.Set("X-Forwarded-For", "203.0.113.5")
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, req)
+	root.ServeHTTP(rec, req)
 	if rec.Code != http.StatusCreated || rec.Header().Get("Cache-Control") != "no-store" {
 		t.Fatalf("create %d %s", rec.Code, rec.Body)
 	}
