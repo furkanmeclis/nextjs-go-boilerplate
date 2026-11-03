@@ -1,6 +1,6 @@
 # Auth & RBAC
 
-Single-scope role model for this boilerplate: users are global; permissions come from assigned roles (union). No tenants or workspaces.
+Users are global; platform permissions come from assigned global roles (union). With `TENANCY_ENABLED`, users can also be members of organizations, and `tenant.*` permissions come from the membership role in the organization of the request (see "Tenant core" below). There are no workspaces.
 
 ## Roles
 
@@ -158,7 +158,7 @@ Per-IP limits, session rows and activity events use the client IP resolved by `i
 
 ## `/v1/auth/me`
 
-Returns `user`, `roles[]`, `permissions[]`, self-service links, and realtime hints. No tenant list.
+Returns `user`, `roles[]`, `permissions[]`, self-service links, and realtime hints. With tenancy on it also returns `organizations[]` (uuid, slug, name, status, access window, role, permissions of each membership); the authoritative scope for a request is `GET /v1/tenant/context`.
 
 ## Platform users
 
@@ -189,7 +189,7 @@ Last super admin cannot be demoted via role removal or disable.
 
 New permission slugs are added via migrations/seeds only (no permission CRUD API).
 
-## Tenancy (phase 1)
+## Tenancy (tenant core)
 
 Behind `TENANCY_ENABLED` (default `false`). Design: [`docs/design/tenant-core.md`](../../docs/design/tenant-core.md).
 
@@ -210,6 +210,12 @@ Behind `TENANCY_ENABLED` (default `false`). Design: [`docs/design/tenant-core.md
 **Caching.** `orgcache.CachedResolver` wraps the resolver with Redis (TTL `TENANCY_CACHE_TTL`, default `60s`; nil Redis = no cache; Redis errors fall back to the database). Entries are keyed by (organization id, version, user, ref) and only successful resolutions are cached. Every change that affects resolution (status, access window, membership, role, role permissions, slug) must call `orgctx.Invalidate(ctx, inv, orgID)` after commit: it bumps the organization's version counter, so old entries are never read again and revocation is effectively immediate. A cached entry whose `access_ends_at` has passed is rejected without waiting for the TTL.
 
 Probe: `GET /v1/tenant/context` returns `{organization, role, permissions}` of the resolved scope.
+
+**Owner rule.** Only an owner may grant, change, or remove the owner role, or invite/revoke an owner-role invitation (`403 OWNER_ROLE_REQUIRED`; an owner invitation is simply not found for admins). The usecase re-checks this inside the locked transaction, and the last owner can never be demoted or removed (`ErrLastOrganizationOwner`). Platform routes act with owner rights.
+
+**Invitations.** `POST /v1/tenant/invitations` stores only the SHA-256 of a 32-byte token and enqueues the `tenant.invitation` notification; the link is `/invite/{token}`. Preview and accept send the token in the body (never the URL path of the API), acceptance is single-use and bound to the invited email.
+
+**Realtime.** `org:{uuid}` subscription tokens are issued only when the same resolution rules pass (membership, status, access window). Authorization is checked when the token is issued; removing a member does not drop a live subscription.
 
 ## CLI
 

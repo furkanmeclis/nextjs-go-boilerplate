@@ -1,6 +1,6 @@
 # Agent entry
 
-Read this first, then the matching skill. Human docs live under `docs/`. Do not invent tenants, workspaces, or a `/business` shell.
+Read this first, then the matching skill. Human docs live under `docs/`. Multi-tenancy is the built-in **tenant core** (organizations, `/t/{slug}`, `X-Organization`; behind `TENANCY_ENABLED`, see [docs/design/tenant-core.md](./docs/design/tenant-core.md)). Do not invent other tenant models: no workspaces, `/business` shell, or org ids in the JWT.
 
 Canonical env is the **repo-root** `.env`. Compose files are `compose.local.yml` (infra) and `compose.prod.yml` (full stack).
 
@@ -11,6 +11,7 @@ Canonical env is the **repo-root** `.env`. Compose files are `compose.local.yml`
 | [boilerplate-first-setup](./.agents/skills/boilerplate-first-setup/SKILL.md) | Clone, `.env`, Docker names, production env (`make prod-env-init`), Dokploy, `make local-dev` |
 | [monorepo-playbooks](./.agents/skills/monorepo-playbooks/SKILL.md) | Cross-app work; repo map |
 | [add-platform-resource](./.agents/skills/add-platform-resource/SKILL.md) | New list resource (module → RBAC → OpenAPI → UI → nav) |
+| [add-tenant-resource](./.agents/skills/add-tenant-resource/SKILL.md) | New organization-owned resource under `/v1/tenant` and `/t/{slug}` |
 | [nav-engine](./.agents/skills/nav-engine/SKILL.md) | Sidebar catalog, badges, info |
 | [io-engine](./.agents/skills/io-engine/SKILL.md) | Export / import adapters |
 | [bulk-engine](./.agents/skills/bulk-engine/SKILL.md) | Bulk actions, jobs, rollback |
@@ -42,5 +43,6 @@ Canonical env is the **repo-root** `.env`. Compose files are `compose.local.yml`
 - Never expose Meilisearch to the browser; search goes through `/v1/search`.
 - New `/v1` routes update `backend/docs/openapi.yaml` in the same change.
 - Permission slugs are added only via migration + `internal/platform/rbac` + `frontend/src/config/permissions.ts`.
+- Tenant data: tables carry `organization_id`, repositories take `orgID` from `orgctx.Must(ctx).ID`, and every query on a table in `backend/internal/database/tenant_tables.txt` references `organization_id` (enforced by `queries_test.go`).
 - After OpenAPI changes: `cd frontend && pnpm api:generate`.
 - Production env comes from `deploy/env/schema` (`make prod-env-init`), never from a copy of `.env.example`. New env vars follow `docs/EXTENDING.md` → "Environment variables"; `.env.server.example` is generated (`scripts/prod-env.sh example`), never hand-edited. `make env-check` must pass.
