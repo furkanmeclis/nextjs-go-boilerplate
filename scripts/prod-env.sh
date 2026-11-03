@@ -14,8 +14,8 @@
 #   --rotate K1,K2   upgrade: regenerate these secrets (refuses @norotate keys)
 #   --yes            no prompts: accept defaults, confirm --rotate
 #
-# init asks for APP_URL (and offers defaults for the rest), derives every URL and
-# generates every secret. upgrade keeps every existing value: it applies schema
+# init asks for APP_URL and IMAGE_REPO (and offers defaults for the rest), derives
+# every URL and image and generates every secret. upgrade keeps every existing value: it applies schema
 # renames/removals, fills only missing keys and re-stamps ENV_SCHEMA_VERSION,
 # backing the old file up to <file>.bak. Secret values are never printed.
 set -euo pipefail
@@ -32,6 +32,7 @@ SCHEMA=$ROOT/deploy/env/schema
 FILE=$ROOT/.env.server
 DEV_EXAMPLE=$ROOT/.env.example
 EXAMPLE_APP_URL=https://app.example.com
+EXAMPLE_IMAGE_REPO=ghcr.io/example/app
 
 die() { echo "prod-env: $*" >&2; exit 1; }
 QUIET=0
@@ -245,6 +246,7 @@ check_value() { # check_value <key> <value> -> ERR; 1 when invalid
   case $1 in
     APP_URL) split_url "$2" || { ERR="must look like https://app.example.com (scheme + host, no path)"; return 1; } ;;
     NAME_PREFIX) [[ $2 =~ ^[a-z][a-z0-9-]{1,39}$ ]] || { ERR="lowercase letters, digits and '-', 2-40 chars, starting with a letter"; return 1; } ;;
+    IMAGE_REPO) [[ $2 =~ ^[a-z0-9.-]+(:[0-9]+)?(/[a-z0-9._-]+)+$ ]] || { ERR="must look like ghcr.io/<owner>/<repo> (lowercase, no tag)"; return 1; } ;;
   esac
 }
 
@@ -376,10 +378,10 @@ build_lines() {
       "# Secret: never commit it. Keep values stable; migrate with: scripts/prod-env.sh upgrade")
   else
     LINES+=("# GENERATED from deploy/env/schema by \`scripts/prod-env.sh example\`. Do not edit by hand."
-      "# Production key list. Create the real file (asks for APP_URL, generates every secret):"
+      "# Production key list. Create the real file (asks for APP_URL and IMAGE_REPO, generates every secret):"
       "#   scripts/prod-env.sh init      then: make prod-config && make prod-up"
       "# Existing deployment: scripts/prod-env.sh upgrade   verify: scripts/prod-env.sh check"
-      "# Values are examples for $EXAMPLE_APP_URL; secrets stay blank on purpose."
+      "# Values are examples for $EXAMPLE_APP_URL and $EXAMPLE_IMAGE_REPO; secrets stay blank on purpose."
       "# Keys not listed keep their compose.prod.yml defaults (all documented in .env.example).")
   fi
   LINES+=("ENV_SCHEMA_VERSION=$VERSION" "")
@@ -423,6 +425,7 @@ cmd_example() {
   QUIET=1
   ASSUME_YES=1
   [[ -n ${SETS[APP_URL]+x} ]] || SETS[APP_URL]=$EXAMPLE_APP_URL
+  [[ -n ${SETS[IMAGE_REPO]+x} ]] || SETS[IMAGE_REPO]=$EXAMPLE_IMAGE_REPO
   VAL=()
   for key in "${KEYS[@]}"; do
     case ${RULE[$key]} in

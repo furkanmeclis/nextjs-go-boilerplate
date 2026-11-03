@@ -193,7 +193,7 @@ Each phase is one commit on the session branch (auto-PR is off; the owner merges
 
 1. **`NAME_PREFIX`**: asked, defaulting to the first host label (`app` when that is not a valid prefix).
 2. **`.env.example` ⊆ schema lint**: on (`scripts/check-env-sync.sh`).
-3. **Image rules**: derived `{NAME_PREFIX}-backend:latest` for now; the GHCR merge switches them to registry paths (one-line change + `@version` bump).
+3. **Image rules**: schema v2 (the GHCR merge) asks `IMAGE_REPO` (`ghcr.io/<owner>/<repo>`, required, validated) and derives `BACKEND_IMAGE` / `FRONTEND_IMAGE` as `{IMAGE_REPO}-backend:main` / `-frontend:main`, with `IMAGE_PULL_POLICY` fixed to `always`. A v1 file keeps its image values on `upgrade` (point them at GHCR by hand) and needs `--set IMAGE_REPO=…`.
 4. **Guard home**: `backend/internal/config/guard.go`, called from `validate()`.
 5. **SOPS/age**: out of core.
 6. **Frontend container env**: still open. Its `process.env.*` reads (with `NEXT_PUBLIC_*` inlined at build time) need their own extractor before `check-compose-env.sh` can cover the frontend service.

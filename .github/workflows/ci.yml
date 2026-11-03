@@ -217,7 +217,7 @@ jobs:
   # deploy/env/schema, .env.example has every schema key, prod-env tests pass
   # (they also run `docker compose config` on compose.prod.yml).
   env:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
       - name: Env schema sync
@@ -325,14 +325,15 @@ jobs:
   # args + OCI labels on every image; only the backend Dockerfile consumes the
   # args (an image that doesn't declare them just ignores them).
   # always() so a docs-only main push (backend/frontend skipped) still refreshes
-  # the tags; a real backend/frontend failure blocks the push via the gate.
+  # the tags; a real backend/frontend/env failure blocks the push via the gate.
   publish-images:
-    needs: [changes, backend, frontend, release-meta]
+    needs: [changes, backend, frontend, env, release-meta]
     if: >-
       always() &&
       github.event_name == 'push' &&
       github.ref == 'refs/heads/main' &&
       needs.release-meta.result == 'success' &&
+      needs.env.result == 'success' &&
       needs.backend.result != 'failure' &&
       needs.frontend.result != 'failure' &&
       needs.backend.result != 'cancelled' &&
@@ -615,7 +616,7 @@ jobs:
   # in branch protection (not the individual jobs, which skip by design).
   ci:
     if: always()
-    needs: [changes, backend, frontend, mobile, image-build, release-meta, publish-images, release-tag, mobile-release]
+    needs: [changes, backend, frontend, env, mobile, image-build, release-meta, publish-images, release-tag, mobile-release]
     runs-on: ubuntu-24.04
     steps:
       - name: Gate

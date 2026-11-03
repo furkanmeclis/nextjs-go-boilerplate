@@ -56,7 +56,7 @@ while IFS= read -r line || [[ -n $line ]]; do
 done <"$ALLOW"
 
 # --- delivered set -------------------------------------------------------------
-"$ROOT/scripts/prod-env.sh" init --file "$T/env" --yes --set APP_URL=https://app.example.com </dev/null 2>"$T/init.err" ||
+"$ROOT/scripts/prod-env.sh" init --file "$T/env" --yes --set APP_URL=https://app.example.com --set IMAGE_REPO=ghcr.io/example/app </dev/null 2>"$T/init.err" ||
   { cat "$T/init.err" >&2; die "could not generate an env from deploy/env/schema"; }
 if ! docker compose --env-file "$T/env" -f "$COMPOSE" config >"$T/resolved.yml" 2>"$T/config.err"; then
   cat "$T/config.err" >&2

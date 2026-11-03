@@ -21,7 +21,7 @@
 ##
 ## Keys left out here keep their compose.prod.yml defaults; .env.example documents them all.
 
-@version 1
+@version 2
 
 @norotate APP_ENCRYPTION_KEY
 @norotate DB_PASSWORD
@@ -32,9 +32,14 @@ APP_URL | ask:{AUTH_URL}
 # Unique per app on a host: names containers, volumes and the app network.
 # Plain Docker host only (Dokploy creates it): docker network create dokploy-network
 NAME_PREFIX | ask:{APP_LABEL}
-# Images built by `make prod-up`; point them at a registry to pull instead.
-BACKEND_IMAGE | derive:{NAME_PREFIX}-backend:latest
-FRONTEND_IMAGE | derive:{NAME_PREFIX}-frontend:latest
+# Images are prebuilt by CI and pulled, never built on the server. CI publishes
+# ghcr.io/<owner>/<repo>-<service> (lowercase) as :main, :sha-<short> and :v0.N;
+# pin a deploy by editing the tags. Private packages: add a ghcr.io registry
+# (read:packages PAT) in Dokploy. Dokploy deploys on git tags v0.*.
+IMAGE_REPO | ask:
+BACKEND_IMAGE | derive:{IMAGE_REPO}-backend:main
+FRONTEND_IMAGE | derive:{IMAGE_REPO}-frontend:main
+IMAGE_PULL_POLICY | const:always
 
 # --- Public URLs ---
 AUTH_URL | derive:{APP_URL}

@@ -16,7 +16,7 @@ val() { grep -E "^$1=" "$2" | tail -n1 | cut -d= -f2-; }
 # Every KEY=VALUE except the given keys (to prove nothing else moved).
 values_except() { local f=$1; shift; grep -E '^[A-Z_]+=' "$f" | grep -vE "^($(IFS='|'; echo "$*"))=" | sort; }
 
-init() { "$PE" init --file "$1" --yes --set APP_URL=https://demo.example.com "${@:2}" </dev/null 2>/dev/null; }
+init() { "$PE" init --file "$1" --yes --set APP_URL=https://demo.example.com --set IMAGE_REPO=ghcr.io/acme/demo "${@:2}" </dev/null 2>/dev/null; }
 
 # --- init --------------------------------------------------------------------
 E=$T/env
@@ -36,6 +36,15 @@ ok "init writes every schema key and stamps ENV_SCHEMA_VERSION"
 init "$T/short" --set APP_URL=https://x.io || fail "init with a one-letter host label"
 [[ $(val NAME_PREFIX "$T/short") == app ]] || fail "NAME_PREFIX falls back to app"
 ok "init derives NAME_PREFIX, URLs and origins from APP_URL (falls back to 'app')"
+
+[[ $(val BACKEND_IMAGE "$E") == ghcr.io/acme/demo-backend:main ]] || fail "BACKEND_IMAGE from IMAGE_REPO"
+[[ $(val FRONTEND_IMAGE "$E") == ghcr.io/acme/demo-frontend:main ]] || fail "FRONTEND_IMAGE from IMAGE_REPO"
+[[ $(val IMAGE_PULL_POLICY "$E") == always ]] || fail "IMAGE_PULL_POLICY"
+if "$PE" init --file "$T/norepo" --yes --set APP_URL=https://demo.example.com </dev/null 2>/dev/null; then fail "init without IMAGE_REPO"; fi
+for bad in ghcr.io/Acme/demo ghcr.io/acme/demo:main ghcr.io; do
+  if init "$T/badrepo" --set IMAGE_REPO=$bad; then fail "invalid IMAGE_REPO $bad"; fi
+done
+ok "init derives the GHCR images from IMAGE_REPO, which is required and validated"
 
 [[ $(val JWT_ACCESS_SECRET "$E") =~ ^[0-9a-f]{64}$ ]] || fail "hex:32 secret"
 [[ $(val DB_PASSWORD "$E") =~ ^[A-Za-z0-9]{32}$ ]] || fail "alnum:32 secret"
@@ -67,12 +76,12 @@ fi
 "$PE" check --file "$E" 2>/dev/null || fail "check fails on a fresh file"
 ok "check passes on a fresh file"
 
-if "$PE" init --file "$E" --yes --set APP_URL=https://x.example.com </dev/null 2>/dev/null; then
+if "$PE" init --file "$E" --yes --set APP_URL=https://x.example.com --set IMAGE_REPO=ghcr.io/acme/demo </dev/null 2>/dev/null; then
   fail "init overwrote an existing file"
 fi
 ok "init refuses to overwrite"
 
-if "$PE" init --file "$T/nourl" --yes </dev/null 2>/dev/null; then fail "init without APP_URL"; fi
+if "$PE" init --file "$T/nourl" --yes --set IMAGE_REPO=ghcr.io/acme/demo </dev/null 2>/dev/null; then fail "init without APP_URL"; fi
 if init "$T/badurl" --set APP_URL=https://demo.example.com/path; then fail "APP_URL with a path"; fi
 if init "$T/badprefix" --set NAME_PREFIX=Bad_Name; then fail "invalid NAME_PREFIX"; fi
 ok "init rejects a missing/invalid APP_URL and an invalid NAME_PREFIX"
@@ -85,19 +94,21 @@ cmp -s "$E" "$T/before" || fail "no-op upgrade changed the file"
 ok "upgrade on a current file is a no-op"
 
 # --- upgrade across a schema bump ------------------------------------------------
-S2=$T/schema.v2
-sed -e 's/^@version 1$/@version 2/' \
+cur=$(sed -nE 's/^@version ([0-9]+)$/\1/p' "$SCHEMA")
+nxt=$((cur + 1))
+S2=$T/schema.next
+sed -e "s/^@version $cur\$/@version $nxt/" \
   -e 's/^JWT_ACCESS_SECRET |/JWT_ACCESS_KEY |/' \
   -e '/^SMTP_PORT |/d' "$SCHEMA" >"$S2"
-cat >>"$S2" <<'EOF'
-@rename JWT_ACCESS_SECRET JWT_ACCESS_KEY 2
-@remove SMTP_PORT 2
+cat >>"$S2" <<EOF
+@rename JWT_ACCESS_SECRET JWT_ACCESS_KEY $nxt
+@remove SMTP_PORT $nxt
 NEW_SECRET | secret:hex:16
 NEW_URL | derive:{APP_URL}/new
 EOF
 
 if "$PE" check --file "$E" --schema "$S2" >"$T/check.out" 2>&1; then fail "check passed against a newer schema"; fi
-grep -q 'file is v1, schema is v2' "$T/check.out" || fail "check: version gap not reported"
+grep -q "file is v$cur, schema is v$nxt" "$T/check.out" || fail "check: version gap not reported"
 grep -q 'missing: NEW_SECRET' "$T/check.out" || fail "check: missing key not reported"
 grep -q 'renamed: JWT_ACCESS_SECRET is now JWT_ACCESS_KEY' "$T/check.out" || fail "check: rename not reported"
 grep -q 'removed: SMTP_PORT' "$T/check.out" || fail "check: removal not reported"
@@ -105,10 +116,10 @@ ok "check reports version gap, missing, renamed and removed keys (exit 1)"
 
 old_jwt=$(val JWT_ACCESS_SECRET "$E")
 "$PE" upgrade --file "$E" --schema "$S2" --yes </dev/null 2>/dev/null
-[[ $(val ENV_SCHEMA_VERSION "$E") == 2 ]] || fail "upgrade: version not re-stamped"
+[[ $(val ENV_SCHEMA_VERSION "$E") == "$nxt" ]] || fail "upgrade: version not re-stamped"
 [[ $(val JWT_ACCESS_KEY "$E") == "$old_jwt" ]] || fail "upgrade: rename lost the value"
 ! grep -qE '^JWT_ACCESS_SECRET=' "$E" || fail "upgrade: old key still active"
-grep -qE '^# removed@2: SMTP_PORT=587$' "$E" || fail "upgrade: removed key not commented out"
+grep -qE "^# removed@$nxt: SMTP_PORT=587$" "$E" || fail "upgrade: removed key not commented out"
 [[ $(val NEW_SECRET "$E") =~ ^[0-9a-f]{32}$ ]] || fail "upgrade: new secret not generated"
 [[ $(val NEW_URL "$E") == https://demo.example.com/new ]] || fail "upgrade: new derive"
 cmp -s "$E.bak" "$T/before" || fail "upgrade: backup is not the previous file"
