@@ -112,8 +112,13 @@ local-dev: infra
 prod-config:
 	docker compose --env-file $(PROD_ENV_FILE) -f compose.prod.yml config
 
+# Prebuilt images: CI publishes them to GHCR and the server pulls them (Dokploy
+# deploys on v0.* tags). `up -d` pulls per pull_policy (default always); nothing
+# is built on the host. To smoke-test a local build, `docker build` the images
+# in deploy/images.json, point BACKEND_IMAGE/FRONTEND_IMAGE at them and set
+# IMAGE_PULL_POLICY=missing.
 prod-up:
-	docker compose --env-file $(PROD_ENV_FILE) -f compose.prod.yml up -d --build
+	docker compose --env-file $(PROD_ENV_FILE) -f compose.prod.yml up -d
 
 prod-down:
 	docker compose --env-file $(PROD_ENV_FILE) -f compose.prod.yml down

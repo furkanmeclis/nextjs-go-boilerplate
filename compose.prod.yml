@@ -13,17 +13,19 @@
 # like `backend` could resolve to another stack's container on dokploy-network.
 name: ${COMPOSE_PROJECT_NAME:-${NAME_PREFIX:?NAME_PREFIX is required}-prod}
 
+# App images are built and published by CI (.github/workflows/ci.yml) and
+# listed in deploy/images.json. The server does NOT build them: it pulls the
+# tags named by BACKEND_IMAGE / FRONTEND_IMAGE (CI pushes them to GHCR; Dokploy
+# deploys on v0.* tags). IMAGE_PULL_POLICY defaults to "always" so every
+# redeploy fetches the current tag; set it to "missing" to reuse a cached image
+# (e.g. when smoke-testing a locally built image).
 x-backend-image: &backend-image
   image: ${BACKEND_IMAGE:?BACKEND_IMAGE is required}
-  build:
-    context: ./backend
-    dockerfile: Dockerfile
+  pull_policy: ${IMAGE_PULL_POLICY:-always}
 
 x-frontend-image: &frontend-image
   image: ${FRONTEND_IMAGE:?FRONTEND_IMAGE is required}
-  build:
-    context: ./frontend
-    dockerfile: Dockerfile
+  pull_policy: ${IMAGE_PULL_POLICY:-always}
 
 x-backend-environment: &backend-environment
   APP_NAME: ${APP_NAME:-api}
