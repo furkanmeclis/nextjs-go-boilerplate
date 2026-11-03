@@ -30,7 +30,7 @@ func schemaSecrets(t *testing.T) map[string]bool {
 	if err != nil {
 		t.Fatalf("open schema: %v", err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	line := regexp.MustCompile(`^([A-Z][A-Z0-9_]*)\s*\|\s*(secret|vapid):`)
 	out := map[string]bool{}
 	sc := bufio.NewScanner(f)
@@ -54,7 +54,7 @@ func readDevExample(t *testing.T) map[string]string {
 	if err != nil {
 		t.Fatalf("open .env.example: %v", err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	line := regexp.MustCompile(`^([A-Za-z_][A-Za-z0-9_]*)=(.*)$`)
 	out := map[string]string{}
 	sc := bufio.NewScanner(f)
