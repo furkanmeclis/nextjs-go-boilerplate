@@ -95,7 +95,8 @@ Dokploy (watches v0.* tags) ─► docker compose -f compose.prod.yml up  (pull_
 
 - **Which images**: every entry in [`deploy/images.json`](../deploy/images.json). CI loops over it as a matrix (nothing is hardcoded), so you ship a new container by adding an entry there plus a service in `compose.prod.yml`.
 - **Image names** come from the repository: `ghcr.io/<owner>/<repo>-backend`, `…-frontend`. A fork publishes under its own name with no edits.
-- **Release tags**: `release-tag` cuts `v0.1`, `v0.2`, … only after every image is pushed. Point Dokploy's deploy trigger at tags matching `v0.*`.
+- **Release tags**: `release-tag` cuts `v0.1`, `v0.2`, … only after every image is pushed. Point Dokploy's deploy trigger at tags matching `v0.*`. Images are also tagged `:v0.N`, so you can pin a deploy to one release.
+- **Release provenance**: `release-meta` picks the next `v0.N` before the build and auto-generates release notes from `git log` since the previous tag (there is no hand-kept CHANGELOG). Every image gets OCI labels (`org.opencontainers.image.version`, `.created`, `.revision`, `.source`). The backend also bakes in the version, sha and build time via ldflags, and embeds the notes as `internal/buildinfo/release.json`. On each deploy, the `migrate` service runs `release-record` after `migrate up`, which inserts one row into `app_releases` (an event log: redeploying a version adds a row). This step is fail-soft and never blocks a deploy. Local builds record `dev`.
 
 ### One-time setup
 

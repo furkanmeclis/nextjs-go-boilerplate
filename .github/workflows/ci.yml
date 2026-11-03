@@ -15,7 +15,9 @@ on:
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # Feature branches: newest push wins. main: never cancel mid-run, or a
+  # publish could land without its tag (and release numbers could be skipped).
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 permissions:
   contents: read
@@ -206,6 +208,7 @@ jobs:
   # Build every build-context image (deploy/images.json), NO push. Proves the
   # Dockerfiles still build on an infra change / weekly / manual run. Skipped on
   # main pushes, where publish-images builds and pushes the same images.
+  # Non-release builds are versioned sha-<short> (no release notes).
   image-build:
     needs: changes
     if: >-
@@ -219,28 +222,99 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: docker/setup-buildx-action@v3
+      - id: meta
+        run: |
+          echo "version=sha-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+          echo "built_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
       - name: Build ${{ matrix.image.service }} (no push)
         uses: docker/build-push-action@v6
         with:
           context: ${{ matrix.image.context }}
           file: ${{ matrix.image.context }}/${{ matrix.image.dockerfile }}
           push: false
+          build-args: |
+            VERSION=${{ steps.meta.outputs.version }}
+            GIT_SHA=${{ github.sha }}
+            BUILD_TIME=${{ steps.meta.outputs.built_at }}
+          labels: |
+            org.opencontainers.image.version=${{ steps.meta.outputs.version }}
+            org.opencontainers.image.created=${{ steps.meta.outputs.built_at }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
           cache-from: type=gha,scope=${{ matrix.image.service }}
           cache-to: type=gha,mode=max,scope=${{ matrix.image.service }}
 
-  # Green push to main: build + push every image to GHCR as :main and
-  # :sha-<short>. Image path is repo-derived (ghcr.io/<owner>/<repo>-<service>),
-  # never a hardcoded app name, so forks publish under their own name.
+  # Main push: decide the release ONCE, before any image is built, so every
+  # image bakes the same provenance and release-tag cuts exactly this version.
+  #   version  next v0.N (after the highest existing v0.* tag)
+  #   notes    auto-generated: `git log --no-merges` since the previous v0.* tag
+  #            (no hand-kept CHANGELOG), capped at 200 lines
+  #   release  base64 release.json {version, git_sha, built_at, notes} -> the
+  #            backend embeds it (internal/buildinfo); cmd/release-record writes
+  #            it to app_releases when the migrate service runs on deploy.
+  release-meta:
+    needs: changes
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.m.outputs.version }}
+      built_at: ${{ steps.m.outputs.built_at }}
+      release_b64: ${{ steps.m.outputs.release_b64 }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - id: m
+        run: |
+          set -euo pipefail
+          git fetch --tags --force --quiet
+          last="$(git tag -l 'v0.*' | sed -n 's/^v0\.\([0-9]\+\)$/\1/p' | sort -n | tail -1)"
+          version="v0.$(( ${last:-0} + 1 ))"
+          if [ -n "$last" ]; then
+            range="v0.${last}..${GITHUB_SHA}"; since="since v0.${last}"
+          else
+            range="${GITHUB_SHA}"; since="(first release)"
+          fi
+          log="$(git log --no-merges --pretty='- %s (%h)' "$range")"
+          total="$(printf '%s' "$log" | grep -c '^- ' || true)"
+          notes="$(printf '%s\n' "$log" | head -n 200)"
+          if [ "${total:-0}" -gt 200 ]; then
+            notes="${notes}"$'\n'"- …and $(( total - 200 )) more commits ${since}."
+          fi
+          [ -n "$log" ] || notes="- No code changes ${since} (redeploy)."
+          built_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          release_b64="$(jq -nc --arg v "$version" --arg s "$GITHUB_SHA" --arg b "$built_at" --arg n "$notes" \
+            '{version:$v, git_sha:$s, built_at:$b, notes:$n}' | base64 -w0)"
+          {
+            echo "version=$version"
+            echo "built_at=$built_at"
+            echo "release_b64=$release_b64"
+          } >> "$GITHUB_OUTPUT"
+          {
+            echo "### Release $version ($since)"
+            echo
+            echo "$notes"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # Green push to main: build + push every image to GHCR as :main,
+  # :sha-<short> and :v0.N. Image path is repo-derived
+  # (ghcr.io/<owner>/<repo>-<service>), never a hardcoded app name, so forks
+  # publish under their own name. Provenance (release-meta) goes in as build
+  # args + OCI labels on every image; only the backend Dockerfile consumes the
+  # args (an image that doesn't declare them just ignores them).
   # always() so a docs-only main push (backend/frontend skipped) still refreshes
   # the tags; a real backend/frontend failure blocks the push via the gate.
   publish-images:
-    needs: [changes, backend, frontend]
+    needs: [changes, backend, frontend, release-meta]
     if: >-
       always() &&
       github.event_name == 'push' &&
       github.ref == 'refs/heads/main' &&
+      needs.release-meta.result == 'success' &&
       needs.backend.result != 'failure' &&
-      needs.frontend.result != 'failure'
+      needs.frontend.result != 'failure' &&
+      needs.backend.result != 'cancelled' &&
+      needs.frontend.result != 'cancelled'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -272,13 +346,25 @@ jobs:
           tags: |
             ${{ steps.meta.outputs.image }}:main
             ${{ steps.meta.outputs.image }}:sha-${{ steps.meta.outputs.sha }}
+            ${{ steps.meta.outputs.image }}:${{ needs.release-meta.outputs.version }}
+          build-args: |
+            VERSION=${{ needs.release-meta.outputs.version }}
+            GIT_SHA=${{ github.sha }}
+            BUILD_TIME=${{ needs.release-meta.outputs.built_at }}
+            RELEASE_JSON_B64=${{ needs.release-meta.outputs.release_b64 }}
+          labels: |
+            org.opencontainers.image.version=${{ needs.release-meta.outputs.version }}
+            org.opencontainers.image.created=${{ needs.release-meta.outputs.built_at }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
           cache-from: type=gha,scope=${{ matrix.image.service }}
           cache-to: type=gha,mode=max,scope=${{ matrix.image.service }}
 
-  # Images are on GHCR -> cut the next v0.N tag. Dokploy watches v0.* and
-  # deploys the tag (which pulls the :sha-<short> / :main images just pushed).
+  # Images are on GHCR -> cut the version release-meta chose (the one baked
+  # into the images). Dokploy watches v0.* and deploys the tag; its migrate
+  # service then records the release in app_releases.
   release-tag:
-    needs: [publish-images]
+    needs: [release-meta, publish-images]
     if: always() && needs.publish-images.result == 'success'
     runs-on: ubuntu-latest
     permissions:
@@ -287,16 +373,23 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - name: Tag next v0.N
+      - name: Tag ${{ needs.release-meta.outputs.version }}
+        env:
+          TAG: ${{ needs.release-meta.outputs.version }}
         run: |
           set -euo pipefail
           git fetch --tags --force --quiet
-          last="$(git tag -l 'v0.*' | sed -n 's/^v0\.\([0-9]\+\)$/\1/p' | sort -n | tail -1)"
-          next=$(( ${last:-0} + 1 ))
-          tag="v0.${next}"
-          git tag "$tag" "$GITHUB_SHA"
-          git push origin "$tag"
-          echo "Tagged **$tag** at \`${GITHUB_SHA::7}\` — Dokploy deploys on v0.* tags." >> "$GITHUB_STEP_SUMMARY"
+          if existing="$(git rev-parse -q --verify "refs/tags/${TAG}^{commit}")"; then
+            if [ "$existing" = "$GITHUB_SHA" ]; then
+              echo "$TAG already points at ${GITHUB_SHA::7} (re-run); nothing to do."
+              exit 0
+            fi
+            echo "::error title=Tag taken::$TAG already exists at ${existing::7}, but the images were baked as $TAG for ${GITHUB_SHA::7}. Re-run the whole workflow so release-meta picks the next number."
+            exit 1
+          fi
+          git tag "$TAG" "$GITHUB_SHA"
+          git push origin "refs/tags/$TAG"
+          echo "Tagged **$TAG** at \`${GITHUB_SHA::7}\`. Dokploy deploys on v0.* tags." >> "$GITHUB_STEP_SUMMARY"
 
   # ---------------------------------------------------------------------------
   # Mobile (Expo). Skips cleanly (green) until mobile/package.json exists.
@@ -496,7 +589,7 @@ jobs:
   # in branch protection (not the individual jobs, which skip by design).
   ci:
     if: always()
-    needs: [changes, backend, frontend, mobile, image-build, publish-images, release-tag, mobile-release]
+    needs: [changes, backend, frontend, mobile, image-build, release-meta, publish-images, release-tag, mobile-release]
     runs-on: ubuntu-latest
     steps:
       - name: Gate
