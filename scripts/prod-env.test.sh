@@ -76,6 +76,12 @@ fi
 "$PE" check --file "$E" 2>/dev/null || fail "check fails on a fresh file"
 ok "check passes on a fresh file"
 
+sed 's#^BACKEND_IMAGE=.*#BACKEND_IMAGE=demo-backend:latest#' "$E" >"$T/local-image"
+if "$PE" check --file "$T/local-image" >"$T/img.out" 2>&1; then fail "check passed a local image tag with pull policy always"; fi
+grep -q 'unpullable: BACKEND_IMAGE=demo-backend:latest' "$T/img.out" || fail "check: unpullable image not reported"
+grep -q 'ghcr.io/acme/demo-backend:main' "$T/img.out" || fail "check: unpullable hint"
+ok "check flags a local image tag that pull_policy: always cannot pull"
+
 if "$PE" init --file "$E" --yes --set APP_URL=https://x.example.com --set IMAGE_REPO=ghcr.io/acme/demo </dev/null 2>/dev/null; then
   fail "init overwrote an existing file"
 fi

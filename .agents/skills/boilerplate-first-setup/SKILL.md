@@ -106,7 +106,7 @@ Browser must **never** assemble S3 URLs from object keys. Use API-returned `publ
 
 ## 7. Production / Dokploy
 
-**Prebuilt images.** The server never builds. On a green push to `main`, CI pushes `ghcr.io/<owner>/<repo>-<service>:main` and `:sha-<short>` for every entry in `deploy/images.json`, then cuts the next `v0.N` tag. Dokploy deploys on `v0.*` tags and pulls the images. Full flow and diagram: `docs/DEVELOPMENT.md` → Production.
+**Prebuilt images.** The server never builds. On a green push to `main`, CI pushes `ghcr.io/<owner>/<repo>-<service>:main`, `:sha-<short>` and `:v0.N` for every entry in `deploy/images.json`, then cuts the next `v0.N` git tag. Dokploy deploys on `v0.*` tags and pulls whatever `BACKEND_IMAGE` / `FRONTEND_IMAGE` name: `:main` follows the latest build, so pin with `:v0.N` to roll back. Full flow and diagram: `docs/DEVELOPMENT.md` → Production.
 
 1. GHCR access: make the packages public, or add a `ghcr.io` registry with a `read:packages` PAT in Dokploy (or run `docker login ghcr.io` on the host).
 2. Dokploy deploy trigger: git tags matching `v0.*`.

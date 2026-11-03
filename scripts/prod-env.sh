@@ -591,6 +591,16 @@ cmd_check() {
       [[ $op == remove ]] && problems+=("removed: $a is no longer used (schema v$ver)")
     done < <(printf '%s\n' "${MIGRATIONS[@]}" | sort -s -n -k1,1)
   fi
+  # Pre-v2 files carry locally built tags (<prefix>-backend:latest); compose
+  # pulls them with pull_policy: always and fails on the first deploy.
+  if [[ ${VAL[IMAGE_PULL_POLICY]:-always} == always ]]; then
+    local svc
+    for key in BACKEND_IMAGE FRONTEND_IMAGE; do
+      svc=${key%%_*}
+      [[ -n ${VAL[$key]:-} && ${VAL[$key]} != */* ]] &&
+        problems+=("unpullable: $key=${VAL[$key]} has no registry path and IMAGE_PULL_POLICY=always (use ${VAL[IMAGE_REPO]:-ghcr.io/<owner>/<repo>}-${svc,,}:main)")
+    done
+  fi
   if [[ -f $DEV_EXAMPLE && $FILE != "$DEV_EXAMPLE" ]]; then
     local line
     while IFS= read -r line || [[ -n $line ]]; do

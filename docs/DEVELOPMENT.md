@@ -87,22 +87,22 @@ The server **never builds** app images. CI builds them, pushes them to GHCR, and
 ```
 push feature branch ─► CI: changes → backend / frontend / mobile / image-build (no push) ─► ci gate
 owner merges to main ─► CI on main: backend + frontend green
-                          → publish-images  ghcr.io/<owner>/<repo>-<service>:main + :sha-<short>
-                          → release-tag     next v0.N git tag
-                          → mobile-release  EAS, only on a real mobile/** change
+                          → publish-images  ghcr.io/<owner>/<repo>-<service>:main + :sha-<short> + :v0.N
+                            → release-tag   next v0.N git tag (after every image is pushed)
+                          → mobile-release  EAS, only on a real mobile/** change (independent of the images)
 Dokploy (watches v0.* tags) ─► docker compose -f compose.prod.yml up  (pull_policy: always)
 ```
 
 - **Which images**: every entry in [`deploy/images.json`](../deploy/images.json). CI loops over it as a matrix (nothing is hardcoded), so you ship a new container by adding an entry there plus a service in `compose.prod.yml`.
 - **Image names** come from the repository: `ghcr.io/<owner>/<repo>-backend`, `…-frontend`. A fork publishes under its own name with no edits.
-- **Release tags**: `release-tag` cuts `v0.1`, `v0.2`, … only after every image is pushed. Point Dokploy's deploy trigger at tags matching `v0.*`. Images are also tagged `:v0.N`, so you can pin a deploy to one release.
+- **Release tags**: `release-tag` cuts `v0.1`, `v0.2`, … only after every image is pushed. Point Dokploy's deploy trigger at tags matching `v0.*`. Images are also tagged `:v0.N`. The tag only *triggers* the deploy: what gets pulled is whatever `BACKEND_IMAGE` / `FRONTEND_IMAGE` name. `:main` (the default) always means the latest build, so re-deploying an old tag does not roll back. To pin or roll back, set both to `:v0.N` (or `:sha-<short>`) and redeploy.
 - **Release provenance**: `release-meta` picks the next `v0.N` before the build and auto-generates release notes from `git log` since the previous tag (there is no hand-kept CHANGELOG). Every image gets OCI labels (`org.opencontainers.image.version`, `.created`, `.revision`, `.source`). The backend also bakes in the version, sha and build time via ldflags, and embeds the notes as `internal/buildinfo/release.json`. On each deploy, the `migrate` service runs `release-record` after `migrate up`, which inserts one row into `app_releases` (an event log: redeploying a version adds a row). This step is fail-soft and never blocks a deploy. Local builds record `dev`.
 
 ### One-time setup
 
 1. GHCR packages are private by default. Either make the two packages public, or log the server in once: `docker login ghcr.io` with a PAT that has `read:packages`. In Dokploy, add it as a registry.
 2. Point Dokploy's deploy trigger at git tags matching `v0.*`.
-3. Create the env file (next section). `init` asks for `IMAGE_REPO` (`ghcr.io/<owner>/<repo>`) and derives `BACKEND_IMAGE` / `FRONTEND_IMAGE` (`…-backend:main`, `…-frontend:main`) and `IMAGE_PULL_POLICY=always`. To pin a deploy to an exact build, edit the tags to `:sha-<short>`.
+3. Create the env file (next section). `init` asks for `IMAGE_REPO` (`ghcr.io/<owner>/<repo>`) and derives `BACKEND_IMAGE` / `FRONTEND_IMAGE` (`…-backend:main`, `…-frontend:main`) and `IMAGE_PULL_POLICY=always`. To pin a deploy to an exact build, edit the tags to `:v0.N` or `:sha-<short>`. Upgrading a v1 `.env.server` (`make prod-env-upgrade ARGS="--set IMAGE_REPO=ghcr.io/<owner>/<repo>"`) keeps its old local image tags: point both at GHCR by hand; `make prod-env-check` reports them as `unpullable` until you do.
 
 ### Secrets and settings (GitHub → Settings)
 
