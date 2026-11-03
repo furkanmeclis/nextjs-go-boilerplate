@@ -59,6 +59,11 @@ export const routes = {
       detail: (uuid: string) => `/platform/users/${uuid}`,
       edit: (uuid: string) => `/platform/users/${uuid}/edit`,
     },
+    organizations: {
+      root: "/platform/organizations",
+      create: "/platform/organizations/create",
+      detail: (uuid: string) => `/platform/organizations/${uuid}`,
+    },
     notifications: {
       root: "/platform/notifications",
       detail: (uuid: string) => `/platform/notifications/${uuid}`,
