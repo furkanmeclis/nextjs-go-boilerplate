@@ -28,6 +28,7 @@ import {
   resolveCredentialErrorCode,
   type CredentialSignInResult,
 } from "@/lib/auth/credentials-errors";
+import { safeNextPath } from "@/lib/auth/next-path";
 import { defaultHomeForUser } from "@/lib/auth/types";
 import { useAuth } from "@/providers/auth-provider";
 import { useLocale } from "@/providers/locale-provider";
@@ -37,20 +38,6 @@ import { z } from "zod";
 
 import { AuthCard } from "./auth-card";
 import { QRLoginPanel } from "./qr-login-panel";
-
-function resolveNext(raw: string | null, fallback: string) {
-  // Only same-origin paths. Browsers treat a backslash like "/", so a value
-  // starting "/<backslash>evil.com" would become a protocol-relative redirect.
-  if (
-    !raw ||
-    !raw.startsWith("/") ||
-    raw.startsWith("//") ||
-    /[\\\u0000-\u001f]/.test(raw)
-  ) {
-    return fallback;
-  }
-  return raw;
-}
 
 type OAuthId = "github" | "google" | "facebook" | "apple";
 
@@ -149,7 +136,7 @@ export function LoginForm() {
       setFormError(t("errors.role_mismatch"));
       return false;
     }
-    const next = resolveNext(searchParams.get("next"), home);
+    const next = safeNextPath(searchParams.get("next"), home);
     router.replace(next);
     return true;
   };
@@ -345,7 +332,7 @@ export function LoginForm() {
       }
       await signIn(provider, {
         redirect: true,
-        callbackUrl: resolveNext(
+        callbackUrl: safeNextPath(
           searchParams.get("next"),
           routes.platform.home,
         ),

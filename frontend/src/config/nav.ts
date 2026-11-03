@@ -1,6 +1,7 @@
 import {
   Activity,
   Bell,
+  Building2,
   Cpu,
   Download,
   HardDrive,
@@ -248,3 +249,69 @@ export const cmsNav = defineNav({
     },
   ],
 });
+
+/**
+ * Organization shell sidebar (`/t/{slug}`). Items are gated by the
+ * permissions of the membership in that organization (the tenant layout
+ * swaps the permission context), never by global roles.
+ */
+export function tenantNav(slug: string): NavCatalog {
+  return defineNav({
+    id: "tenant",
+    groups: [
+      {
+        id: "tenant",
+        labelKey: "layout.section_tenant",
+        icon: Building2,
+        defaultOpen: true,
+        items: [
+          {
+            id: "home",
+            titleKey: "layout.home",
+            href: routes.tenant.home(slug),
+            icon: LayoutDashboard,
+          },
+        ],
+      },
+    ],
+  });
+}
+
+/** Sidebar catalog, home link and command-palette page index of one shell. */
+export type ShellNav = {
+  catalog: NavCatalog;
+  homeHref: string;
+  /** Catalogs whose pages the command palette indexes (sidebar + subpages). */
+  paletteCatalogs: NavCatalog[];
+};
+
+export function shellNav(
+  shell:
+    | { variant: "platform" }
+    | { variant: "cms" }
+    | { variant: "tenant"; slug: string },
+): ShellNav {
+  switch (shell.variant) {
+    case "cms":
+      return {
+        catalog: cmsNav,
+        homeHref: routes.cms.home,
+        paletteCatalogs: [cmsNav],
+      };
+    case "tenant": {
+      const catalog = tenantNav(shell.slug);
+      return {
+        catalog,
+        homeHref: routes.tenant.home(shell.slug),
+        paletteCatalogs: [catalog],
+      };
+    }
+    default:
+      // Platform palette also indexes the System Settings sub-pages.
+      return {
+        catalog: platformNav,
+        homeHref: routes.platform.home,
+        paletteCatalogs: [platformNav, settingsNav],
+      };
+  }
+}

@@ -440,6 +440,11 @@ func (s *Server) handleAppConfig(w http.ResponseWriter, r *http.Request) {
 			"apple":    oauthMethod("apple"),
 		},
 		"letterhead": letterhead,
+		// The frontend mounts the /t/{slug} shell only when tenancy is on.
+		"tenancy": map[string]bool{
+			"enabled":    s.cfg.Tenancy.Enabled,
+			"self_serve": s.cfg.Tenancy.Enabled && s.cfg.Tenancy.SelfServe,
+		},
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
 		"success": true,

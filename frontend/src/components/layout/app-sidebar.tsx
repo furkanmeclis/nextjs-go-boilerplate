@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import type { ReactNode } from "react";
 
 import { AppSidebarLogo } from "@/components/brand";
-import type { AppLayoutVariant } from "@/components/layout/app-layout";
 import {
   Sidebar,
   SidebarFooter,
@@ -13,18 +13,17 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from "@/components/ui/sidebar";
-import { cmsNav, platformNav } from "@/config/nav";
-import { routes } from "@/config/routes";
+import type { ShellNav } from "@/config/nav";
 import { NavEngine } from "@/features/nav-engine";
 
 export function AppSidebar({
-  variant = "platform",
+  nav,
+  header,
 }: {
-  variant?: AppLayoutVariant;
+  nav: ShellNav;
+  header?: ReactNode;
 }) {
-  const catalog = variant === "cms" ? cmsNav : platformNav;
-  const homeHref =
-    variant === "platform" ? routes.platform.home : routes.cms.home;
+  const { catalog, homeHref } = nav;
 
   return (
     <Sidebar collapsible="icon" variant="inset">
@@ -38,6 +37,7 @@ export function AppSidebar({
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
+        {header}
       </SidebarHeader>
 
       <NavEngine catalog={catalog} homeHref={homeHref} />

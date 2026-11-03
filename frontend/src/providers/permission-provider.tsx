@@ -40,39 +40,73 @@ function expandPermissionSet(permissions: string[]) {
   return set;
 }
 
+function buildPermissionValue(
+  permissions: string[],
+  roles: string[],
+): PermissionContextValue {
+  const permissionSet = expandPermissionSet(permissions);
+  const roleSet = new Set(roles);
+
+  const can = (permission: string | string[]) => {
+    if (Array.isArray(permission)) {
+      return permission.every((p) => permissionSet.has(p));
+    }
+    return permissionSet.has(permission);
+  };
+
+  const hasRole = (role: string | string[]) => {
+    if (Array.isArray(role)) return role.some((r) => roleSet.has(r));
+    return roleSet.has(role);
+  };
+
+  return {
+    permissions,
+    roles,
+    can,
+    canAny: (list) => list.some((p) => permissionSet.has(p)),
+    canAll: (list) => list.every((p) => permissionSet.has(p)),
+    hasPermission: can,
+    hasRole,
+  };
+}
+
+/** Global (platform) permissions of the signed-in user. */
 export function PermissionProvider({ children }: { children: ReactNode }) {
   const permissions = useAuthStore(
     (s) => s.user?.permissions ?? EMPTY_PERMISSIONS,
   );
   const roles = useAuthStore((s) => s.user?.roles ?? EMPTY_ROLES);
 
-  const value = useMemo<PermissionContextValue>(() => {
-    const permissionSet = expandPermissionSet(permissions);
-    const roleSet = new Set(roles);
+  const value = useMemo(
+    () => buildPermissionValue(permissions, roles),
+    [permissions, roles],
+  );
 
-    const can = (permission: string | string[]) => {
-      if (Array.isArray(permission)) {
-        return permission.every((p) => permissionSet.has(p));
-      }
-      return permissionSet.has(permission);
-    };
+  return (
+    <PermissionContext.Provider value={value}>
+      {children}
+    </PermissionContext.Provider>
+  );
+}
 
-    const hasRole = (role: string | string[]) => {
-      if (Array.isArray(role)) return role.some((r) => roleSet.has(r));
-      return roleSet.has(role);
-    };
-
-    return {
-      permissions,
-      roles,
-      can,
-      canAny: (list) => list.some((p) => permissionSet.has(p)),
-      canAll: (list) => list.every((p) => permissionSet.has(p)),
-      hasPermission: can,
-      hasRole,
-    };
-  }, [permissions, roles]);
-
+/**
+ * Replaces the permission set for a subtree. The tenant shell uses it so
+ * `usePermission()` (nav, buttons, guards) answers with the permissions of the
+ * membership in the current organization, not the user's global ones.
+ */
+export function ScopedPermissionProvider({
+  permissions,
+  roles,
+  children,
+}: {
+  permissions: string[];
+  roles: string[];
+  children: ReactNode;
+}) {
+  const value = useMemo(
+    () => buildPermissionValue(permissions, roles),
+    [permissions, roles],
+  );
   return (
     <PermissionContext.Provider value={value}>
       {children}

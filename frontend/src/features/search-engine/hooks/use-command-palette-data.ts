@@ -3,7 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { createElement, useMemo, useState } from "react";
 
-import type { AppLayoutVariant } from "@/components/layout/app-layout";
+import type { NavCatalog } from "@/features/nav-engine/types";
 import { buildNavPageItems } from "@/features/search-engine/lib/nav-pages";
 import { parsePaletteQuery } from "@/features/search-engine/lib/parse-query";
 import { readRecentItems } from "@/features/search-engine/lib/recent";
@@ -20,7 +20,7 @@ import type { PaletteItem } from "@/features/search-engine/types";
 import { useLocale } from "@/providers/locale-provider";
 import { usePermission } from "@/providers/permission-provider";
 
-export function useCommandPaletteData(variant: AppLayoutVariant) {
+export function useCommandPaletteData(catalogs: NavCatalog[]) {
   const { t } = useLocale();
   const { can, canAny } = usePermission();
   const [query, setQuery] = useState("");
@@ -69,8 +69,8 @@ export function useCommandPaletteData(variant: AppLayoutVariant) {
   const searchText = parsed.text;
 
   const pageItems = useMemo(
-    () => buildNavPageItems(variant, access, t),
-    [access, t, variant],
+    () => buildNavPageItems(catalogs, access, t),
+    [access, catalogs, t],
   );
 
   const filteredPages = useMemo(() => {

@@ -20,7 +20,10 @@ export function createQueryClient() {
       },
     },
     queryCache: new QueryCache({
-      onError: (error) => {
+      onError: (error, query) => {
+        // `meta: { silent: true }`: the component renders the error itself
+        // (e.g. the tenant access card), so no global toast on top.
+        if (query.meta?.silent === true) return;
         if (error instanceof ApiError) emitApiError(error);
       },
     }),

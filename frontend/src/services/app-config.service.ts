@@ -6,6 +6,13 @@ export type AuthMethodFlags = {
   register?: boolean;
 };
 
+export type TenancyFlags = {
+  /** `/t/{slug}` organization shell is mounted (`TENANCY_ENABLED`). */
+  enabled: boolean;
+  /** Signed-in users may create organizations (`TENANCY_SELF_SERVE`). */
+  self_serve: boolean;
+};
+
 export type AppPublicConfig = {
   mode: string;
   name: string;
@@ -20,6 +27,7 @@ export type AppPublicConfig = {
     facebook: AuthMethodFlags;
     apple: AuthMethodFlags;
   };
+  tenancy: TenancyFlags;
 };
 
 const defaultMethods = (): AppPublicConfig["auth_methods"] => ({
@@ -68,5 +76,9 @@ export async function fetchAppPublicConfig(
       methods.github.login || Boolean(json.data.github_auth_enabled),
     registration_enabled: Boolean(json.data.registration_enabled),
     auth_methods: methods,
+    tenancy: {
+      enabled: Boolean(json.data.tenancy?.enabled),
+      self_serve: Boolean(json.data.tenancy?.self_serve),
+    },
   };
 }

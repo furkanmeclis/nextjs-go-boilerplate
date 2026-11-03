@@ -49,6 +49,12 @@ function isProtectedPath(pathname: string) {
   if (pathname.startsWith(`${routes.cms.profile.root}`)) return true;
   if (pathname === routes.platform.root) return true;
   if (
+    pathname === routes.tenant.picker ||
+    pathname.startsWith(`${routes.tenant.picker}/`)
+  ) {
+    return true;
+  }
+  if (
     pathname.startsWith(`${routes.platform.root}/`) &&
     !isGuestAuthPath(pathname)
   ) {
