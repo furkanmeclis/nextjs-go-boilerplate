@@ -222,10 +222,6 @@ INSERT INTO organization_invitations (
 )
 RETURNING *;
 
--- name: GetOrganizationInvitationByUUID :one
-SELECT * FROM organization_invitations
-WHERE uuid = $1;
-
 -- name: ListOrganizationInvitations :many
 SELECT oi.*, r.slug AS role_key, r.name AS role_name
 FROM organization_invitations oi
@@ -269,6 +265,7 @@ INNER JOIN roles r ON r.id = oi.role_id
 LEFT JOIN users u ON u.id = oi.invited_by
 WHERE oi.token_hash = $1;
 
+-- tenant-lint: cross-org id comes from the token lookup in the same locked tx
 -- name: AcceptOrganizationInvitation :one
 -- Single use: only a pending, unexpired invitation flips to accepted.
 UPDATE organization_invitations
@@ -280,13 +277,17 @@ WHERE id = $1
 RETURNING *;
 
 -- name: RevokeOrganizationInvitation :one
-UPDATE organization_invitations
+-- Only owners may cancel an invitation that would grant the owner role
+-- (allow_owner); for anyone else such a row is simply not found.
+UPDATE organization_invitations oi
 SET revoked_at = NOW()
-WHERE uuid = $1
-  AND organization_id = $2
-  AND accepted_at IS NULL
-  AND revoked_at IS NULL
-RETURNING *;
+WHERE oi.uuid = $1
+  AND oi.organization_id = $2
+  AND oi.accepted_at IS NULL
+  AND oi.revoked_at IS NULL
+  AND (sqlc.arg(allow_owner)::boolean OR NOT EXISTS (
+    SELECT 1 FROM roles r WHERE r.id = oi.role_id AND r.slug = 'owner'))
+RETURNING oi.*;
 
 -- name: RevokePendingOrganizationInvitationsForEmail :execrows
 -- A new invitation replaces older open ones for the same address.

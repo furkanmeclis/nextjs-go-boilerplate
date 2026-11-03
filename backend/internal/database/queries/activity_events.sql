@@ -1,6 +1,6 @@
 -- name: InsertActivityEvent :one
-INSERT INTO activity_events (actor_user_id, action, resource, resource_uuid, payload, ip_address, user_agent)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
+INSERT INTO activity_events (actor_user_id, action, resource, resource_uuid, payload, ip_address, user_agent, organization_id)
+VALUES ($1, $2, $3, $4, $5, $6, $7, sqlc.narg(organization_id))
 RETURNING *;
 
 -- name: ListActivityEvents :many

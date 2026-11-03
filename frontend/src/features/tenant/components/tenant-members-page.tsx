@@ -273,7 +273,9 @@ function InvitationsSection({ canWrite }: { canWrite: boolean }) {
                     {date(inv.expires_at, "dd.MM.yyyy", locale)}
                   </td>
                   <td className="py-2 text-end">
-                    {canWrite ? (
+                    {/* Only owners may cancel an owner-role invitation. */}
+                    {canWrite &&
+                    (inv.role.key !== "owner" || role.key === "owner") ? (
                       <Button
                         type="button"
                         size="sm"

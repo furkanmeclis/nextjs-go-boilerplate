@@ -44,19 +44,20 @@ func (q *Queries) CountActivityEvents(ctx context.Context, arg CountActivityEven
 }
 
 const insertActivityEvent = `-- name: InsertActivityEvent :one
-INSERT INTO activity_events (actor_user_id, action, resource, resource_uuid, payload, ip_address, user_agent)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
+INSERT INTO activity_events (actor_user_id, action, resource, resource_uuid, payload, ip_address, user_agent, organization_id)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 RETURNING id, uuid, actor_user_id, action, resource, resource_uuid, payload, ip_address, user_agent, created_at, organization_id
 `
 
 type InsertActivityEventParams struct {
-	ActorUserID  pgtype.Int8 `json:"actor_user_id"`
-	Action       string      `json:"action"`
-	Resource     string      `json:"resource"`
-	ResourceUuid pgtype.UUID `json:"resource_uuid"`
-	Payload      []byte      `json:"payload"`
-	IpAddress    *netip.Addr `json:"ip_address"`
-	UserAgent    pgtype.Text `json:"user_agent"`
+	ActorUserID    pgtype.Int8 `json:"actor_user_id"`
+	Action         string      `json:"action"`
+	Resource       string      `json:"resource"`
+	ResourceUuid   pgtype.UUID `json:"resource_uuid"`
+	Payload        []byte      `json:"payload"`
+	IpAddress      *netip.Addr `json:"ip_address"`
+	UserAgent      pgtype.Text `json:"user_agent"`
+	OrganizationID pgtype.Int8 `json:"organization_id"`
 }
 
 func (q *Queries) InsertActivityEvent(ctx context.Context, arg InsertActivityEventParams) (ActivityEvent, error) {
@@ -68,6 +69,7 @@ func (q *Queries) InsertActivityEvent(ctx context.Context, arg InsertActivityEve
 		arg.Payload,
 		arg.IpAddress,
 		arg.UserAgent,
+		arg.OrganizationID,
 	)
 	var i ActivityEvent
 	err := row.Scan(

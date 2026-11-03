@@ -105,11 +105,19 @@ func TestLastOwnerGuard(t *testing.T) {
 	f.addMembership(org.ID, 10, "owner")
 	svc := New(f, nil)
 
-	if _, err := svc.ChangeMemberRole(context.Background(), org.Uuid, userUUID, "member"); !errors.Is(err, ErrLastOrganizationOwner) {
+	if _, err := svc.ChangeMemberRole(context.Background(), org.Uuid, userUUID, "member", "owner"); !errors.Is(err, ErrLastOrganizationOwner) {
 		t.Fatalf("change last owner err = %v", err)
 	}
-	if err := svc.RemoveMember(context.Background(), org.Uuid, userUUID); !errors.Is(err, ErrLastOrganizationOwner) {
+	if err := svc.RemoveMember(context.Background(), org.Uuid, userUUID, "owner"); !errors.Is(err, ErrLastOrganizationOwner) {
 		t.Fatalf("remove last owner err = %v", err)
+	}
+	// The owner-escalation rule is enforced inside the usecase too, not only
+	// by the tenant handler's pre-check.
+	if _, err := svc.ChangeMemberRole(context.Background(), org.Uuid, userUUID, "member", "admin"); !errors.Is(err, ErrOwnerRoleRequired) {
+		t.Fatalf("admin demote owner err = %v", err)
+	}
+	if err := svc.RemoveMember(context.Background(), org.Uuid, userUUID, "admin"); !errors.Is(err, ErrOwnerRoleRequired) {
+		t.Fatalf("admin remove owner err = %v", err)
 	}
 }
 
@@ -198,6 +206,15 @@ func (f *fakeRepo) GetUserByUUID(_ context.Context, id uuid.UUID) (db.User, erro
 		}
 	}
 	return db.User{}, repository.ErrNotFound
+}
+
+func (f *fakeRepo) roleSlug(id int64) string {
+	for k, v := range f.roleIDs {
+		if v == id {
+			return k
+		}
+	}
+	return ""
 }
 
 func (f *fakeRepo) GetTenantRoleByKey(_ context.Context, _ *db.Queries, _ int64, key string) (db.Role, error) {

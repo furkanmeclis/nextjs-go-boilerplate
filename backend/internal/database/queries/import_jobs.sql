@@ -1,6 +1,6 @@
 -- name: CreateImportJob :one
-INSERT INTO import_jobs (resource, actor_id, format, locale, status, file_key)
-VALUES ($1, $2, $3, $4, 'uploaded', $5)
+INSERT INTO import_jobs (resource, actor_id, format, locale, status, file_key, organization_id)
+VALUES ($1, $2, $3, $4, 'uploaded', $5, sqlc.narg(organization_id))
 RETURNING *;
 
 -- name: UpdateImportJobFileKey :one

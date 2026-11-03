@@ -1,6 +1,6 @@
 -- name: CreateExportJob :one
-INSERT INTO export_jobs (resource, actor_id, format, query_json, locale, status, expires_at)
-VALUES ($1, $2, $3, $4, $5, 'queued', $6)
+INSERT INTO export_jobs (resource, actor_id, format, query_json, locale, status, expires_at, organization_id)
+VALUES ($1, $2, $3, $4, $5, 'queued', $6, sqlc.narg(organization_id))
 RETURNING *;
 
 -- name: GetExportJobByUUID :one

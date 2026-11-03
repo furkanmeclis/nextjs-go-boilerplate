@@ -27,9 +27,17 @@ func ParseUserChannel(channel string) (uuid.UUID, bool) {
 	return id, true
 }
 
-// ParseWorkspaceChannel returns the workspace UUID from "workspace:{uuid}".
-func ParseWorkspaceChannel(channel string) (uuid.UUID, bool) {
-	raw, ok := stripPrefix(channel, "workspace:")
+// OrganizationChannelPrefix is the per-organization channel namespace.
+const OrganizationChannelPrefix = "org:"
+
+// OrganizationChannel returns "org:{uuid}".
+func OrganizationChannel(orgUUID uuid.UUID) string {
+	return OrganizationChannelPrefix + orgUUID.String()
+}
+
+// ParseOrganizationChannel returns the organization UUID from "org:{uuid}".
+func ParseOrganizationChannel(channel string) (uuid.UUID, bool) {
+	raw, ok := stripPrefix(channel, OrganizationChannelPrefix)
 	if !ok {
 		return uuid.Nil, false
 	}

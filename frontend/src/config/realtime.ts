@@ -14,9 +14,8 @@ export const realtimeConfig = {
   platformRoles: ["super_admin"] as const,
   channels: {
     systemNotifications: "system.notifications",
-    tenant: (tenantUuid: string) => `tenant:${tenantUuid}`,
+    organization: (orgUuid: string) => `org:${orgUuid}`,
     user: (userId: number | string) => `user:${userId}`,
-    workspace: (workspaceUuid: string) => `workspace:${workspaceUuid}`,
     conversation: (conversationUuid: string) =>
       `conversation:${conversationUuid}`,
   },

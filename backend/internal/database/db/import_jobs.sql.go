@@ -35,17 +35,18 @@ func (q *Queries) CountImportJobsForActor(ctx context.Context, actorID int64) (i
 }
 
 const createImportJob = `-- name: CreateImportJob :one
-INSERT INTO import_jobs (resource, actor_id, format, locale, status, file_key)
-VALUES ($1, $2, $3, $4, 'uploaded', $5)
+INSERT INTO import_jobs (resource, actor_id, format, locale, status, file_key, organization_id)
+VALUES ($1, $2, $3, $4, 'uploaded', $5, $6)
 RETURNING id, uuid, resource, actor_id, format, locale, status, file_key, mapping_json, defaults_json, preview_json, error, rollback_until, applied_at, created_at, updated_at, organization_id
 `
 
 type CreateImportJobParams struct {
-	Resource string      `json:"resource"`
-	ActorID  int64       `json:"actor_id"`
-	Format   string      `json:"format"`
-	Locale   string      `json:"locale"`
-	FileKey  pgtype.Text `json:"file_key"`
+	Resource       string      `json:"resource"`
+	ActorID        int64       `json:"actor_id"`
+	Format         string      `json:"format"`
+	Locale         string      `json:"locale"`
+	FileKey        pgtype.Text `json:"file_key"`
+	OrganizationID pgtype.Int8 `json:"organization_id"`
 }
 
 func (q *Queries) CreateImportJob(ctx context.Context, arg CreateImportJobParams) (ImportJob, error) {
@@ -55,6 +56,7 @@ func (q *Queries) CreateImportJob(ctx context.Context, arg CreateImportJobParams
 		arg.Format,
 		arg.Locale,
 		arg.FileKey,
+		arg.OrganizationID,
 	)
 	var i ImportJob
 	err := row.Scan(

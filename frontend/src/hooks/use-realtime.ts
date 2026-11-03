@@ -210,13 +210,14 @@ export function useRealtimeDebug(): RealtimeDebugSnapshot {
   );
 }
 
-/** Build default channels from AuthMe numeric ids (ADR-007). */
+/** Build default channels from AuthMe ids (ADR-007). */
 export function useDefaultRealtimeChannels(options: {
   isPlatform: boolean;
   userId?: number | string | null;
-  dealerId?: number | string | null;
+  /** Active organization UUID inside the /t/{slug} shell. */
+  organizationUuid?: string | null;
 }) {
-  const { isPlatform, userId, dealerId } = options;
+  const { isPlatform, userId, organizationUuid } = options;
 
   const channels: string[] = [];
   if (isPlatform) {
@@ -225,8 +226,8 @@ export function useDefaultRealtimeChannels(options: {
   if (userId != null && userId !== "") {
     channels.push(RealtimeChannels.user(userId));
   }
-  if (dealerId != null && dealerId !== "") {
-    channels.push(RealtimeChannels.dealer(dealerId));
+  if (organizationUuid) {
+    channels.push(RealtimeChannels.organization(organizationUuid));
   }
   return channels;
 }

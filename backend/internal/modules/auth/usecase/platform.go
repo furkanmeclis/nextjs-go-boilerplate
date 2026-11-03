@@ -10,6 +10,7 @@ import (
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/modules/auth/model"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/modules/auth/repository"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/authctx"
+	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/orgctx"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/password"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/rbac"
 	searchadapters "github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/searchengine/adapters"
@@ -462,11 +463,39 @@ func (u *AuthUseCase) CanSubscribeChannel(
 	if uid, ok := realtime.ParseUserChannel(channel); ok {
 		return uid == userUUID, nil
 	}
+	if orgUUID, ok := realtime.ParseOrganizationChannel(channel); ok {
+		return u.isActiveMember(ctx, userUUID, orgUUID)
+	}
 	// conversation:{uuid} used to be granted to any signed-in user without an
 	// ownership check (eavesdropping on other users once anything publishes
 	// there). Nothing publishes to it today, so fail closed; a future
 	// publisher must add an ownership check here.
 	return false, nil
+}
+
+// organizationResolver is implemented by the organizations service; it applies
+// the same membership, status and access-window rules as RequireOrganization.
+type organizationResolver interface {
+	Resolve(ctx context.Context, orgRef string, userID int64) (orgctx.Scope, error)
+}
+
+// isActiveMember reports whether the user may act in the organization right
+// now. Without tenancy (no lister) org channels are refused. Authorization is
+// checked at subscribe time only: removing a member does not drop a live
+// subscription (Centrifugo tokens are short-lived).
+func (u *AuthUseCase) isActiveMember(ctx context.Context, userUUID, orgUUID uuid.UUID) (bool, error) {
+	resolver, ok := u.orgs.(organizationResolver)
+	if !ok {
+		return false, nil
+	}
+	user, err := u.repo.FindUserByUUID(ctx, userUUID)
+	if err != nil {
+		return false, nil
+	}
+	if _, err := resolver.Resolve(ctx, orgUUID.String(), user.ID); err != nil {
+		return false, nil
+	}
+	return true, nil
 }
 
 func passwordHash(raw string) (string, error) {

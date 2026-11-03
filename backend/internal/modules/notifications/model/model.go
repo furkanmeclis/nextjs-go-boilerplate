@@ -78,21 +78,20 @@ type Preferences struct {
 
 // EnqueueInput creates one or more queued notifications.
 type EnqueueInput struct {
-	TenantID     *int64
-	WorkspaceID  *int64
-	UserID       *int64
-	UserUUID     *uuid.UUID
-	Channels     []string
-	Priority     string
-	Title        string
-	Body         string
-	Payload      map[string]any
-	ActionURL    *string
-	Recipient    *string
-	TemplateCode string
-	TemplateVars map[string]string
-	SourceEvent  string
-	Language     string
+	OrganizationID *int64
+	UserID         *int64
+	UserUUID       *uuid.UUID
+	Channels       []string
+	Priority       string
+	Title          string
+	Body           string
+	Payload        map[string]any
+	ActionURL      *string
+	Recipient      *string
+	TemplateCode   string
+	TemplateVars   map[string]string
+	SourceEvent    string
+	Language       string
 	// SecurityEmail bypasses email preference (password reset / verification).
 	SecurityEmail bool
 }

@@ -15,6 +15,7 @@ import (
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/modules/notifications/providers"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/modules/notifications/templates"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/authctx"
+	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/orgctx"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/queue"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/pkg/apiquery"
 	"github.com/google/uuid"
@@ -166,20 +167,25 @@ func (s *Service) Enqueue(ctx context.Context, in model.EnqueueInput) ([]model.N
 				recipient = pgtype.Text{String: u.Email, Valid: true}
 			}
 		}
+		orgID := int8Ptr(in.OrganizationID)
+		if !orgID.Valid {
+			orgID = orgctx.Param(ctx)
+		}
 		row, err := s.q.CreateNotification(ctx, db.CreateNotificationParams{
-			UserID:       int8Ptr(in.UserID),
-			Channel:      ch,
-			Status:       model.StatusQueued,
-			Priority:     priority,
-			Title:        title,
-			Body:         body,
-			Payload:      payload,
-			ActionUrl:    textPtr(in.ActionURL),
-			Recipient:    recipient,
-			TemplateCode: pgtype.Text{String: in.TemplateCode, Valid: in.TemplateCode != ""},
-			SourceEvent:  pgtype.Text{String: in.SourceEvent, Valid: in.SourceEvent != ""},
-			ScheduledAt:  pgtype.Timestamptz{},
-			MaxAttempts:  5,
+			OrganizationID: orgID,
+			UserID:         int8Ptr(in.UserID),
+			Channel:        ch,
+			Status:         model.StatusQueued,
+			Priority:       priority,
+			Title:          title,
+			Body:           body,
+			Payload:        payload,
+			ActionUrl:      textPtr(in.ActionURL),
+			Recipient:      recipient,
+			TemplateCode:   pgtype.Text{String: in.TemplateCode, Valid: in.TemplateCode != ""},
+			SourceEvent:    pgtype.Text{String: in.SourceEvent, Valid: in.SourceEvent != ""},
+			ScheduledAt:    pgtype.Timestamptz{},
+			MaxAttempts:    5,
 		})
 		if err != nil {
 			return nil, fmt.Errorf("create notification: %w", err)

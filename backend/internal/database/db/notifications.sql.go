@@ -102,29 +102,30 @@ const createNotification = `-- name: CreateNotification :one
 INSERT INTO notifications (
     user_id, channel, status, priority,
     title, body, payload, action_url, recipient, template_code, source_event,
-    scheduled_at, max_attempts
+    scheduled_at, max_attempts, organization_id
 ) VALUES (
     $1, $2, $3, $4,
     $5, $6, $7, $8, $9, $10, $11,
-    $12, $13
+    $12, $13, $14
 )
 RETURNING id, uuid, user_id, channel, status, priority, title, body, payload, action_url, recipient, template_code, source_event, scheduled_at, sent_at, delivered_at, read_at, failed_at, cancelled_at, attempt_count, max_attempts, last_error, provider, provider_reference, created_at, updated_at, organization_id
 `
 
 type CreateNotificationParams struct {
-	UserID       pgtype.Int8        `json:"user_id"`
-	Channel      string             `json:"channel"`
-	Status       string             `json:"status"`
-	Priority     string             `json:"priority"`
-	Title        string             `json:"title"`
-	Body         string             `json:"body"`
-	Payload      []byte             `json:"payload"`
-	ActionUrl    pgtype.Text        `json:"action_url"`
-	Recipient    pgtype.Text        `json:"recipient"`
-	TemplateCode pgtype.Text        `json:"template_code"`
-	SourceEvent  pgtype.Text        `json:"source_event"`
-	ScheduledAt  pgtype.Timestamptz `json:"scheduled_at"`
-	MaxAttempts  int32              `json:"max_attempts"`
+	UserID         pgtype.Int8        `json:"user_id"`
+	Channel        string             `json:"channel"`
+	Status         string             `json:"status"`
+	Priority       string             `json:"priority"`
+	Title          string             `json:"title"`
+	Body           string             `json:"body"`
+	Payload        []byte             `json:"payload"`
+	ActionUrl      pgtype.Text        `json:"action_url"`
+	Recipient      pgtype.Text        `json:"recipient"`
+	TemplateCode   pgtype.Text        `json:"template_code"`
+	SourceEvent    pgtype.Text        `json:"source_event"`
+	ScheduledAt    pgtype.Timestamptz `json:"scheduled_at"`
+	MaxAttempts    int32              `json:"max_attempts"`
+	OrganizationID pgtype.Int8        `json:"organization_id"`
 }
 
 func (q *Queries) CreateNotification(ctx context.Context, arg CreateNotificationParams) (Notification, error) {
@@ -142,6 +143,7 @@ func (q *Queries) CreateNotification(ctx context.Context, arg CreateNotification
 		arg.SourceEvent,
 		arg.ScheduledAt,
 		arg.MaxAttempts,
+		arg.OrganizationID,
 	)
 	var i Notification
 	err := row.Scan(

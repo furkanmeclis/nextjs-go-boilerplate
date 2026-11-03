@@ -11,6 +11,7 @@ import (
 	notifmodel "github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/modules/notifications/model"
 	orgmodel "github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/modules/organizations/model"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/modules/organizations/repository"
+	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/orgctx"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -58,9 +59,12 @@ func (r *fakeInvitationRepo) ListPendingInvitations(_ context.Context, orgID int
 	return out, int64(len(out)), nil
 }
 
-func (r *fakeInvitationRepo) RevokeInvitation(_ context.Context, orgID int64, id uuid.UUID) error {
+func (r *fakeInvitationRepo) RevokeInvitation(_ context.Context, orgID int64, id uuid.UUID, allowOwner bool) error {
 	for _, row := range r.rows {
 		if row.Uuid == id && row.OrganizationID == orgID && !row.AcceptedAt.Valid && !row.RevokedAt.Valid {
+			if !allowOwner && r.f.roleSlug(row.RoleID) == orgctx.RoleOwner {
+				return repository.ErrNotFound
+			}
 			row.RevokedAt = pgtype.Timestamptz{Time: r.f.now, Valid: true}
 			return nil
 		}
@@ -279,14 +283,23 @@ func TestAcceptExpiredOrRevokedOrMember(t *testing.T) {
 	x.f.users[invitee.ID] = invitee
 
 	inv, token := x.invite(t, "e@example.test", "member", "owner")
-	if err := x.svc.RevokeInvitation(ctx, x.org.ID, inv.UUID); err != nil {
+	if err := x.svc.RevokeInvitation(ctx, x.org.ID, inv.UUID, "owner"); err != nil {
 		t.Fatalf("revoke: %v", err)
 	}
 	if _, err := x.svc.AcceptInvitation(ctx, token, invitee.ID); !errors.Is(err, ErrInvitationUnavailable) {
 		t.Fatalf("revoked accept err = %v", err)
 	}
-	if err := x.svc.RevokeInvitation(ctx, x.org.ID, inv.UUID); !errors.Is(err, ErrInvitationNotFound) {
+	if err := x.svc.RevokeInvitation(ctx, x.org.ID, inv.UUID, "owner"); !errors.Is(err, ErrInvitationNotFound) {
 		t.Fatalf("double revoke err = %v", err)
+	}
+
+	// An admin cannot cancel an owner-role invitation; the owner can.
+	ownerInv, _ := x.invite(t, "o@example.test", "owner", "owner")
+	if err := x.svc.RevokeInvitation(ctx, x.org.ID, ownerInv.UUID, "admin"); !errors.Is(err, ErrInvitationNotFound) {
+		t.Fatalf("admin revoke owner invite err = %v", err)
+	}
+	if err := x.svc.RevokeInvitation(ctx, x.org.ID, ownerInv.UUID, "owner"); err != nil {
+		t.Fatalf("owner revoke owner invite: %v", err)
 	}
 
 	_, token = x.invite(t, "e@example.test", "member", "owner")

@@ -35,18 +35,19 @@ func (q *Queries) CountExportJobsForActor(ctx context.Context, actorID int64) (i
 }
 
 const createExportJob = `-- name: CreateExportJob :one
-INSERT INTO export_jobs (resource, actor_id, format, query_json, locale, status, expires_at)
-VALUES ($1, $2, $3, $4, $5, 'queued', $6)
+INSERT INTO export_jobs (resource, actor_id, format, query_json, locale, status, expires_at, organization_id)
+VALUES ($1, $2, $3, $4, $5, 'queued', $6, $7)
 RETURNING id, uuid, resource, actor_id, format, query_json, locale, status, file_key, row_count, error, expires_at, created_at, updated_at, organization_id
 `
 
 type CreateExportJobParams struct {
-	Resource  string             `json:"resource"`
-	ActorID   int64              `json:"actor_id"`
-	Format    string             `json:"format"`
-	QueryJson []byte             `json:"query_json"`
-	Locale    string             `json:"locale"`
-	ExpiresAt pgtype.Timestamptz `json:"expires_at"`
+	Resource       string             `json:"resource"`
+	ActorID        int64              `json:"actor_id"`
+	Format         string             `json:"format"`
+	QueryJson      []byte             `json:"query_json"`
+	Locale         string             `json:"locale"`
+	ExpiresAt      pgtype.Timestamptz `json:"expires_at"`
+	OrganizationID pgtype.Int8        `json:"organization_id"`
 }
 
 func (q *Queries) CreateExportJob(ctx context.Context, arg CreateExportJobParams) (ExportJob, error) {
@@ -57,6 +58,7 @@ func (q *Queries) CreateExportJob(ctx context.Context, arg CreateExportJobParams
 		arg.QueryJson,
 		arg.Locale,
 		arg.ExpiresAt,
+		arg.OrganizationID,
 	)
 	var i ExportJob
 	err := row.Scan(

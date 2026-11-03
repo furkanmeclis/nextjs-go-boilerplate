@@ -12,6 +12,7 @@ import (
 )
 
 type Querier interface {
+	// tenant-lint: cross-org id comes from the token lookup in the same locked tx
 	// Single use: only a pending, unexpired invitation flips to accepted.
 	AcceptOrganizationInvitation(ctx context.Context, id int64) (OrganizationInvitation, error)
 	AddOrganizationMember(ctx context.Context, arg AddOrganizationMemberParams) (OrganizationMember, error)
@@ -104,7 +105,6 @@ type Querier interface {
 	GetOrganizationByUUID(ctx context.Context, argUuid uuid.UUID) (Organization, error)
 	// Lookup by the hashed bearer token (the plain token is never stored).
 	GetOrganizationInvitationByTokenHash(ctx context.Context, tokenHash string) (GetOrganizationInvitationByTokenHashRow, error)
-	GetOrganizationInvitationByUUID(ctx context.Context, argUuid uuid.UUID) (OrganizationInvitation, error)
 	GetOrganizationMember(ctx context.Context, arg GetOrganizationMemberParams) (GetOrganizationMemberRow, error)
 	GetOrganizationMemberByUserUUID(ctx context.Context, arg GetOrganizationMemberByUserUUIDParams) (GetOrganizationMemberByUserUUIDRow, error)
 	GetPermissionBySlug(ctx context.Context, slug string) (Permission, error)
@@ -236,6 +236,8 @@ type Querier interface {
 	ResolveOrganizationScopeBySlug(ctx context.Context, arg ResolveOrganizationScopeBySlugParams) (ResolveOrganizationScopeBySlugRow, error)
 	ResolveOrganizationScopeByUUID(ctx context.Context, arg ResolveOrganizationScopeByUUIDParams) (ResolveOrganizationScopeByUUIDRow, error)
 	RevokeAllRefreshTokensForUser(ctx context.Context, userID int64) error
+	// Only owners may cancel an invitation that would grant the owner role
+	// (allow_owner); for anyone else such a row is simply not found.
 	RevokeOrganizationInvitation(ctx context.Context, arg RevokeOrganizationInvitationParams) (OrganizationInvitation, error)
 	RevokeOtherRefreshTokensForUser(ctx context.Context, arg RevokeOtherRefreshTokensForUserParams) error
 	// A new invitation replaces older open ones for the same address.

@@ -45,17 +45,17 @@ type Drainer interface {
 
 // Row is a durable outbox record (memory or DB).
 type Row struct {
-	ID          int64
-	UUID        uuid.UUID
-	TenantID    *int64
-	EventName   string
-	Payload     []byte
-	Status      string
-	Attempts    int32
-	LastError   string
-	AvailableAt time.Time
-	PublishedAt *time.Time
-	CreatedAt   time.Time
+	ID             int64
+	UUID           uuid.UUID
+	OrganizationID *int64
+	EventName      string
+	Payload        []byte
+	Status         string
+	Attempts       int32
+	LastError      string
+	AvailableAt    time.Time
+	PublishedAt    *time.Time
+	CreatedAt      time.Time
 }
 
 // envelope is stored inside payload JSONB alongside the free-form event data.
