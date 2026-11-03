@@ -79,13 +79,15 @@ Add the table to `backend/internal/database/tenant_tables.txt`. Then
 `organization_id`. A query that is cross-organization on purpose carries
 `-- tenant-lint: cross-org <reason>` on the line above its `-- name:`.
 
-`make sqlc` and commit `internal/database/db`.
+`make -C backend sqlc` and commit `backend/internal/database/db`.
 
 ## 3. RBAC triad
 
 - `backend/internal/platform/rbac/rbac.go`: `PermTenantProjectsRead = "tenant.projects.read"`, … (add to the tenant list next to `PermTenantMembersRead`).
 - `frontend/src/config/permissions.ts`: the flat `TenantProjectsRead` key and the nested `permissions.tenant.projects.read`.
-- `permissions.labels.*` in `frontend/src/locales/{en,tr}`.
+- Labels `labels.tenant.projects.read` / `.write` in
+  `frontend/src/locales/{en,tr}/permissions.json` (the core tenant slugs have
+  no labels yet; add the `tenant` group if it is missing).
 
 ## 4. Backend module
 
@@ -111,8 +113,12 @@ mux.Handle("GET /v1/tenant/projects", middleware.Chain(
     http.HandlerFunc(h.list), authn, org, perm(rbac.PermTenantProjectsRead)))
 ```
 
-Register in `internal/httpserver/server.go` inside `if cfg.Tenancy.Enabled`.
-Paths live under `/v1/tenant/` so the BFF forwards `X-Organization`.
+Mount it like `tenant/routes.go`: `server.go` builds the handler inside
+`if cfg.Tenancy.Enabled` and passes `tenantResolver`; `RegisterRoutes`
+returns early when the resolver is nil. With the module registry
+(`docs/design/module-registry.md`) use `r.Tenant(pattern, perm, h)` in a
+`module.Module` instead: it skips the route when tenancy is off. Paths live
+under `/v1/tenant/` so the BFF forwards `X-Organization`.
 
 Engines pick the organization up from the context: activity
 (`activity.Recorder.Record`), notifications (`Enqueue`), export/import/bulk
@@ -137,7 +143,8 @@ cd frontend && pnpm api:generate
 ## 6. Frontend
 
 - Service: `frontend/src/features/projects/services/*.ts` calls
-  `tenantRequest(slug, "/tenant/projects", …)` (adds `X-Organization`). Never
+  `tenantRequest<T>(slug, "GET", "/v1/tenant/projects", { query })` (adds
+  `X-Organization`; see `features/tenant/services/tenant.service.ts`). Never
   `apiRequest` for tenant routes.
 - Hooks: query keys include the slug (see `tenantAdminKeys` in
   `features/tenant/services/tenant.service.ts`) so organizations never share
@@ -148,7 +155,7 @@ cd frontend && pnpm api:generate
   shell, `usePermission` answers with the current membership's permissions).
 - Routes: `routes.tenant.projects(slug)` in `config/routes.ts`.
 - Nav: an item in `tenantNav(slug)` (`config/nav.ts`) with its `permission`.
-- i18n: keys in `en` and `tr`; `node scripts/check-i18n.mjs`.
+- i18n: keys in `en` and `tr`; `pnpm -C frontend i18n:check`.
 
 ## 7. Verify
 
