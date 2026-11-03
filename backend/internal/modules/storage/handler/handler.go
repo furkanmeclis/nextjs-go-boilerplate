@@ -18,10 +18,24 @@ import (
 
 type Handler struct {
 	svc *storageusecase.Service
+	// maxUploadBytes caps a single multipart upload request body. A
+	// non-positive value falls back to defaultMaxUploadBytes.
+	maxUploadBytes int64
 }
 
-func New(svc *storageusecase.Service) *Handler {
-	return &Handler{svc: svc}
+// defaultMaxUploadBytes is used when no positive limit is configured.
+const defaultMaxUploadBytes = 10 << 20
+
+// multipartOverhead is slack added on top of the byte cap for the multipart
+// envelope (boundaries, part headers, the prefix/key form fields), so a file
+// at exactly the limit is not rejected by framing bytes alone.
+const multipartOverhead = 1 << 20
+
+func New(svc *storageusecase.Service, maxUploadBytes int64) *Handler {
+	if maxUploadBytes <= 0 {
+		maxUploadBytes = defaultMaxUploadBytes
+	}
+	return &Handler{svc: svc, maxUploadBytes: maxUploadBytes}
 }
 
 func (h *Handler) Meta(w http.ResponseWriter, r *http.Request) {
@@ -104,7 +118,19 @@ func (h *Handler) CreateFolder(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
-	if err := r.ParseMultipartForm(512 << 20); err != nil {
+	// Cap the request body before reading it, so a client cannot stream an
+	// unbounded upload into memory/temp files. The slack covers the multipart
+	// envelope (boundaries, part headers, the prefix/key fields); the exact
+	// per-file limit is enforced after parsing, below.
+	limit := h.maxUploadBytes + multipartOverhead
+	r.Body = http.MaxBytesReader(w, r.Body, limit)
+	if err := r.ParseMultipartForm(h.maxUploadBytes); err != nil {
+		var maxErr *http.MaxBytesError
+		if errors.As(err, &maxErr) {
+			response.Error(w, r, http.StatusRequestEntityTooLarge, response.CodePayloadTooLarge,
+				"upload exceeds the maximum allowed size")
+			return
+		}
 		response.BadRequest(w, r, response.CodeValidationError, "invalid multipart form")
 		return
 	}
@@ -114,6 +140,13 @@ func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer func() { _ = file.Close() }()
+	// Exact per-file cap: the body slack allows a little over the limit for
+	// framing, so reject a declared file size above the real limit.
+	if header.Size > h.maxUploadBytes {
+		response.Error(w, r, http.StatusRequestEntityTooLarge, response.CodePayloadTooLarge,
+			"upload exceeds the maximum allowed size")
+		return
+	}
 	obj, err := h.svc.Upload(r.Context(), actor(r), model.UploadMeta{
 		Prefix:      r.FormValue("prefix"),
 		Key:         r.FormValue("key"),

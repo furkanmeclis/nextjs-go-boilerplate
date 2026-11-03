@@ -328,7 +328,7 @@ func New(cfg config.Config, log *slog.Logger, deps Deps) (*Server, error) {
 	searchmodule.RegisterRoutes(mux, searchhandler.New(searchSvc), tokens, loader)
 	storagemodule.RegisterRoutes(
 		mux,
-		storagehandler.New(storageusecase.New(deps.Storage, deps.Queries, log)),
+		storagehandler.New(storageusecase.New(deps.Storage, deps.Queries, log), cfg.Storage.MaxBytes),
 		tokens,
 		loader,
 	)

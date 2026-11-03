@@ -14,6 +14,7 @@ import (
 
 const (
 	CodeValidationError           = "VALIDATION_ERROR"
+	CodePayloadTooLarge           = "PAYLOAD_TOO_LARGE"
 	CodeUnauthenticated           = "UNAUTHENTICATED"
 	CodeForbidden                 = "FORBIDDEN"
 	CodeNotFound                  = "NOT_FOUND"
