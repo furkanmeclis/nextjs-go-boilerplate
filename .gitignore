@@ -35,3 +35,6 @@ yarn-error.log*
 
 # Claude Code personal overrides (project settings in .claude/settings.json are shared)
 .claude/settings.local.json
+
+# Playwright MCP (.mcp.json) snapshots, console logs and screenshots
+.playwright-mcp/
