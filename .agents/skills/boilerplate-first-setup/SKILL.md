@@ -106,9 +106,17 @@ Browser must **never** assemble MinIO/S3 URLs from object keys. Use API-returned
 
 ## 7. Production / Dokploy
 
-1. Fill `.env.server` with a unique `NAME_PREFIX` — every `${VAR:?…}` is required
-2. `make prod-config` then `make prod-up`
-3. Plain Docker host only: `docker network create dokploy-network` (once; Dokploy creates it itself)
+**Prebuilt images.** The server never builds. On a green push to `main`, CI pushes `ghcr.io/<owner>/<repo>-<service>:main` and `:sha-<short>` for every entry in `deploy/images.json`, then cuts the next `v0.N` tag. Dokploy deploys on `v0.*` tags and pulls the images. Full flow and diagram: `docs/DEVELOPMENT.md` → Production.
+
+1. Fill `.env.server` (or the Dokploy env) with a unique `NAME_PREFIX`. Every `${VAR:?…}` is required.
+2. Set `BACKEND_IMAGE=ghcr.io/<owner>/<repo>-backend:main`, `FRONTEND_IMAGE=ghcr.io/<owner>/<repo>-frontend:main` and `IMAGE_PULL_POLICY=always`.
+3. GHCR access: make the packages public, or add a `ghcr.io` registry with a `read:packages` PAT in Dokploy (or run `docker login ghcr.io` on the host).
+4. Dokploy deploy trigger: git tags matching `v0.*`.
+5. Plain Docker host only: run `docker network create dokploy-network` once (Dokploy creates it itself). For a manual deploy, run `make prod-config`, then `make prod-up` (pulls, never builds).
+
+Secrets: `GITHUB_TOKEN` is built in. The workflow grants it `packages: write` for GHCR and `contents: write` for the tag. Optional `EXPO_TOKEN` enables `mobile-release`; it skips green without it. `auto-pr` needs either Settings → Actions → General → "Allow GitHub Actions to create and approve pull requests" or an `AUTO_PR_TOKEN` PAT. Otherwise merge to `main` by hand. Make `ci` the single required check.
+
+New container (e.g. a widget)? Add `{ "service", "context", "dockerfile" }` to `deploy/images.json` and a service in `compose.prod.yml` that uses `pull_policy: ${IMAGE_PULL_POLICY:-always}`. CI then builds and publishes it automatically.
 
 Compose creates the app's own private network (`${NAME_PREFIX}-app`). Only **frontend** and **centrifugo** join `dokploy-network` (set their domains in Dokploy: service + container port). Backend, MinIO, Postgres, Redis, Meilisearch and the worker stay private.
 
@@ -124,3 +132,4 @@ Compose creates the app's own private network (`${NAME_PREFIX}-app`). Only **fro
 - [ ] VAPID keys if push is in scope
 - [ ] `APP_ENCRYPTION_KEY` replaced if GitHub OAuth will be used
 - [ ] Brand tokens swapped if this is a named product
+- [ ] `ci` is the required check on `main`; Dokploy pulls `ghcr.io/<owner>/<repo>-*` and deploys on `v0.*` tags

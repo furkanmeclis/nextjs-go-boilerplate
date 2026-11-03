@@ -82,9 +82,46 @@ Optional frontend public vars (root `.env`): `NEXT_PUBLIC_BFF_BASE_URL`, `NEXT_P
 
 ## Production / Dokploy
 
-1. `cp .env.example .env.server`, set a unique `NAME_PREFIX` and replace every secret (`${VAR:?…}` is required)
-2. `make prod-config` then `make prod-up`
-3. Plain Docker host only (Dokploy creates it for you): `docker network create dokploy-network` once
+The server **never builds** app images. CI builds them, pushes them to GHCR, and tags a release. Dokploy pulls the images and deploys.
+
+```
+push feature branch ─► CI: changes → backend / frontend / mobile / image-build (no push) ─► ci gate
+owner merges to main ─► CI on main: backend + frontend green
+                          → publish-images  ghcr.io/<owner>/<repo>-<service>:main + :sha-<short>
+                          → release-tag     next v0.N git tag
+                          → mobile-release  EAS, only on a real mobile/** change
+Dokploy (watches v0.* tags) ─► docker compose -f compose.prod.yml up  (pull_policy: always)
+```
+
+- **Which images**: every entry in [`deploy/images.json`](../deploy/images.json). CI loops over it as a matrix (nothing is hardcoded), so you ship a new container by adding an entry there plus a service in `compose.prod.yml`.
+- **Image names** come from the repository: `ghcr.io/<owner>/<repo>-backend`, `…-frontend`. A fork publishes under its own name with no edits.
+- **Release tags**: `release-tag` cuts `v0.1`, `v0.2`, … only after every image is pushed. Point Dokploy's deploy trigger at tags matching `v0.*`.
+
+### One-time setup
+
+1. `cp .env.example .env.server` (or paste it into Dokploy's env). Set a unique `NAME_PREFIX` and replace every secret (`${VAR:?…}` is required).
+2. Set the image variables:
+   ```
+   BACKEND_IMAGE=ghcr.io/<owner>/<repo>-backend:main
+   FRONTEND_IMAGE=ghcr.io/<owner>/<repo>-frontend:main
+   IMAGE_PULL_POLICY=always
+   ```
+   To pin a deploy to an exact build, use `:sha-<short>` instead of `:main`.
+3. GHCR packages are private by default. Either make the two packages public, or log the server in once: `docker login ghcr.io` with a PAT that has `read:packages`. In Dokploy, add it as a registry.
+4. Plain Docker host only (Dokploy creates it for you): run `docker network create dokploy-network` once.
+5. Manual deploy without Dokploy: `make prod-config`, then `make prod-up`. That pulls the images; nothing is built.
+
+### Secrets and settings (GitHub → Settings)
+
+| What | Needed for | Notes |
+|---|---|---|
+| `GITHUB_TOKEN` | `publish-images`, `release-tag` | Built in; the workflow grants `packages: write` / `contents: write`. No secret to add. If pushes are refused, check Settings → Actions → General → Workflow permissions. |
+| `EXPO_TOKEN` (optional) | `mobile-release` | Without it (or without `mobile/`, or without an EAS `projectId` in `mobile/app.json`), the job skips green with a note. |
+| `AUTO_PR_TOKEN` (optional) | `auto-pr` | Fine-grained PAT (Contents + Pull requests: read/write). The alternative is Settings → Actions → General → "Allow GitHub Actions to create and approve pull requests". With neither, `auto-pr` fails and you merge by hand. It is deliberately outside the `ci` gate. |
+
+Set **`ci`** as the only required status check on `main`. The individual jobs skip by path on purpose (the `changes` job maps `backend/**`, `frontend/**`, `mobile/**`, Dockerfiles / `compose.prod.yml` / `deploy/**`; docs and `*.md` run nothing). A weekly scheduled run rebuilds every image without pushing.
+
+Smoke-testing a local build of the prod stack: `docker build -t app-backend:local backend`, do the same for the frontend, then keep `IMAGE_PULL_POLICY=missing` (as in `.env.example`) and run `make prod-up`.
 
 Networks: Compose creates a private bridge network per app (`${APP_NETWORK_NAME:-${NAME_PREFIX}-app}`) and every service joins it. Only **frontend** (`:3000`) and **centrifugo** (`:8000`) also join the shared `dokploy-network`, so the proxy can route their domains. The backend is reached through the frontend's `/api` proxy, and MinIO, Postgres, Redis, Meilisearch and the worker stay private (files reach browsers through API endpoints, never a bucket URL). No service publishes host ports.
 
