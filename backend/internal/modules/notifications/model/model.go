@@ -92,6 +92,8 @@ type EnqueueInput struct {
 	TemplateVars   map[string]string
 	SourceEvent    string
 	Language       string
-	// SecurityEmail bypasses email preference (password reset / verification).
+	// SecurityEmail bypasses email preference (password reset / verification)
+	// and keeps the email's subject and body off the row: they stay encrypted
+	// until delivery succeeds, then are dropped.
 	SecurityEmail bool
 }

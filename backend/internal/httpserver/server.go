@@ -164,8 +164,13 @@ func New(cfg config.Config, log *slog.Logger, deps Deps) (*Server, error) {
 		providers.NoopProvider{Name: "sms", Log: log},
 		providers.NoopProvider{Name: "push", Log: log},
 	}
+	secretBox, err := crypto.NewSecretBox(cfg.Encryption.Key)
+	if err != nil {
+		return nil, fmt.Errorf("httpserver: encryption: %w", err)
+	}
 	notifSvc := notifusecase.New(deps.Queries, deps.Queue, provs, log)
 	notifSvc.WithActionSigner(cfg.JWT.AccessSecret, 0)
+	notifSvc.WithSecretBox(secretBox)
 	notifSvc.WithVAPID(notifusecase.VAPIDConfig{
 		PublicKey:  cfg.VAPID.PublicKey,
 		PrivateKey: cfg.VAPID.PrivateKey,
@@ -213,10 +218,6 @@ func New(cfg config.Config, log *slog.Logger, deps Deps) (*Server, error) {
 		stepUpWebAuthn = webauthn
 	} else {
 		log.Warn("stepup_webauthn_disabled", "error", err)
-	}
-	secretBox, err := crypto.NewSecretBox(cfg.Encryption.Key)
-	if err != nil {
-		return nil, fmt.Errorf("httpserver: encryption: %w", err)
 	}
 	stepUpSvc := stepup.NewService(deps.Queries, stepUpStore, stepUpWebAuthn, repo)
 	stepUpSvc.SetSecretBox(secretBox)

@@ -21,6 +21,7 @@ import (
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/activity"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/bulkengine"
 	bulkadapters "github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/bulkengine/adapters"
+	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/crypto"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/events"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/ioengine"
 	ioadapters "github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/ioengine/adapters"
@@ -91,7 +92,12 @@ func main() {
 		providers.NoopProvider{Name: "sms", Log: log},
 		providers.NoopProvider{Name: "push", Log: log},
 	}
-	notifSvc := notifusecase.New(queries, nil, provs, log)
+	secretBox, err := crypto.NewSecretBox(cfg.Encryption.Key)
+	if err != nil {
+		log.Error("encryption_init_failed", "error", err)
+		exit(1)
+	}
+	notifSvc := notifusecase.New(queries, nil, provs, log).WithSecretBox(secretBox)
 	notifSvc.WithVAPID(notifusecase.VAPIDConfig{
 		PublicKey:  cfg.VAPID.PublicKey,
 		PrivateKey: cfg.VAPID.PrivateKey,

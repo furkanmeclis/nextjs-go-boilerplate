@@ -19,6 +19,7 @@ import (
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/modules/notifications/providers"
 	notifusecase "github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/modules/notifications/usecase"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/observability"
+	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/crypto"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/events"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/mail"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/storage"
@@ -105,7 +106,12 @@ func main() {
 	var worker *queue.Worker
 	if cfg.Queue.Enabled {
 		queueClient = queue.NewClient(cfg.Redis)
-		notifSvc := notifusecase.New(queries, queueClient, provs, log)
+		secretBox, err := crypto.NewSecretBox(cfg.Encryption.Key)
+		if err != nil {
+			log.Error("encryption_init_failed", "error", err)
+			exit(1)
+		}
+		notifSvc := notifusecase.New(queries, queueClient, provs, log).WithSecretBox(secretBox)
 		if cfg.Queue.WorkerInProcess {
 			worker = queue.NewWorker(cfg, log, notifSvc.Deliver).
 				WithLogPurge(logsSvc.ApplyDueRules)

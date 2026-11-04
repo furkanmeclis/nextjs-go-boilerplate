@@ -15,6 +15,7 @@ import (
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/modules/notifications/providers"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/modules/notifications/templates"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/authctx"
+	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/crypto"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/orgctx"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/queue"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/pkg/apiquery"
@@ -71,6 +72,7 @@ type Service struct {
 	pushQueue    Enqueuer
 	actionSecret []byte
 	actionTTL    time.Duration
+	box          *crypto.SecretBox
 }
 
 // New creates a notification service.
@@ -96,6 +98,13 @@ func (s *Service) WithActionSigner(secret string, ttl time.Duration) *Service {
 	if ttl > 0 {
 		s.actionTTL = ttl
 	}
+	return s
+}
+
+// WithSecretBox enables security emails: their content is stored encrypted
+// until delivery (see seal.go).
+func (s *Service) WithSecretBox(box *crypto.SecretBox) *Service {
+	s.box = box
 	return s
 }
 
@@ -157,6 +166,14 @@ func (s *Service) Enqueue(ctx context.Context, in model.EnqueueInput) ([]model.N
 				title = in.TemplateCode
 			}
 		}
+		var sealed pgtype.Text
+		if in.SecurityEmail && ch == model.ChannelEmail {
+			var err error
+			if sealed, err = s.sealContent(title, body); err != nil {
+				return nil, err
+			}
+			title, body = redactedTitle(in.TemplateCode), RedactedBody
+		}
 		payload, err := json.Marshal(withPushVars(ch, in.Payload, in.TemplateVars))
 		if err != nil {
 			payload = []byte("{}")
@@ -186,6 +203,7 @@ func (s *Service) Enqueue(ctx context.Context, in model.EnqueueInput) ([]model.N
 			SourceEvent:    pgtype.Text{String: in.SourceEvent, Valid: in.SourceEvent != ""},
 			ScheduledAt:    pgtype.Timestamptz{},
 			MaxAttempts:    5,
+			SealedContent:  sealed,
 		})
 		if err != nil {
 			return nil, fmt.Errorf("create notification: %w", err)
@@ -258,7 +276,7 @@ func (s *Service) Deliver(ctx context.Context, id int64) error {
 			userUUID = &uid
 		}
 	}
-	res, err := p.Deliver(ctx, row, userUUID)
+	res, err := s.deliverVia(ctx, p, row, userUUID)
 	if err != nil {
 		_, _ = s.q.MarkNotificationFailed(ctx, db.MarkNotificationFailedParams{
 			ID: id, LastError: pgtype.Text{String: err.Error(), Valid: true},

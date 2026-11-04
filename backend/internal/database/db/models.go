@@ -210,6 +210,7 @@ type Notification struct {
 	CreatedAt         pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt         pgtype.Timestamptz `json:"updated_at"`
 	OrganizationID    pgtype.Int8        `json:"organization_id"`
+	SealedContent     pgtype.Text        `json:"sealed_content"`
 }
 
 type NotificationHistory struct {
