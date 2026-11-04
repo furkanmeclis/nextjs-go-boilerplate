@@ -12,6 +12,7 @@ import (
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/modules/auth/usecase"
 	githubusecase "github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/modules/integrations/github/usecase"
 	oauthproviderusecase "github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/modules/integrations/oauthprovider/usecase"
+	orgusecase "github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/modules/organizations/usecase"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/activity"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/authctx"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/clientip"
@@ -71,6 +72,8 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 		Password string `json:"password"`
 		Name     string `json:"name"`
 		Surname  string `json:"surname"`
+		// Invitation sign-up: bypasses the public registration switch.
+		InvitationToken string `json:"invitation_token"`
 	}
 	if err := decodeJSON(w, r, &in); err != nil {
 		return
@@ -82,6 +85,7 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 	user, err := h.uc.Register(r.Context(), model.RegisterInput{
 		Email: in.Email, Password: in.Password, Name: in.Name, Surname: in.Surname,
+		InvitationToken: in.InvitationToken,
 	})
 	if err != nil {
 		writeUsecaseError(w, r, err)
@@ -570,6 +574,12 @@ func writeUsecaseError(w http.ResponseWriter, r *http.Request, err error) {
 	switch {
 	case errors.Is(err, usecase.ErrAccountDeactivated):
 		response.Error(w, r, http.StatusForbidden, response.CodeAccountDeactivated, "This account has been deleted")
+	case errors.Is(err, orgusecase.ErrInvitationNotFound), errors.Is(err, orgusecase.ErrInvitationsDisabled):
+		response.Error(w, r, http.StatusNotFound, response.CodeInvitationNotFound, "Invitation was not found")
+	case errors.Is(err, orgusecase.ErrInvitationUnavailable):
+		response.Error(w, r, http.StatusGone, response.CodeInvitationUnavailable, "Invitation was already used, revoked or has expired")
+	case errors.Is(err, orgusecase.ErrInvitationEmailMismatch):
+		response.Error(w, r, http.StatusForbidden, response.CodeInvitationEmailMismatch, "Invitation was sent to another email address")
 	case errors.Is(err, usecase.ErrInvalidEmailCode):
 		response.BadRequest(w, r, response.CodeInvalidEmailCode, "The code is invalid or expired")
 	case errors.Is(err, usecase.ErrInvalidIDToken):

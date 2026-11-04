@@ -14,3 +14,9 @@ export function safeNextPath(raw: string | null | undefined, fallback: string) {
   }
   return raw;
 }
+
+/** Appends a validated `?next=` to an auth page link (dropped when unsafe). */
+export function withNextPath(path: string, next: string | null | undefined) {
+  const safe = safeNextPath(next, "");
+  return safe ? `${path}?next=${encodeURIComponent(safe)}` : path;
+}

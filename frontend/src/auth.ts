@@ -195,11 +195,15 @@ async function _doBuildProviders(): Promise<Provider[]> {
         email: { label: "Email", type: "email" },
         code: { label: "Code", type: "text" },
         totp_code: { label: "Authenticator code", type: "text" },
+        invitation_token: { label: "Invitation token", type: "text" },
       },
       async authorize(credentials, request) {
         const email = String(credentials?.email ?? "").trim();
         const code = String(credentials?.code ?? "").trim();
         const totpCode = String(credentials?.totp_code ?? "").trim();
+        const invitationToken = String(
+          credentials?.invitation_token ?? "",
+        ).trim();
         if (!email || !code) return null;
         try {
           const tokens = await loginWithEmailCode(
@@ -209,6 +213,7 @@ async function _doBuildProviders(): Promise<Provider[]> {
             request instanceof Request
               ? forwardedForFromHeaders(request.headers)
               : null,
+            invitationToken || undefined,
           );
           const user = await adapterGetUserByEmail(email);
           return {

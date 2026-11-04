@@ -55,6 +55,20 @@ func (u *AuthUseCase) reviewCodeMatches(email, code string) bool {
 // RequestLoginCode emails a one-time sign-in code. It always succeeds from the
 // caller's point of view so the response never reveals whether email exists.
 func (u *AuthUseCase) RequestLoginCode(ctx context.Context, email string) error {
+	return u.requestLoginCode(ctx, email, false)
+}
+
+// RequestInvitedLoginCode is RequestLoginCode for the holder of an invitation:
+// the invited address gets a sign-up code even with registration off. A bad
+// token is refused outright; the answer does not depend on the account.
+func (u *AuthUseCase) RequestInvitedLoginCode(ctx context.Context, email, invitationToken string) error {
+	if err := u.checkInvitation(ctx, invitationToken, email); err != nil {
+		return err
+	}
+	return u.requestLoginCode(ctx, email, true)
+}
+
+func (u *AuthUseCase) requestLoginCode(ctx context.Context, email string, invited bool) error {
 	email = normalizeEmail(email)
 	if email == "" || !strings.Contains(email, "@") {
 		return fmt.Errorf("%w: a valid email is required", ErrInvalidRequest)
@@ -65,7 +79,7 @@ func (u *AuthUseCase) RequestLoginCode(ctx context.Context, email string) error 
 	user, err := u.repo.FindUserByEmail(ctx, email)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
-			if u.selfRegistrationOpen(ctx) {
+			if invited || u.selfRegistrationOpen(ctx) {
 				// Sign-up by email code: the code proves the mailbox and
 				// verify creates the account. Same response as a known email.
 				return u.sendEmailCode(ctx, model.User{Email: email}, email, otpTypeLoginCode, "auth.login_code", nil)
@@ -88,6 +102,19 @@ func (u *AuthUseCase) RequestLoginCode(ctx context.Context, email string) error 
 // authenticator 2FA, the first call without totpCode returns ErrMFARequired
 // and leaves the code unused so the client can retry with the same code.
 func (u *AuthUseCase) VerifyLoginCode(ctx context.Context, email, code, totpCode string, meta model.SessionMeta) (model.Tokens, error) {
+	return u.verifyLoginCode(ctx, email, code, totpCode, false, meta)
+}
+
+// VerifyInvitedLoginCode is VerifyLoginCode for the holder of an invitation:
+// an unknown invited address gets its account even with registration off.
+func (u *AuthUseCase) VerifyInvitedLoginCode(ctx context.Context, email, code, totpCode, invitationToken string, meta model.SessionMeta) (model.Tokens, error) {
+	if err := u.checkInvitation(ctx, invitationToken, email); err != nil {
+		return model.Tokens{}, err
+	}
+	return u.verifyLoginCode(ctx, email, code, totpCode, true, meta)
+}
+
+func (u *AuthUseCase) verifyLoginCode(ctx context.Context, email, code, totpCode string, invited bool, meta model.SessionMeta) (model.Tokens, error) {
 	email = normalizeEmail(email)
 	code = strings.TrimSpace(code)
 	if email == "" || code == "" {
@@ -96,7 +123,7 @@ func (u *AuthUseCase) VerifyLoginCode(ctx context.Context, email, code, totpCode
 	user, err := u.repo.FindUserByEmail(ctx, email)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
-			return u.signUpWithEmailCode(ctx, email, code, meta)
+			return u.signUpWithEmailCode(ctx, email, code, invited, meta)
 		}
 		return model.Tokens{}, err
 	}
@@ -124,10 +151,10 @@ func (u *AuthUseCase) VerifyLoginCode(ctx context.Context, email, code, totpCode
 }
 
 // signUpWithEmailCode creates an account for an unknown email once its code
-// is verified (self-registration on) and signs it in.
+// is verified (self-registration on, or an invitation for it) and signs it in.
 // With registration off it keeps the old "invalid code" answer.
-func (u *AuthUseCase) signUpWithEmailCode(ctx context.Context, email, code string, meta model.SessionMeta) (model.Tokens, error) {
-	if !u.selfRegistrationOpen(ctx) {
+func (u *AuthUseCase) signUpWithEmailCode(ctx context.Context, email, code string, invited bool, meta model.SessionMeta) (model.Tokens, error) {
+	if !invited && !u.selfRegistrationOpen(ctx) {
 		return model.Tokens{}, ErrInvalidEmailCode
 	}
 	otpID, err := u.checkEmailCode(ctx, email, otpTypeLoginCode, code)
@@ -137,7 +164,15 @@ func (u *AuthUseCase) signUpWithEmailCode(ctx context.Context, email, code strin
 	if err := u.consumeEmailCode(ctx, otpID); err != nil {
 		return model.Tokens{}, err
 	}
-	user, err := u.createPasswordlessUser(ctx, email, emailLocalPart(email), "", true)
+	var user model.User
+	if invited {
+		user, err = u.insertPasswordlessUser(ctx, email, emailLocalPart(email), "", true)
+		if err == nil {
+			u.notifyWelcome(ctx, user)
+		}
+	} else {
+		user, err = u.createPasswordlessUser(ctx, email, emailLocalPart(email), "", true)
+	}
 	if errors.Is(err, ErrConflict) {
 		// Created concurrently (double submit): sign in the existing account.
 		user, err = u.repo.FindUserByEmail(ctx, email)

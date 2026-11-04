@@ -118,6 +118,7 @@ type AuthUseCase struct {
 	// Optional registration / method policy (nil = allow password login, deny register).
 	authSettings AuthSettingsGate
 	accessPolicy AccessPolicyGate
+	invitations  InvitationGate
 	box          SecretBox
 	totpIssuer   string
 	// reviewAccounts maps email -> fixed sign-in code (app store review).
@@ -143,6 +144,12 @@ type AuthSettingsGate interface {
 // AccessPolicyGate reads admin access / verification policy.
 type AccessPolicyGate interface {
 	PasswordLoginTOTPRequired(ctx context.Context) (bool, error)
+}
+
+// InvitationGate proves that a sign-up is for the address an organization
+// invited. Nil (tenancy off) refuses every invitation sign-up.
+type InvitationGate interface {
+	CheckSignupInvitation(ctx context.Context, token, email string) error
 }
 
 // SearchIndexer enqueues search index updates (optional, fail-soft).
@@ -172,6 +179,11 @@ func (u *AuthUseCase) SetAuthSettings(gate AuthSettingsGate) {
 	u.authSettings = gate
 }
 
+// SetInvitationGate enables sign-up by organization invitation.
+func (u *AuthUseCase) SetInvitationGate(gate InvitationGate) {
+	u.invitations = gate
+}
+
 // SetAccessPolicy attaches step-up / login verification policy.
 func (u *AuthUseCase) SetAccessPolicy(gate AccessPolicyGate) {
 	u.accessPolicy = gate
@@ -190,7 +202,15 @@ func (u *AuthUseCase) SetRealtimeHints(h RealtimeHints) {
 
 // Register creates a user-only account (no roles/tokens unless default role configured).
 func (u *AuthUseCase) Register(ctx context.Context, in model.RegisterInput) (model.User, error) {
-	if u.authSettings != nil {
+	invited := strings.TrimSpace(in.InvitationToken) != ""
+	if invited {
+		if err := u.checkInvitation(ctx, in.InvitationToken, in.Email); err != nil {
+			return model.User{}, err
+		}
+		if err := u.checkPasswordLoginForInvitee(ctx); err != nil {
+			return model.User{}, err
+		}
+	} else if u.authSettings != nil {
 		ok, err := u.authSettings.CanPasswordRegister(ctx)
 		if err != nil {
 			return model.User{}, err
@@ -224,15 +244,42 @@ func (u *AuthUseCase) Register(ctx context.Context, in model.RegisterInput) (mod
 
 	user, err := u.repo.CreateUser(ctx, model.User{
 		Email: in.Email, PasswordHash: hash, Name: in.Name, Surname: in.Surname, Status: "active",
-	}, false)
+	}, invited)
 	if err != nil {
 		return model.User{}, err
 	}
-	if err := u.assignDefaultRole(ctx, user.ID); err != nil {
-		return model.User{}, err
+	if !invited {
+		if err := u.assignDefaultRole(ctx, user.ID); err != nil {
+			return model.User{}, err
+		}
 	}
 	u.notifyWelcome(ctx, user)
 	return user, nil
+}
+
+// checkInvitation validates an invitation token for email. It runs before any
+// account lookup, so the answer never depends on whether the email has one.
+func (u *AuthUseCase) checkInvitation(ctx context.Context, token, email string) error {
+	if u.invitations == nil {
+		return fmt.Errorf("%w: registration is disabled", ErrForbidden)
+	}
+	return u.invitations.CheckSignupInvitation(ctx, token, normalizeEmail(email))
+}
+
+// checkPasswordLoginForInvitee refuses a password the account could not sign
+// in with. The invitee can still join by email code.
+func (u *AuthUseCase) checkPasswordLoginForInvitee(ctx context.Context) error {
+	if u.authSettings == nil {
+		return nil
+	}
+	ok, err := u.authSettings.CanPasswordLogin(ctx)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return fmt.Errorf("%w: password sign-in is disabled", ErrForbidden)
+	}
+	return nil
 }
 
 func (u *AuthUseCase) assignDefaultRole(ctx context.Context, userID int64) error {
@@ -282,6 +329,20 @@ func (u *AuthUseCase) RegisterOAuthUser(ctx context.Context, email, name, surnam
 // marked unset, default role, welcome notification. The caller has already
 // checked that registration is enabled.
 func (u *AuthUseCase) createPasswordlessUser(ctx context.Context, email, name, surname string, emailVerified bool) (model.User, error) {
+	user, err := u.insertPasswordlessUser(ctx, email, name, surname, emailVerified)
+	if err != nil {
+		return model.User{}, err
+	}
+	if err := u.assignDefaultRole(ctx, user.ID); err != nil {
+		return model.User{}, err
+	}
+	u.notifyWelcome(ctx, user)
+	return user, nil
+}
+
+// insertPasswordlessUser stores the account only: invited sign-ups skip the
+// default role, which belongs to public registration.
+func (u *AuthUseCase) insertPasswordlessUser(ctx context.Context, email, name, surname string, emailVerified bool) (model.User, error) {
 	email = strings.ToLower(strings.TrimSpace(email))
 	if email == "" {
 		return model.User{}, fmt.Errorf("%w: email is required", ErrInvalidRequest)
@@ -311,10 +372,6 @@ func (u *AuthUseCase) createPasswordlessUser(ctx context.Context, email, name, s
 		return model.User{}, err
 	}
 	user.PasswordSet = false
-	if err := u.assignDefaultRole(ctx, user.ID); err != nil {
-		return model.User{}, err
-	}
-	u.notifyWelcome(ctx, user)
 	return user, nil
 }
 

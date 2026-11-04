@@ -34,6 +34,19 @@ export type RegisterFormValues = z.infer<
   ReturnType<typeof createRegisterSchema>
 >;
 
+export function createEmailCodeSchema(t: Translate) {
+  return z.object({
+    code: z
+      .string()
+      .trim()
+      .regex(/^\d{6}$/, t("auth.email_code.validation.code")),
+  });
+}
+
+export type EmailCodeFormValues = z.infer<
+  ReturnType<typeof createEmailCodeSchema>
+>;
+
 export function createForgotPasswordSchema(t: Translate) {
   return z.object({
     email: z.email(t("auth.validation.email")),

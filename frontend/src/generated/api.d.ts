@@ -57,6 +57,15 @@ export interface paths {
         /**
          * Self-serve user register
          * @description Creates a global user account and returns it. Tokens are issued on login.
+         *
+         *     Invitation sign-up: with `invitation_token`, the invited address can
+         *     register while public registration is off (`TENANCY_ENABLED=true`). The
+         *     emailed token proves the mailbox, so the email is verified. No default
+         *     role is assigned and the invitation is not consumed: accept it with
+         *     `/v1/invitations/accept`. Errors: `404 INVITATION_NOT_FOUND`,
+         *     `410 INVITATION_UNAVAILABLE` (used, revoked or expired),
+         *     `403 INVITATION_EMAIL_MISMATCH`, `403 FORBIDDEN` (password sign-in
+         *     disabled; use the email-code flow), `409 CONFLICT` (account exists).
          */
         post: operations["postAuthRegister"];
         delete?: never;
@@ -1152,6 +1161,10 @@ export interface paths {
          *     and `/v1/auth/email-code/verify` creates the account. When it is
          *     disabled no email is sent (same response).
          *
+         *     With `invitation_token` the address must match an open invitation (else
+         *     an error below, whether or not it has an account) and a sign-up code is
+         *     sent even when registration is disabled.
+         *
          *     App review: emails listed in `AUTH_REVIEW_ACCOUNTS` receive no email;
          *     their fixed code works for that email only.
          */
@@ -1184,6 +1197,12 @@ export interface paths {
          *     `name` = email local part, empty `surname`, default role) and returns
          *     tokens like a normal login. With registration disabled an unknown email gets
          *     `400 INVALID_EMAIL_CODE`.
+         *
+         *     With `invitation_token` (open, for this address) a valid code creates
+         *     the account even when registration is disabled, without the default
+         *     role. The invitation is not consumed. A bad token returns
+         *     `404 INVITATION_NOT_FOUND`, `410 INVITATION_UNAVAILABLE` or
+         *     `403 INVITATION_EMAIL_MISMATCH`.
          *
          *     Errors: `400 INVALID_EMAIL_CODE` (wrong / expired / used / exhausted),
          *     `403 MFA_REQUIRED`, `401 INVALID_MFA_CODE`, `403 ACCOUNT_DEACTIVATED`,
@@ -2503,6 +2522,8 @@ export interface components {
             password: string;
             name: string;
             surname: string;
+            /** @description Token from an organization invitation email (for the invited address only) */
+            invitation_token?: string;
         };
         RegisterResponse: {
             user: components["schemas"]["PublicUser"];
@@ -2801,6 +2822,8 @@ export interface components {
         EmailCodeRequest: {
             /** Format: email */
             email: string;
+            /** @description Token from an organization invitation email (for the invited address only) */
+            invitation_token?: string;
         };
         EmailCodeVerifyRequest: {
             /** Format: email */
@@ -2809,6 +2832,8 @@ export interface components {
             code: string;
             /** @description Authenticator or recovery code when 2FA is enabled */
             totp_code?: string;
+            /** @description Token from an organization invitation email (for the invited address only) */
+            invitation_token?: string;
         };
         NativeOAuthRequest: {
             /** @description Provider id_token from the native SDK */
@@ -3728,7 +3753,26 @@ export interface operations {
                 };
             };
             400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
+            /** @description `INVITATION_NOT_FOUND` */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
             409: components["responses"]["Conflict"];
+            /** @description `INVITATION_UNAVAILABLE`: already used, revoked or expired */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
             429: components["responses"]["TooManyRequests"];
             500: components["responses"]["InternalError"];
         };
@@ -5765,7 +5809,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Accepted (always, for any well-formed email) */
+            /** @description Accepted (always, for any well-formed email without a token) */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -5775,6 +5819,33 @@ export interface operations {
                 };
             };
             400: components["responses"]["BadRequest"];
+            /** @description `INVITATION_EMAIL_MISMATCH` (only with `invitation_token`) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description `INVITATION_NOT_FOUND` (only with `invitation_token`) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description `INVITATION_UNAVAILABLE` (only with `invitation_token`) */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
             429: components["responses"]["TooManyRequests"];
             500: components["responses"]["InternalError"];
         };
@@ -5804,6 +5875,24 @@ export interface operations {
             400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
+            /** @description `INVITATION_NOT_FOUND` (only with `invitation_token`) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description `INVITATION_UNAVAILABLE` (only with `invitation_token`) */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
             429: components["responses"]["TooManyRequests"];
             500: components["responses"]["InternalError"];
         };
