@@ -25,3 +25,4 @@ CENTRIFUGO_ENABLED | omit | Centrifugo is part of the prod stack (backend depend
 REDIS_DB | omit | each app has its own Redis; DB 0
 SMTP_FROM | omit | legacy alias of MAIL_FROM, which is delivered
 DATABASE_URL | omit | read by cmd/release-record in the migrate service, which gets its own DSN
+SA_PASSWORD | omit | one-off input to cmd/create-super-admin, passed at exec time and never stored in the stack env

@@ -148,5 +148,6 @@ New env var? Follow `docs/EXTENDING.md` → "Environment variables" (config.go �
 - [ ] MailHog receives verify/reset mail
 - [ ] VAPID keys if push is in scope
 - [ ] Production: `make prod-env-init` (not a copy of `.env.example`), then `make prod-env-check` passes
+- [ ] Production: first admin from the image, `/app/create-super-admin` in the backend container (`docs/DEVELOPMENT.md` → Super admin)
 - [ ] Brand tokens swapped if this is a named product
 - [ ] `ci` is the required check on `main`; Dokploy pulls `ghcr.io/<owner>/<repo>-*` and deploys on `v0.*` tags

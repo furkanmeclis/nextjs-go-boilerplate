@@ -7,6 +7,11 @@
 // Or from backend/:
 //
 //	make create-super-admin SA_EMAIL=admin@example.com SA_PASSWORD='Password1'
+//
+// In the production image (no source tree, no make), with the password in the
+// environment so it stays out of the process list:
+//
+//	SA_PASSWORD=... /app/create-super-admin -email admin@example.com
 package main
 
 import (
@@ -24,8 +29,10 @@ import (
 )
 
 func main() {
-	email := flag.String("email", "admin@example.com", "super admin email")
-	pass := flag.String("password", "Password1", "super admin password (min 8, upper+lower+digit)")
+	// No defaults for these: the image ships this binary, so a bare run must
+	// not create a production admin with a known password.
+	email := flag.String("email", "", "super admin email (required)")
+	pass := flag.String("password", "", "super admin password, min 8, upper+lower+digit (required; or set SA_PASSWORD)")
 	name := flag.String("name", "Platform", "first name")
 	surname := flag.String("surname", "Admin", "last name")
 	flag.Parse()
@@ -33,8 +40,11 @@ func main() {
 	*email = strings.ToLower(strings.TrimSpace(*email))
 	*name = strings.TrimSpace(*name)
 	*surname = strings.TrimSpace(*surname)
-	if *email == "" || *name == "" || *surname == "" {
-		fatal("email, name, and surname are required")
+	if *pass == "" {
+		*pass = os.Getenv("SA_PASSWORD")
+	}
+	if *email == "" || *pass == "" || *name == "" || *surname == "" {
+		fatal("email, password (or SA_PASSWORD), name, and surname are required")
 	}
 
 	cfg, err := config.Load()

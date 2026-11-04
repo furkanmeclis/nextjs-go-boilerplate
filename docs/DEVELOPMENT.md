@@ -170,6 +170,17 @@ make create-super-admin SA_EMAIL=you@example.com SA_PASSWORD='Secret1' SA_NAME=A
 
 The same target exists under `backend/` (`make -C backend create-super-admin …`).
 
+Production has no source tree or `make`; the backend image ships the binary. After the first deploy, on the host:
+
+```sh
+read -rs SA_PASSWORD && export SA_PASSWORD
+docker compose --env-file .env.server -f compose.prod.yml exec -e SA_PASSWORD backend \
+  /app/create-super-admin -email you@example.com
+unset SA_PASSWORD
+```
+
+In Dokploy, open a terminal on the backend container and run `/app/create-super-admin -email you@example.com -password '…'`. `-email` and the password are required here (`-name` and `-surname` are optional). Running it again for the same email resets that user's password and restores the role.
+
 ## After a backend contract change
 
 ```sh
