@@ -8,8 +8,18 @@ const SESSION_COOKIE_BASES = [
 
 const SESSION_COOKIE_CHUNKS = 12;
 
+// Auth.js picks the cookie name from the AUTH_URL scheme and salts the JWT with
+// it. Follow the same rule, or a plain-HTTP deploy signs in and then loses the
+// session on the first BFF call.
+function usesSecureCookies() {
+  const authUrl = process.env.AUTH_URL ?? process.env.NEXTAUTH_URL;
+  return authUrl
+    ? authUrl.startsWith("https://")
+    : process.env.NODE_ENV === "production";
+}
+
 export function sessionCookieName() {
-  return process.env.NODE_ENV === "production"
+  return usesSecureCookies()
     ? "__Secure-authjs.session-token"
     : "authjs.session-token";
 }
@@ -17,7 +27,7 @@ export function sessionCookieName() {
 function sessionCookieOptions() {
   return {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: usesSecureCookies(),
     sameSite: "lax" as const,
     path: "/",
   };
