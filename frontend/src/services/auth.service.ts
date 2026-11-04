@@ -123,10 +123,13 @@ export const authService = {
     );
   },
 
-  async requestEmailCode(email: string) {
+  async requestEmailCode(email: string, invitationToken?: string) {
     return unwrap<StatusPayload>(
       await apiClient.POST("/v1/auth/email-code/request", {
-        body: { email },
+        body: {
+          email,
+          ...(invitationToken ? { invitation_token: invitationToken } : {}),
+        },
       }),
       { silent: true },
     );

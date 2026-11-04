@@ -100,6 +100,15 @@ paths:
       summary: Self-serve user register
       description: |
         Creates a global user account and returns it. Tokens are issued on login.
+
+        Invitation sign-up: with `invitation_token`, the invited address can
+        register while public registration is off (`TENANCY_ENABLED=true`). The
+        emailed token proves the mailbox, so the email is verified. No default
+        role is assigned and the invitation is not consumed: accept it with
+        `/v1/invitations/accept`. Errors: `404 INVITATION_NOT_FOUND`,
+        `410 INVITATION_UNAVAILABLE` (used, revoked or expired),
+        `403 INVITATION_EMAIL_MISMATCH`, `403 FORBIDDEN` (password sign-in
+        disabled; use the email-code flow), `409 CONFLICT` (account exists).
       security: []
       requestBody:
         required: true
@@ -116,8 +125,22 @@ paths:
                 $ref: "#/components/schemas/EnvelopeRegister"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          description: "`INVITATION_NOT_FOUND`"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "409":
           $ref: "#/components/responses/Conflict"
+        "410":
+          description: "`INVITATION_UNAVAILABLE`: already used, revoked or expired"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "500":
           $ref: "#/components/responses/InternalError"
         "429":
@@ -2051,6 +2074,10 @@ paths:
         and `/v1/auth/email-code/verify` creates the account. When it is
         disabled no email is sent (same response).
 
+        With `invitation_token` the address must match an open invitation (else
+        an error below, whether or not it has an account) and a sign-up code is
+        sent even when registration is disabled.
+
         App review: emails listed in `AUTH_REVIEW_ACCOUNTS` receive no email;
         their fixed code works for that email only.
       security: []
@@ -2062,13 +2089,31 @@ paths:
               $ref: "#/components/schemas/EmailCodeRequest"
       responses:
         "200":
-          description: Accepted (always, for any well-formed email)
+          description: Accepted (always, for any well-formed email without a token)
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/EnvelopeStatus"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "403":
+          description: "`INVITATION_EMAIL_MISMATCH` (only with `invitation_token`)"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: "`INVITATION_NOT_FOUND` (only with `invitation_token`)"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "410":
+          description: "`INVITATION_UNAVAILABLE` (only with `invitation_token`)"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "429":
           $ref: "#/components/responses/TooManyRequests"
         "500":
@@ -2091,6 +2136,12 @@ paths:
         `name` = email local part, empty `surname`, default role) and returns
         tokens like a normal login. With registration disabled an unknown email gets
         `400 INVALID_EMAIL_CODE`.
+
+        With `invitation_token` (open, for this address) a valid code creates
+        the account even when registration is disabled, without the default
+        role. The invitation is not consumed. A bad token returns
+        `404 INVITATION_NOT_FOUND`, `410 INVITATION_UNAVAILABLE` or
+        `403 INVITATION_EMAIL_MISMATCH`.
 
         Errors: `400 INVALID_EMAIL_CODE` (wrong / expired / used / exhausted),
         `403 MFA_REQUIRED`, `401 INVALID_MFA_CODE`, `403 ACCOUNT_DEACTIVATED`,
@@ -2116,6 +2167,18 @@ paths:
           $ref: "#/components/responses/Unauthenticated"
         "403":
           $ref: "#/components/responses/Forbidden"
+        "404":
+          description: "`INVITATION_NOT_FOUND` (only with `invitation_token`)"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "410":
+          description: "`INVITATION_UNAVAILABLE` (only with `invitation_token`)"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "429":
           $ref: "#/components/responses/TooManyRequests"
         "500":
@@ -4092,6 +4155,10 @@ components:
           type: string
         surname:
           type: string
+        invitation_token:
+          type: string
+          description: Token from an organization invitation email (for the invited address only)
+          maxLength: 128
 
     RegisterResponse:
       type: object
@@ -4512,6 +4579,10 @@ components:
       required: [email]
       properties:
         email: { type: string, format: email }
+        invitation_token:
+          type: string
+          description: Token from an organization invitation email (for the invited address only)
+          maxLength: 128
 
     EmailCodeVerifyRequest:
       type: object
@@ -4526,6 +4597,10 @@ components:
           type: string
           description: Authenticator or recovery code when 2FA is enabled
           maxLength: 32
+        invitation_token:
+          type: string
+          description: Token from an organization invitation email (for the invited address only)
+          maxLength: 128
 
     NativeOAuthRequest:
       type: object

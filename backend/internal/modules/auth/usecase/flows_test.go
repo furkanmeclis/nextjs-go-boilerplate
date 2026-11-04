@@ -732,3 +732,155 @@ func TestPasswordResetSetsPasswordSet(t *testing.T) {
 		t.Fatal("password reset must set password_set")
 	}
 }
+
+// ---- invitation sign-up -------------------------------------------------------
+
+type fakeInvitationGate struct {
+	email string
+	err   error
+}
+
+func (g fakeInvitationGate) CheckSignupInvitation(_ context.Context, token, email string) error {
+	if g.err != nil {
+		return g.err
+	}
+	if token != "good-token" {
+		return errBadInvitation
+	}
+	if email != g.email {
+		return errInvitationMismatch
+	}
+	return nil
+}
+
+var (
+	errBadInvitation      = errors.New("bad invitation")
+	errInvitationMismatch = errors.New("invitation mismatch")
+)
+
+func newInvitedEnv(t *testing.T) *flowEnv {
+	t.Helper()
+	e := newFlowEnv(t)
+	e.uc.SetAuthSettings(testAuthGate{passwordLogin: true, registration: false})
+	e.uc.SetInvitationGate(fakeInvitationGate{email: "invited@example.com"})
+	return e
+}
+
+func invitedRegister(token, email string) model.RegisterInput {
+	return model.RegisterInput{Email: email, Password: "Secret123!", Name: "In", Surname: "Vited", InvitationToken: token}
+}
+
+func TestRegisterWithInvitationWhileRegistrationClosed(t *testing.T) {
+	e := newInvitedEnv(t)
+	ctx := context.Background()
+
+	u, err := e.uc.Register(ctx, invitedRegister("good-token", " Invited@Example.com "))
+	if err != nil {
+		t.Fatalf("register: %v", err)
+	}
+	if !u.EmailVerified || u.Email != "invited@example.com" {
+		t.Fatalf("user = %+v", u)
+	}
+	if _, err := e.uc.Login(ctx, "invited@example.com", "Secret123!", "", model.SessionMeta{}); err != nil {
+		t.Fatalf("password login after sign-up: %v", err)
+	}
+	if _, err := e.uc.Register(ctx, invitedRegister("good-token", "invited@example.com")); !errors.Is(err, ErrConflict) {
+		t.Fatalf("second sign-up: %v", err)
+	}
+}
+
+func TestInvitedSignUpSkipsDefaultRole(t *testing.T) {
+	e := newInvitedEnv(t)
+	ctx := context.Background()
+	roleID := int64(99)
+	e.uc.SetAuthSettings(testAuthGate{passwordLogin: true, defaultRoleID: &roleID})
+
+	u, err := e.uc.Register(ctx, invitedRegister("good-token", "invited@example.com"))
+	if err != nil {
+		t.Fatalf("register: %v", err)
+	}
+	if slugs, _ := e.repo.ListUserRoleSlugs(ctx, u.ID); len(slugs) != 0 {
+		t.Fatalf("invited sign-up got platform roles: %v", slugs)
+	}
+}
+
+func TestRegisterWithInvitationRefusals(t *testing.T) {
+	e := newInvitedEnv(t)
+	ctx := context.Background()
+
+	if _, err := e.uc.Register(ctx, invitedRegister("bad-token", "invited@example.com")); !errors.Is(err, errBadInvitation) {
+		t.Fatalf("bad token: %v", err)
+	}
+	if _, err := e.uc.Register(ctx, invitedRegister("good-token", "other@example.com")); !errors.Is(err, errInvitationMismatch) {
+		t.Fatalf("wrong email: %v", err)
+	}
+	if _, err := e.uc.Register(ctx, invitedRegister("", "invited@example.com")); !errors.Is(err, ErrForbidden) {
+		t.Fatalf("no token, registration closed: %v", err)
+	}
+	if len(e.repo.byEmail) != 0 {
+		t.Fatalf("no account may be created: %v", e.repo.byEmail)
+	}
+
+	// Tenancy off: no gate, so a token opens nothing.
+	e.uc.SetInvitationGate(nil)
+	if _, err := e.uc.Register(ctx, invitedRegister("good-token", "invited@example.com")); !errors.Is(err, ErrForbidden) {
+		t.Fatalf("no gate: %v", err)
+	}
+
+	// A password the account could not sign in with is refused.
+	e.uc.SetInvitationGate(fakeInvitationGate{email: "invited@example.com"})
+	e.uc.SetAuthSettings(testAuthGate{passwordLogin: false})
+	if _, err := e.uc.Register(ctx, invitedRegister("good-token", "invited@example.com")); !errors.Is(err, ErrForbidden) {
+		t.Fatalf("password login off: %v", err)
+	}
+}
+
+func TestInvitationCheckRunsBeforeAccountLookup(t *testing.T) {
+	e := newInvitedEnv(t)
+	e.user(t, "existing@example.com")
+	ctx := context.Background()
+	for _, email := range []string{"existing@example.com", "nobody@example.com"} {
+		if _, err := e.uc.Register(ctx, invitedRegister("bad-token", email)); !errors.Is(err, errBadInvitation) {
+			t.Fatalf("register %s: %v", email, err)
+		}
+		if err := e.uc.RequestInvitedLoginCode(ctx, email, "bad-token"); !errors.Is(err, errBadInvitation) {
+			t.Fatalf("request %s: %v", email, err)
+		}
+		if _, err := e.uc.VerifyInvitedLoginCode(ctx, email, "123456", "", "bad-token", model.SessionMeta{}); !errors.Is(err, errBadInvitation) {
+			t.Fatalf("verify %s: %v", email, err)
+		}
+	}
+}
+
+func TestEmailCodeSignUpWithInvitation(t *testing.T) {
+	e := newInvitedEnv(t)
+	ctx := context.Background()
+
+	if err := e.uc.RequestInvitedLoginCode(ctx, "other@example.com", "good-token"); !errors.Is(err, errInvitationMismatch) {
+		t.Fatalf("wrong email: %v", err)
+	}
+	if err := e.uc.RequestInvitedLoginCode(ctx, "invited@example.com", "good-token"); err != nil {
+		t.Fatalf("request: %v", err)
+	}
+	code := e.notif.lastCode(t, "auth.login_code")
+
+	// The code alone must not open registration.
+	if _, err := e.uc.VerifyLoginCode(ctx, "invited@example.com", code, "", model.SessionMeta{}); !errors.Is(err, ErrInvalidEmailCode) {
+		t.Fatalf("verify without token: %v", err)
+	}
+	if _, ok := e.repo.byEmail["invited@example.com"]; ok {
+		t.Fatal("verify without token must not create the account")
+	}
+
+	tok, err := e.uc.VerifyInvitedLoginCode(ctx, "invited@example.com", code, "", "good-token", model.SessionMeta{})
+	if err != nil || tok.AccessToken == "" {
+		t.Fatalf("verify: %v %+v", err, tok)
+	}
+	u := e.repo.byEmail["invited@example.com"]
+	if !u.EmailVerified || u.PasswordSet {
+		t.Fatalf("user = %+v", u)
+	}
+	if e.notif.count("auth.welcome") != 1 {
+		t.Fatalf("welcome=%d", e.notif.count("auth.welcome"))
+	}
+}

@@ -289,6 +289,7 @@ export async function loginWithEmailCode(
   code: string,
   totpCode?: string,
   forwardedFor?: string | null,
+  invitationToken?: string,
 ) {
   const result = await fetchUpstream("auth/email-code/verify", {
     method: "POST",
@@ -301,6 +302,7 @@ export async function loginWithEmailCode(
       email,
       code,
       ...(totpCode ? { totp_code: totpCode } : {}),
+      ...(invitationToken ? { invitation_token: invitationToken } : {}),
     }),
   });
   return unwrap<GoTokensPayload>(result);

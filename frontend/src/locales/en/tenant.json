@@ -72,6 +72,7 @@
   "accept_description_no_inviter": "{{email}} is invited to join as {{role}}.",
   "accept_submit": "Accept invitation",
   "accept_sign_in": "Sign in to accept",
+  "accept_register": "Create an account",
   "accept_wrong_account": "You are signed in as {{current}}. Sign in as {{email}} to accept this invitation.",
   "accept_sign_out": "Sign out",
   "accept_unavailable_title": "Invitation no longer valid",

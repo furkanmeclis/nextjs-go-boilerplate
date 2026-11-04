@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { signIn, signOut, useSession } from "next-auth/react";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
@@ -20,6 +20,7 @@ import {
   type RegisterFormValues,
 } from "@/features/auth/schemas";
 import { isApiError } from "@/lib/api";
+import { safeNextPath, withNextPath } from "@/lib/auth/next-path";
 import { defaultHomeForUser } from "@/lib/auth/types";
 import { useAuth } from "@/providers/auth-provider";
 import { useLocale } from "@/providers/locale-provider";
@@ -27,10 +28,22 @@ import { authService } from "@/services/auth.service";
 import { fetchAppPublicConfig } from "@/services/app-config.service";
 
 import { AuthCard } from "./auth-card";
+import { InvitationRegisterForm } from "./invitation-register-form";
 
 type OAuthId = "github" | "google" | "facebook" | "apple";
 
 export function RegisterForm() {
+  const searchParams = useSearchParams();
+  const invitation = searchParams.get("invitation");
+  const next = searchParams.get("next");
+  return invitation ? (
+    <InvitationRegisterForm token={invitation} next={next} />
+  ) : (
+    <PublicRegisterForm next={next} />
+  );
+}
+
+function PublicRegisterForm({ next }: { next: string | null }) {
   const { t, locale } = useLocale();
   const router = useRouter();
   const { markAuthenticated, hydrateProfile } = useAuth();
@@ -39,6 +52,7 @@ export function RegisterForm() {
   const [pending, setPending] = useState(false);
   const [oauthPending, setOauthPending] = useState<OAuthId | null>(null);
   const schema = useMemo(() => createRegisterSchema(t), [t]);
+  const loginHref = withNextPath(routes.guest.login, next);
 
   const { data: appConfig, isLoading } = useQuery({
     queryKey: ["app", "config", locale],
@@ -85,7 +99,7 @@ export function RegisterForm() {
         description={t("auth.register.disabled_description")}
       >
         <Button asChild className="w-full">
-          <Link href={routes.guest.login}>{t("auth.back_to_login")}</Link>
+          <Link href={loginHref}>{t("auth.back_to_login")}</Link>
         </Button>
       </AuthCard>
     );
@@ -107,12 +121,14 @@ export function RegisterForm() {
         redirect: false,
       });
       if (result?.error) {
-        router.replace(routes.guest.login);
+        router.replace(loginHref);
         return;
       }
       markAuthenticated();
       const user = await hydrateProfile();
-      router.replace(user ? defaultHomeForUser(user) : routes.guest.login);
+      router.replace(
+        user ? safeNextPath(next, defaultHomeForUser(user)) : loginHref,
+      );
     } catch (error) {
       if (isApiError(error)) {
         setFormError(error.message || t("auth.register.error"));
@@ -132,7 +148,7 @@ export function RegisterForm() {
       }
       await signIn(provider, {
         redirect: true,
-        callbackUrl: routes.platform.home,
+        callbackUrl: safeNextPath(next, routes.platform.home),
       });
     } catch {
       setFormError(t("auth.oauth.sign_in_error"));
@@ -235,10 +251,7 @@ export function RegisterForm() {
 
         <p className="text-muted-foreground text-center text-sm">
           {t("auth.register.have_account")}{" "}
-          <Link
-            href={routes.guest.login}
-            className="underline-offset-4 hover:underline"
-          >
+          <Link href={loginHref} className="underline-offset-4 hover:underline">
             {t("auth.register.login_link")}
           </Link>
         </p>

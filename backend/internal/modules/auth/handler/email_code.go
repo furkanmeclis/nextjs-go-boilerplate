@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/modules/auth/model"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/internal/platform/authctx"
 	"github.com/furkanmeclis/nextjs-go-boilerplate/backend/pkg/response"
 )
@@ -49,7 +50,8 @@ func emailSubject(email string) string {
 // RequestEmailCode is POST /v1/auth/email-code/request.
 func (h *Handler) RequestEmailCode(w http.ResponseWriter, r *http.Request) {
 	var in struct {
-		Email string `json:"email"`
+		Email           string `json:"email"`
+		InvitationToken string `json:"invitation_token"`
 	}
 	if err := decodeJSON(w, r, &in); err != nil {
 		return
@@ -62,7 +64,13 @@ func (h *Handler) RequestEmailCode(w http.ResponseWriter, r *http.Request) {
 	) {
 		return
 	}
-	if err := h.uc.RequestLoginCode(r.Context(), in.Email); err != nil {
+	var err error
+	if strings.TrimSpace(in.InvitationToken) != "" {
+		err = h.uc.RequestInvitedLoginCode(r.Context(), in.Email, in.InvitationToken)
+	} else {
+		err = h.uc.RequestLoginCode(r.Context(), in.Email)
+	}
+	if err != nil {
 		writeUsecaseError(w, r, err)
 		return
 	}
@@ -75,6 +83,8 @@ func (h *Handler) VerifyEmailCode(w http.ResponseWriter, r *http.Request) {
 		Email    string `json:"email"`
 		Code     string `json:"code"`
 		TOTPCode string `json:"totp_code"`
+		// Invitation sign-up: an unknown invited address gets its account.
+		InvitationToken string `json:"invitation_token"`
 	}
 	if err := decodeJSON(w, r, &in); err != nil {
 		return
@@ -87,7 +97,15 @@ func (h *Handler) VerifyEmailCode(w http.ResponseWriter, r *http.Request) {
 	) {
 		return
 	}
-	tokens, err := h.uc.VerifyLoginCode(r.Context(), in.Email, in.Code, in.TOTPCode, sessionMeta(r))
+	var (
+		tokens model.Tokens
+		err    error
+	)
+	if strings.TrimSpace(in.InvitationToken) != "" {
+		tokens, err = h.uc.VerifyInvitedLoginCode(r.Context(), in.Email, in.Code, in.TOTPCode, in.InvitationToken, sessionMeta(r))
+	} else {
+		tokens, err = h.uc.VerifyLoginCode(r.Context(), in.Email, in.Code, in.TOTPCode, sessionMeta(r))
+	}
 	if err != nil {
 		writeUsecaseError(w, r, err)
 		return

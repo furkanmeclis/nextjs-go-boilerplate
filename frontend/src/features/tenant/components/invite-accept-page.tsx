@@ -40,7 +40,9 @@ function Shell({ children }: { children: React.ReactNode }) {
 
 /**
  * `/invite/{token}` — shows an organization invitation and lets the invited
- * account accept it. Works signed out (sign in, then come back via ?next=).
+ * account accept it. Works signed out: sign in, or create the invited account
+ * (allowed by the token even while registration is closed), then come back
+ * via ?next=.
  */
 export function InviteAcceptPage({ token }: { token: string }) {
   const { t } = useLocale();
@@ -152,13 +154,22 @@ export function InviteAcceptPage({ token }: { token: string }) {
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
         {!isAuthenticated || !user ? (
-          <Button asChild>
-            <Link
-              href={`${routes.guest.login}?next=${encodeURIComponent(here)}`}
-            >
-              {t("tenant.accept_sign_in")}
-            </Link>
-          </Button>
+          <>
+            <Button asChild>
+              <Link
+                href={`${routes.guest.login}?next=${encodeURIComponent(here)}`}
+              >
+                {t("tenant.accept_sign_in")}
+              </Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link
+                href={`${routes.guest.register}?invitation=${encodeURIComponent(token)}&next=${encodeURIComponent(here)}`}
+              >
+                {t("tenant.accept_register")}
+              </Link>
+            </Button>
+          </>
         ) : sameAccount ? (
           <Button disabled={accept.isPending} onClick={() => void onAccept()}>
             {t("tenant.accept_submit")}

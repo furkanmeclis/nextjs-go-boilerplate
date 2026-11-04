@@ -273,6 +273,23 @@ func (s *Service) PreviewInvitation(ctx context.Context, token string) (orgmodel
 	return out, nil
 }
 
+// CheckSignupInvitation reports whether token is an open invitation for email,
+// which lets its holder create that account while public registration is off.
+// Signing up does not consume it: accepting afterwards creates the membership.
+func (s *Service) CheckSignupInvitation(ctx context.Context, token, email string) error {
+	row, err := s.lookupInvitation(ctx, token)
+	if err != nil {
+		return err
+	}
+	if invitationStatus(row.AcceptedAt, row.RevokedAt, row.ExpiresAt, s.now()) != orgmodel.InvitationPending {
+		return ErrInvitationUnavailable
+	}
+	if !strings.EqualFold(strings.TrimSpace(email), row.Email) {
+		return ErrInvitationEmailMismatch
+	}
+	return nil
+}
+
 // AcceptInvitation turns an invitation into a membership for the signed-in
 // user. The account email must be the invited address; the invitation is
 // consumed atomically (single use) in the same transaction as the insert.

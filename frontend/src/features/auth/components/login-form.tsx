@@ -19,6 +19,7 @@ import { Field, FieldError, FieldGroup } from "@/components/ui/field";
 import { Separator } from "@/components/ui/separator";
 import { routes } from "@/config/routes";
 import {
+  createEmailCodeSchema,
   createLoginSchema,
   type LoginFormValues,
 } from "@/features/auth/schemas";
@@ -28,7 +29,7 @@ import {
   resolveCredentialErrorCode,
   type CredentialSignInResult,
 } from "@/lib/auth/credentials-errors";
-import { safeNextPath } from "@/lib/auth/next-path";
+import { safeNextPath, withNextPath } from "@/lib/auth/next-path";
 import { defaultHomeForUser } from "@/lib/auth/types";
 import { useAuth } from "@/providers/auth-provider";
 import { useLocale } from "@/providers/locale-provider";
@@ -50,15 +51,6 @@ type EmailCodeStep = "off" | "email" | "code";
 function createEmailCodeEmailSchema(t: (key: string) => string) {
   return z.object({
     email: z.string().trim().email(t("auth.validation.email")),
-  });
-}
-
-function createEmailCodeSchema(t: (key: string) => string) {
-  return z.object({
-    code: z
-      .string()
-      .trim()
-      .regex(/^\d{6}$/, t("auth.email_code.validation.code")),
   });
 }
 
@@ -693,7 +685,10 @@ export function LoginForm() {
           <p className="text-muted-foreground text-center text-sm">
             {t("auth.login.no_account")}{" "}
             <Link
-              href={routes.guest.register}
+              href={withNextPath(
+                routes.guest.register,
+                searchParams.get("next"),
+              )}
               className="underline-offset-4 hover:underline"
             >
               {t("auth.login.register_link")}

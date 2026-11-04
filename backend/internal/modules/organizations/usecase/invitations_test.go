@@ -402,3 +402,41 @@ func TestInvitationsDisabledWithoutWiring(t *testing.T) {
 		t.Fatalf("err = %v", err)
 	}
 }
+
+func TestCheckSignupInvitation(t *testing.T) {
+	t.Parallel()
+	x := newInvFixture(t)
+	ctx := context.Background()
+	_, token := x.invite(t, "invitee@example.test", "member", "owner")
+
+	if err := x.svc.CheckSignupInvitation(ctx, token, " Invitee@Example.test "); err != nil {
+		t.Fatalf("open invitation: %v", err)
+	}
+	if err := x.svc.CheckSignupInvitation(ctx, token, "other@example.test"); !errors.Is(err, ErrInvitationEmailMismatch) {
+		t.Fatalf("wrong email: %v", err)
+	}
+	if err := x.svc.CheckSignupInvitation(ctx, "nope", "invitee@example.test"); !errors.Is(err, ErrInvitationNotFound) {
+		t.Fatalf("unknown token: %v", err)
+	}
+
+	row := x.inv.rows[1]
+	if row.AcceptedAt.Valid || row.RevokedAt.Valid {
+		t.Fatal("checking must not consume the invitation")
+	}
+	stamp := pgtype.Timestamptz{Time: x.f.now, Valid: true}
+	for _, tc := range []struct {
+		name   string
+		mutate func(*db.OrganizationInvitation)
+	}{
+		{"accepted", func(r *db.OrganizationInvitation) { r.AcceptedAt = stamp }},
+		{"revoked", func(r *db.OrganizationInvitation) { r.RevokedAt = stamp }},
+		{"expired", func(r *db.OrganizationInvitation) { r.ExpiresAt = stamp }},
+	} {
+		saved := *row
+		tc.mutate(row)
+		if err := x.svc.CheckSignupInvitation(ctx, token, "invitee@example.test"); !errors.Is(err, ErrInvitationUnavailable) {
+			t.Fatalf("%s: %v", tc.name, err)
+		}
+		*row = saved
+	}
+}

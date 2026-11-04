@@ -272,6 +272,7 @@ func New(cfg config.Config, log *slog.Logger, deps Deps) (*Server, error) {
 		// /me lists memberships only when the /t shell exists: the frontend
 		// routes members into it, which would dead-end with tenancy off.
 		uc.SetOrganizationsLister(orgSvc)
+		uc.SetInvitationGate(orgSvc)
 		orgCache := orgcache.New(orgSvc, deps.Redis, cfg.Tenancy.CacheTTL, cfg.App.Env)
 		orgSvc.SetInvalidator(orgCache)
 		tenantResolver = orgCache

@@ -143,6 +143,9 @@ type RegisterInput struct {
 	Password string
 	Name     string
 	Surname  string
+	// InvitationToken, when set, signs up the invited address even with public
+	// registration off. The token proves the mailbox, so the email is verified.
+	InvitationToken string
 }
 
 // CreatePlatformUserInput creates a platform-managed user.

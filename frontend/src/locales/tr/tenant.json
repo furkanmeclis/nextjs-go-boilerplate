@@ -72,6 +72,7 @@
   "accept_description_no_inviter": "{{email}} adresi {{role}} olarak katılmaya davet edildi.",
   "accept_submit": "Daveti kabul et",
   "accept_sign_in": "Kabul etmek için giriş yapın",
+  "accept_register": "Hesap oluştur",
   "accept_wrong_account": "{{current}} olarak giriş yaptınız. Bu daveti kabul etmek için {{email}} ile giriş yapın.",
   "accept_sign_out": "Çıkış yap",
   "accept_unavailable_title": "Davet artık geçerli değil",
