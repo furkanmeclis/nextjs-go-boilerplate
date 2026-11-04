@@ -145,7 +145,7 @@ Registered in `internal/httpserver/server.go`; the core ships with none.
 | Key | Default | Meaning |
 |---|---|---|
 | `TENANCY_ENABLED` / `NEXT_PUBLIC_TENANCY_ENABLED` | `false` | Mounts tenant routes and the `/t` shell. Off = today's behaviour. |
-| `TENANCY_SELF_SERVE` | `false` | Allow `POST /v1/auth/organizations` (still needs registration on). |
+| `TENANCY_SELF_SERVE` | `false` | Reserved for `POST /v1/auth/organizations`, which is not built yet: organizations are created through the platform API. |
 | `TENANCY_INVITE_TTL` | `168h` | Invitation lifetime. |
 
 ## 11. Delivery plan

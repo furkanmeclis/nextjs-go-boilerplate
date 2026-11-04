@@ -37,6 +37,16 @@ func (r *fakeInvitationRepo) CreateInvitation(_ context.Context, _ *db.Queries, 
 	return row, nil
 }
 
+func (r *fakeInvitationRepo) HasPendingOwnerInvitationForEmail(_ context.Context, _ *db.Queries, orgID int64, email string) (bool, error) {
+	for _, row := range r.rows {
+		if row.OrganizationID == orgID && row.Email == email && !row.AcceptedAt.Valid && !row.RevokedAt.Valid &&
+			r.f.roleSlug(row.RoleID) == orgctx.RoleOwner {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 func (r *fakeInvitationRepo) RevokePendingInvitationsForEmail(_ context.Context, _ *db.Queries, orgID int64, email string) error {
 	for _, row := range r.rows {
 		if row.OrganizationID == orgID && row.Email == email && !row.AcceptedAt.Valid && !row.RevokedAt.Valid {
@@ -208,6 +218,46 @@ func TestReinviteRevokesOlderOpenInvitation(t *testing.T) {
 	items, total, err := x.svc.ListInvitations(context.Background(), x.org.ID, 50, 0)
 	if err != nil || total != 1 || len(items) != 1 {
 		t.Fatalf("pending = %d/%d err %v", len(items), total, err)
+	}
+}
+
+func TestInvitationEmailIsNotLinkedToExistingAccount(t *testing.T) {
+	t.Parallel()
+	x := newInvFixture(t)
+	x.f.users[99] = db.User{ID: 99, Email: "known@example.test", Locale: "en"}
+	x.invite(t, "known@example.test", "member", "owner")
+	mail := x.notif.sent[0]
+	if mail.UserID != nil {
+		t.Fatal("invitation email must not be readable from the account's inbox")
+	}
+	if mail.Language != "en" {
+		t.Fatalf("language = %q, want the invitee's locale", mail.Language)
+	}
+}
+
+func TestAdminCannotReplaceOwnerInvitation(t *testing.T) {
+	t.Parallel()
+	x := newInvFixture(t)
+	_, token := x.invite(t, "boss@example.test", "owner", "owner")
+	_, err := x.svc.CreateInvitation(context.Background(), orgmodel.CreateInvitationInput{
+		OrgID: x.org.ID, InviterUserID: x.owner.ID, InviterRoleKey: "admin",
+		Email: "boss@example.test", RoleKey: "member",
+	})
+	if !errors.Is(err, ErrOwnerRoleRequired) {
+		t.Fatalf("err = %v, want ErrOwnerRoleRequired", err)
+	}
+	if prev, _ := x.svc.PreviewInvitation(context.Background(), token); prev.Status != orgmodel.InvitationPending {
+		t.Fatalf("owner invitation status = %q, want pending", prev.Status)
+	}
+	x.invite(t, "boss@example.test", "member", "owner")
+}
+
+func TestChangeMemberRoleRejectsEmptyRole(t *testing.T) {
+	t.Parallel()
+	x := newInvFixture(t)
+	_, err := x.svc.ChangeMemberRole(context.Background(), x.org.Uuid, x.owner.Uuid, " ", "owner")
+	if !errors.Is(err, ErrInvalidRequest) {
+		t.Fatalf("err = %v, want ErrInvalidRequest", err)
 	}
 }
 

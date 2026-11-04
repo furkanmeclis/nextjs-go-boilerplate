@@ -16,9 +16,12 @@ SELECT * FROM notifications WHERE uuid = $1;
 -- name: GetNotificationByID :one
 SELECT * FROM notifications WHERE id = $1;
 
+-- Email rows stay out of the inbox: their bodies carry one-time codes and
+-- invitation links that must only reach the mailbox, not the account holder.
 -- name: ListNotificationsForUser :many
 SELECT * FROM notifications
 WHERE user_id = sqlc.arg(user_id)
+  AND channel <> 'email'
   AND (sqlc.narg(status)::text IS NULL OR status = sqlc.narg(status))
   AND (sqlc.narg(channel)::text IS NULL OR channel = sqlc.narg(channel))
   AND (
@@ -39,6 +42,7 @@ LIMIT sqlc.arg(limit_count) OFFSET sqlc.arg(offset_count);
 -- name: CountNotificationsForUser :one
 SELECT COUNT(*)::bigint FROM notifications
 WHERE user_id = sqlc.arg(user_id)
+  AND channel <> 'email'
   AND (sqlc.narg(status)::text IS NULL OR status = sqlc.narg(status))
   AND (sqlc.narg(channel)::text IS NULL OR channel = sqlc.narg(channel))
   AND (

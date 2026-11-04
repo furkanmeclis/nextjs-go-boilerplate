@@ -195,6 +195,12 @@ func (r *Postgres) CreateInvitation(ctx context.Context, q *db.Queries, params d
 	return q.CreateOrganizationInvitation(ctx, params)
 }
 
+func (r *Postgres) HasPendingOwnerInvitationForEmail(ctx context.Context, q *db.Queries, orgID int64, email string) (bool, error) {
+	return q.HasPendingOwnerOrganizationInvitationForEmail(ctx, db.HasPendingOwnerOrganizationInvitationForEmailParams{
+		OrganizationID: orgID, Email: email,
+	})
+}
+
 func (r *Postgres) RevokePendingInvitationsForEmail(ctx context.Context, q *db.Queries, orgID int64, email string) error {
 	_, err := q.RevokePendingOrganizationInvitationsForEmail(ctx, db.RevokePendingOrganizationInvitationsForEmailParams{
 		OrganizationID: orgID, Email: email,

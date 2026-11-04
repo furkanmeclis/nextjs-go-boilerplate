@@ -523,6 +523,32 @@ func (q *Queries) GetTenantRoleByKey(ctx context.Context, arg GetTenantRoleByKey
 	return i, err
 }
 
+const hasPendingOwnerOrganizationInvitationForEmail = `-- name: HasPendingOwnerOrganizationInvitationForEmail :one
+SELECT EXISTS (
+  SELECT 1
+  FROM organization_invitations oi
+  INNER JOIN roles r ON r.id = oi.role_id
+  WHERE oi.organization_id = $1
+    AND oi.email = $2
+    AND r.slug = 'owner'
+    AND oi.accepted_at IS NULL
+    AND oi.revoked_at IS NULL
+    AND oi.expires_at > NOW()
+)
+`
+
+type HasPendingOwnerOrganizationInvitationForEmailParams struct {
+	OrganizationID int64  `json:"organization_id"`
+	Email          string `json:"email"`
+}
+
+func (q *Queries) HasPendingOwnerOrganizationInvitationForEmail(ctx context.Context, arg HasPendingOwnerOrganizationInvitationForEmailParams) (bool, error) {
+	row := q.db.QueryRow(ctx, hasPendingOwnerOrganizationInvitationForEmail, arg.OrganizationID, arg.Email)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const listOrganizationInvitations = `-- name: ListOrganizationInvitations :many
 SELECT oi.id, oi.uuid, oi.organization_id, oi.email, oi.role_id, oi.token_hash, oi.expires_at, oi.accepted_at, oi.revoked_at, oi.invited_by, oi.created_at, r.slug AS role_key, r.name AS role_name
 FROM organization_invitations oi

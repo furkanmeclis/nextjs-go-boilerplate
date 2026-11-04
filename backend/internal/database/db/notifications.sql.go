@@ -15,6 +15,7 @@ import (
 const countNotificationsForUser = `-- name: CountNotificationsForUser :one
 SELECT COUNT(*)::bigint FROM notifications
 WHERE user_id = $1
+  AND channel <> 'email'
   AND ($2::text IS NULL OR status = $2)
   AND ($3::text IS NULL OR channel = $3)
   AND (
@@ -354,6 +355,7 @@ func (q *Queries) InsertNotificationHistory(ctx context.Context, arg InsertNotif
 const listNotificationsForUser = `-- name: ListNotificationsForUser :many
 SELECT id, uuid, user_id, channel, status, priority, title, body, payload, action_url, recipient, template_code, source_event, scheduled_at, sent_at, delivered_at, read_at, failed_at, cancelled_at, attempt_count, max_attempts, last_error, provider, provider_reference, created_at, updated_at, organization_id FROM notifications
 WHERE user_id = $1
+  AND channel <> 'email'
   AND ($2::text IS NULL OR status = $2)
   AND ($3::text IS NULL OR channel = $3)
   AND (
@@ -382,6 +384,8 @@ type ListNotificationsForUserParams struct {
 	LimitCount  int32       `json:"limit_count"`
 }
 
+// Email rows stay out of the inbox: their bodies carry one-time codes and
+// invitation links that must only reach the mailbox, not the account holder.
 func (q *Queries) ListNotificationsForUser(ctx context.Context, arg ListNotificationsForUserParams) ([]Notification, error) {
 	rows, err := q.db.Query(ctx, listNotificationsForUser,
 		arg.UserID,

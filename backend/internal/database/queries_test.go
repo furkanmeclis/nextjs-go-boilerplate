@@ -38,13 +38,17 @@ func TestTenantQueriesReferenceOrganization(t *testing.T) {
 				if !regexp.MustCompile(`\b` + table + `\b`).MatchString(body) {
 					continue
 				}
-				if !strings.Contains(body, "organization_id") {
-					t.Errorf("%s: %s touches %s but never references organization_id", file, q.name, table)
+				if !orgFilterRe.MatchString(body) {
+					t.Errorf("%s: %s touches %s but never filters or sets organization_id", file, q.name, table)
 				}
 			}
 		}
 	}
 }
+
+// orgFilterRe wants organization_id in a comparison or an INSERT column list,
+// so selecting the column alone does not pass.
+var orgFilterRe = regexp.MustCompile(`organization_id\s*(=|in\b)|=\s*(\w+\.)?organization_id\b|insert\s+into\s+\w+\s*\([^)]*organization_id`)
 
 type namedQuery struct {
 	name   string

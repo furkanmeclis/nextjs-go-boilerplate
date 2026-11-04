@@ -269,6 +269,11 @@ func (s *Service) AddMember(ctx context.Context, orgUUID, userUUID uuid.UUID, ro
 // again inside the locked transaction so a concurrent change cannot slip past
 // a handler-level pre-check. Platform callers pass orgctx.RoleOwner.
 func (s *Service) ChangeMemberRole(ctx context.Context, orgUUID, userUUID uuid.UUID, roleKey, actorRole string) (orgmodel.Member, error) {
+	// normalizeRole defaults to member, which is right for adding someone but
+	// would silently demote here.
+	if strings.TrimSpace(roleKey) == "" {
+		return orgmodel.Member{}, ErrInvalidRequest
+	}
 	org, user, err := s.loadOrgUser(ctx, orgUUID, userUUID)
 	if err != nil {
 		return orgmodel.Member{}, err
@@ -324,6 +329,13 @@ func (s *Service) RemoveMember(ctx context.Context, orgUUID, userUUID uuid.UUID,
 		}
 		if current.RoleKey == orgctx.RoleOwner {
 			if err := s.guardLastOwner(ctx, q, org.ID); err != nil {
+				return err
+			}
+		}
+		if s.inv != nil {
+			// An invitation still open for this address must not undo the removal.
+			email := strings.ToLower(strings.TrimSpace(user.Email))
+			if err := s.inv.repo.RevokePendingInvitationsForEmail(ctx, q, org.ID, email); err != nil {
 				return err
 			}
 		}

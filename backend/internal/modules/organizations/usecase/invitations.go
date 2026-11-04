@@ -33,6 +33,7 @@ const InvitationTemplateCode = events.TenantInvitation
 // Repository. *repository.Postgres implements both.
 type InvitationRepository interface {
 	CreateInvitation(ctx context.Context, q *db.Queries, params db.CreateOrganizationInvitationParams) (db.OrganizationInvitation, error)
+	HasPendingOwnerInvitationForEmail(ctx context.Context, q *db.Queries, orgID int64, email string) (bool, error)
 	RevokePendingInvitationsForEmail(ctx context.Context, q *db.Queries, orgID int64, email string) error
 	ListPendingInvitations(ctx context.Context, orgID int64, limit, offset int32) ([]db.ListPendingOrganizationInvitationsRow, int64, error)
 	RevokeInvitation(ctx context.Context, orgID int64, id uuid.UUID, allowOwner bool) error
@@ -160,6 +161,16 @@ func (s *Service) CreateInvitation(ctx context.Context, in orgmodel.CreateInvita
 		if err != nil {
 			return mapRepoNotFound(err, ErrRoleNotFound)
 		}
+		if in.InviterRoleKey != orgctx.RoleOwner {
+			// Replacing an open owner invitation would revoke it.
+			pending, err := s.inv.repo.HasPendingOwnerInvitationForEmail(ctx, q, in.OrgID, email)
+			if err != nil {
+				return err
+			}
+			if pending {
+				return ErrOwnerRoleRequired
+			}
+		}
 		if err := s.inv.repo.RevokePendingInvitationsForEmail(ctx, q, in.OrgID, email); err != nil {
 			return err
 		}
@@ -225,9 +236,10 @@ func (s *Service) sendInvitationEmail(ctx context.Context, in orgmodel.CreateInv
 		},
 	}
 	if invitee.ID > 0 {
-		// Known account: render in their language.
-		uid := invitee.ID
-		enqueue.UserID = &uid
+		// Known account: render in their language. Never link the row to the
+		// account (UserID): the address may be unverified, and the link must
+		// only be readable from the mailbox.
+		enqueue.Language = invitee.Locale
 	}
 	if _, err := s.inv.notifier.Enqueue(ctx, enqueue); err != nil {
 		s.inv.log.Warn("organization_invitation_email_enqueue_failed", "error", err, "organization_id", in.OrgID)

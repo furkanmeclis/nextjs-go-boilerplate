@@ -2613,7 +2613,7 @@ paths:
       tags: [Notifications]
       operationId: getNotifications
       summary: List own inbox
-      description: Requires `notifications.read`. Supports `limit`,`offset`,`q`,`sort`,`status`,`channel`,`unread`.
+      description: Requires `notifications.read`. Email rows are never listed. Supports `limit`,`offset`,`q`,`sort`,`status`,`channel`,`unread`.
       security:
         - bearerAuth: []
       parameters:

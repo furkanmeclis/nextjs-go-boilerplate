@@ -1534,7 +1534,7 @@ export interface paths {
         };
         /**
          * List own inbox
-         * @description Requires `notifications.read`. Supports `limit`,`offset`,`q`,`sort`,`status`,`channel`,`unread`.
+         * @description Requires `notifications.read`. Email rows are never listed. Supports `limit`,`offset`,`q`,`sort`,`status`,`channel`,`unread`.
          */
         get: operations["getNotifications"];
         put?: never;

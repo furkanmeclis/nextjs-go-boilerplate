@@ -213,7 +213,7 @@ Probe: `GET /v1/tenant/context` returns `{organization, role, permissions}` of t
 
 **Owner rule.** Only an owner may grant, change, or remove the owner role, or invite/revoke an owner-role invitation (`403 OWNER_ROLE_REQUIRED`; an owner invitation is simply not found for admins). The usecase re-checks this inside the locked transaction, and the last owner can never be demoted or removed (`ErrLastOrganizationOwner`). Platform routes act with owner rights.
 
-**Invitations.** `POST /v1/tenant/invitations` stores only the SHA-256 of a 32-byte token and enqueues the `tenant.invitation` notification; the link is `/invite/{token}`. Preview and accept send the token in the body (never the URL path of the API), acceptance is single-use and bound to the invited email.
+**Invitations.** `POST /v1/tenant/invitations` keeps only the SHA-256 of a 32-byte token on the invitation and enqueues the `tenant.invitation` notification; the link is `/invite/{token}`. The queued email row is not linked to an account, and email rows never appear in `GET /v1/notifications`, so the link is only readable from the mailbox (platform notification views do show the row). Preview and accept send the token in the body (never the URL path of the API), acceptance is single-use and bound to the invited email.
 
 **Realtime.** `org:{uuid}` subscription tokens are issued only when the same resolution rules pass (membership, status, access window). Authorization is checked when the token is issued; removing a member does not drop a live subscription.
 

@@ -289,6 +289,19 @@ WHERE oi.uuid = $1
     SELECT 1 FROM roles r WHERE r.id = oi.role_id AND r.slug = 'owner'))
 RETURNING oi.*;
 
+-- name: HasPendingOwnerOrganizationInvitationForEmail :one
+SELECT EXISTS (
+  SELECT 1
+  FROM organization_invitations oi
+  INNER JOIN roles r ON r.id = oi.role_id
+  WHERE oi.organization_id = $1
+    AND oi.email = $2
+    AND r.slug = 'owner'
+    AND oi.accepted_at IS NULL
+    AND oi.revoked_at IS NULL
+    AND oi.expires_at > NOW()
+);
+
 -- name: RevokePendingOrganizationInvitationsForEmail :execrows
 -- A new invitation replaces older open ones for the same address.
 UPDATE organization_invitations

@@ -378,6 +378,10 @@ func (s *Service) GetOwned(ctx context.Context, userID int64, id uuid.UUID) (mod
 	if !row.UserID.Valid || row.UserID.Int64 != userID {
 		return model.Notification{}, ErrForbidden
 	}
+	// Same rule as the inbox list: email bodies carry one-time codes and links.
+	if row.Channel == model.ChannelEmail {
+		return model.Notification{}, ErrNotFound
+	}
 	return s.project(row), nil
 }
 
