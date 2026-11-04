@@ -1,5 +1,6 @@
 "use client";
 
+import { Permission } from "@/config/permissions";
 import { useQuery } from "@tanstack/react-query";
 import { createElement, useMemo, useState } from "react";
 
@@ -33,9 +34,13 @@ export function useCommandPaletteData(catalogs: NavCatalog[]) {
   });
   const access = useMemo(() => ({ can, canAny }), [can, canAny]);
 
+  // Search routes need a platform session; organization-only members have none.
+  const canSearch = can(Permission.AuthSession);
+
   const specsQuery = useQuery({
     queryKey: ["search", "specs"],
     queryFn: fetchSearchSpecs,
+    enabled: canSearch,
     staleTime: 60_000,
   });
 
@@ -88,7 +93,8 @@ export function useCommandPaletteData(catalogs: NavCatalog[]) {
   const remoteQuery = useQuery({
     queryKey: ["search", "hits", searchText, effectiveSpec],
     queryFn: () => fetchSearchHits(searchText, effectiveSpec),
-    enabled: Boolean(searchText) && specsQuery.data?.enabled !== false,
+    enabled:
+      canSearch && Boolean(searchText) && specsQuery.data?.enabled !== false,
     staleTime: 15_000,
   });
 
